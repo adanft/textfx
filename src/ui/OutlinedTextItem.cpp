@@ -1,5 +1,7 @@
 #include "ui/OutlinedTextItem.h"
 
+#include "fonts/FontResolver.h"
+
 #include <QFont>
 #include <QPainter>
 #include <QPainterPath>
@@ -164,7 +166,7 @@ QFont OutlinedTextItem::layoutFont() const
     font.setBold(bold_);
     font.setItalic(italic_);
     font.setLetterSpacing(QFont::AbsoluteSpacing, letterSpacing_);
-    return font;
+    return resolveFont(font).font;
 }
 
 QPainterPath OutlinedTextItem::textPath(const QFont& font, qreal layoutWidth, qreal inset, QStringList* lineTexts) const

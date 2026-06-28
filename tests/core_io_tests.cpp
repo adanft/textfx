@@ -74,7 +74,7 @@ TEST_CASE("Compatible page save preserves MVP editable fields")
     box.text = "Hello";
     box.bounds = {1.0, 2.0, 30.0, 40.0};
     box.rotationDegrees = 15.5;
-    box.style = {.fontFamily = "sans-serif", .fontSize = 24, .textColor = "ff0000ff", .lineSpacing = 8, .letterSpacing = 3, .bold = true, .italic = true, .uppercase = true, .alignment = TextAlignment::Center};
+    box.style = {.fontFamily = "TextFX Custom Missing Family", .fontSize = 24, .textColor = "ff0000ff", .lineSpacing = 8, .letterSpacing = 3, .bold = true, .italic = true, .uppercase = true, .alignment = TextAlignment::Center};
     box.effects.outlineEnabled = true;
     box.effects.outlineColor = "ffffffff";
     box.effects.outlineSize = 4;
@@ -105,7 +105,7 @@ TEST_CASE("Compatible page save preserves MVP editable fields")
     const auto& loadedBox = loaded.textBoxes().front();
     CHECK(loadedBox.text == "Hello");
     CHECK(loadedBox.bounds.w == 30.0);
-    CHECK(loadedBox.style.fontFamily == "sans-serif");
+    CHECK(loadedBox.style.fontFamily == "TextFX Custom Missing Family");
     CHECK(loadedBox.style.alignment == TextAlignment::Center);
     CHECK(loadedBox.effects.shadowBlurSize == 7);
     CHECK(loadedBox.effects.gradientColorB == "0000ffff");

@@ -1,4 +1,6 @@
 #include "app/EditorController.h"
+#include "fonts/FontResolver.h"
+#include "fonts/SfntNames.h"
 #include "ui/OutlinedTextItem.h"
 
 #include <QClipboard>
@@ -10,11 +12,14 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QPainter>
+#include <QFontDatabase>
+#include <QFontInfo>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 
 #include <cstring>
+#include <iterator>
 
 using namespace textfx;
 
@@ -49,6 +54,75 @@ bool imageDiffers(const QString& a, const QString& b)
         if (std::memcmp(first.constScanLine(y), second.constScanLine(y), static_cast<std::size_t>(first.bytesPerLine())) != 0) return true;
     }
     return false;
+}
+
+QByteArray utf16be(const QString& text)
+{
+    QByteArray bytes;
+    bytes.reserve(text.size() * 2);
+    for (const QChar ch : text) {
+        const ushort value = ch.unicode();
+        bytes.append(static_cast<char>((value >> 8) & 0xff));
+        bytes.append(static_cast<char>(value & 0xff));
+    }
+    return bytes;
+}
+
+QByteArray syntheticSfntNameTable()
+{
+    struct NameRecord {
+        quint16 platform;
+        quint16 encoding;
+        quint16 language;
+        quint16 nameId;
+        QByteArray value;
+    };
+
+    const NameRecord records[] = {
+        {3, 1, 0x0409, 1, utf16be(QStringLiteral("TextFX Alias Test"))},
+        {3, 1, 0x0409, 4, utf16be(QStringLiteral("000 TextFX Alias Test [Display]"))},
+        {3, 1, 0x0409, 16, utf16be(QStringLiteral("TextFX Usable Family"))},
+        {3, 1, 0x0409, 2, utf16be(QStringLiteral("Ignored Style Name"))},
+    };
+
+    auto appendU16 = [](QByteArray& data, quint16 value) {
+        data.append(static_cast<char>((value >> 8) & 0xff));
+        data.append(static_cast<char>(value & 0xff));
+    };
+    auto appendU32 = [&appendU16](QByteArray& data, quint32 value) {
+        appendU16(data, static_cast<quint16>((value >> 16) & 0xffff));
+        appendU16(data, static_cast<quint16>(value & 0xffff));
+    };
+
+    QByteArray strings;
+    QByteArray nameTable;
+    appendU16(nameTable, 0);
+    appendU16(nameTable, std::size(records));
+    appendU16(nameTable, 6 + std::size(records) * 12);
+
+    for (const NameRecord& record : records) {
+        appendU16(nameTable, record.platform);
+        appendU16(nameTable, record.encoding);
+        appendU16(nameTable, record.language);
+        appendU16(nameTable, record.nameId);
+        appendU16(nameTable, record.value.size());
+        appendU16(nameTable, strings.size());
+        strings.append(record.value);
+    }
+    nameTable.append(strings);
+
+    QByteArray sfnt;
+    appendU32(sfnt, 0x00010000);
+    appendU16(sfnt, 1);
+    appendU16(sfnt, 0);
+    appendU16(sfnt, 0);
+    appendU16(sfnt, 0);
+    sfnt.append("name", 4);
+    appendU32(sfnt, 0);
+    appendU32(sfnt, 28);
+    appendU32(sfnt, nameTable.size());
+    sfnt.append(nameTable);
+    return sfnt;
 }
 } // namespace
 
@@ -92,6 +166,40 @@ private slots:
         QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(), QString());
         QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("w")).toDouble(), 13.0);
         QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("h")).toDouble(), 14.0);
+    }
+
+    void boxesExposeRequestedAndResolvedFontFamilies()
+    {
+        auto expectedResolvedFamily = [](const QString& family) {
+            QFont font(family);
+            return resolveFont(font).font.family();
+        };
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(10, 20, 100, 50);
+
+        const QString missingFamily = QStringLiteral("TextFX Missing Font For Resolver Test");
+        editor.setSelectedFontFamily(missingFamily);
+
+        QVariantMap box = editor.boxes().at(0).toMap();
+        QCOMPARE(box.value(QStringLiteral("fontFamily")).toString(), missingFamily);
+        QCOMPARE(box.value(QStringLiteral("resolvedFontFamily")).toString(), expectedResolvedFamily(missingFamily));
+        QVERIFY(box.value(QStringLiteral("resolvedFontFamily")).toString() != missingFamily);
+
+        const QString beatDown = QStringLiteral("000 BeatDownBB [TeddyBear]");
+        QFont beatDownFont(beatDown);
+        const ResolvedFont beatDownResolution = resolveFont(beatDownFont);
+        if (beatDownResolution.requestedAvailable) {
+            QCOMPARE(QFontInfo(beatDownResolution.font).family(), beatDown);
+
+            editor.setSelectedFontFamily(beatDown);
+            box = editor.boxes().at(0).toMap();
+
+            QCOMPARE(box.value(QStringLiteral("fontFamily")).toString(), beatDown);
+            QCOMPARE(box.value(QStringLiteral("resolvedFontFamily")).toString(), beatDownResolution.font.family());
+            QVERIFY(!box.value(QStringLiteral("resolvedFontFamily")).toString().isEmpty());
+        }
     }
 
     void copyPastePreservesCopiedBox()
@@ -892,7 +1000,7 @@ private slots:
         editor.newDocument();
         editor.createTextBox(1, 2, 80, 40);
 
-        editor.setSelectedFontFamily(QStringLiteral("Inter"));
+        editor.setSelectedFontFamily(QStringLiteral("TextFX Custom Missing Family"));
         editor.setSelectedFontSize(42);
         editor.setSelectedTextColor(QStringLiteral("#ff00aa"));
         editor.setSelectedBold(true);
@@ -903,7 +1011,10 @@ private slots:
         editor.setSelectedLetterSpacing(3);
 
         const auto box = editor.boxes().at(0).toMap();
-        QCOMPARE(box.value(QStringLiteral("fontFamily")).toString(), QStringLiteral("Inter"));
+        QCOMPARE(box.value(QStringLiteral("fontFamily")).toString(), QStringLiteral("TextFX Custom Missing Family"));
+        QVERIFY(box.contains(QStringLiteral("resolvedFontFamily")));
+        QVERIFY(!box.value(QStringLiteral("resolvedFontFamily")).toString().isEmpty());
+        QVERIFY(box.value(QStringLiteral("resolvedFontFamily")).toString() != box.value(QStringLiteral("fontFamily")).toString());
         QCOMPARE(box.value(QStringLiteral("fontSize")).toInt(), 42);
         QCOMPARE(box.value(QStringLiteral("color")).toString(), QStringLiteral("ff00aaff"));
         QVERIFY(box.value(QStringLiteral("bold")).toBool());
@@ -913,6 +1024,51 @@ private slots:
         QCOMPARE(box.value(QStringLiteral("lineSpacing")).toInt(), 12);
         QCOMPARE(box.value(QStringLiteral("letterSpacing")).toInt(), 3);
         QVERIFY(editor.dirty());
+    }
+
+    void fontResolverUsesQtFamiliesAndDeterministicFallback()
+    {
+        QFont missing(QStringLiteral("TextFX Definitely Missing Font 9B33F761"));
+        missing.setPixelSize(17);
+        missing.setBold(true);
+
+        const auto fallback = resolveFont(missing);
+        QVERIFY(fallback.fellBack);
+        QVERIFY(!fallback.font.family().isEmpty());
+        QCOMPARE(fallback.font.pixelSize(), 17);
+        QCOMPARE(fallback.font.bold(), true);
+        QCOMPARE(resolveFont(missing).font.family(), fallback.font.family());
+        QCOMPARE(missing.family(), QStringLiteral("TextFX Definitely Missing Font 9B33F761"));
+
+        const QStringList families = QFontDatabase::families();
+        QVERIFY(!families.isEmpty());
+        QFont known(families.first());
+        const auto resolved = resolveFont(known);
+        QVERIFY(!resolved.fellBack);
+        QVERIFY(resolved.requestedAvailable);
+        QVERIFY(!QFontInfo(resolved.font).family().isEmpty());
+
+        const QString beatDown = QStringLiteral("000 BeatDownBB [TeddyBear]");
+        const bool beatDownAvailable = families.contains(beatDown) || families.contains(QStringLiteral("000 BeatDownBB"));
+        if (beatDownAvailable) {
+            const auto beatDownResolved = resolveFont(QFont(beatDown));
+            QVERIFY(!beatDownResolved.fellBack);
+            QVERIFY(beatDownResolved.requestedAvailable);
+        }
+    }
+
+    void sfntFullAndTypographicNamesMapToUsableFamily()
+    {
+        const QStringList names = detail::fontNamesFromSfntData(syntheticSfntNameTable());
+        QVERIFY(names.contains(QStringLiteral("TextFX Alias Test")));
+        QVERIFY(names.contains(QStringLiteral("000 TextFX Alias Test [Display]")));
+        QVERIFY(names.contains(QStringLiteral("TextFX Usable Family")));
+        QVERIFY(!names.contains(QStringLiteral("Ignored Style Name")));
+
+        const QHash<QString, QString> aliases = detail::aliasesForSfntNames(names, QStringLiteral("TextFX Usable Family"));
+        QCOMPARE(aliases.value(QStringLiteral("000 TextFX Alias Test [Display]").toCaseFolded()), QStringLiteral("TextFX Usable Family"));
+        QCOMPARE(aliases.value(QStringLiteral("textfx alias test")), QStringLiteral("TextFX Usable Family"));
+        QCOMPARE(aliases.value(QStringLiteral("TextFX Usable Family").toCaseFolded()), QStringLiteral("TextFX Usable Family"));
     }
 
     void qmlTextStyleControlsUseNerdFontIconButtons()
@@ -1946,7 +2102,7 @@ private slots:
         QVERIFY(code.contains(QStringLiteral("path.translate(dx, dy);")));
     }
 
-    void qmlHasEightPerspectiveHandlesAndQPainterUsesFontFamily()
+    void qmlHasEightPerspectiveHandlesAndQPainterUsesFontResolver()
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
@@ -1962,7 +2118,7 @@ private slots:
         QFile render(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../src/render/RenderGraph.cpp"));
         QVERIFY(render.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString renderSource = QString::fromUtf8(render.readAll());
-        QVERIFY(renderSource.contains(QStringLiteral("QFont font(QString::fromStdString(box.style.fontFamily))")));
+        QVERIFY(renderSource.contains(QStringLiteral("return resolveFont(font).font;")));
         QVERIFY(renderSource.contains(QStringLiteral("font.setBold(box.style.bold)")));
         QVERIFY(!renderSource.contains(QStringLiteral("SkFontMgr_New_Custom_Directory")));
     }

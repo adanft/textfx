@@ -1,8 +1,10 @@
 #include "app/EditorController.h"
 
+#include "fonts/FontResolver.h"
 #include "render/RenderGraph.h"
 
 #include <QClipboard>
+#include <QFont>
 #include <QGuiApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -32,6 +34,16 @@ std::string normalizeHexColor(QString color, const std::string& fallback)
 
 QVariantList pointsToVariantList(const std::vector<Point>& points);
 
+QString resolvedFontFamily(const TextStyle& style)
+{
+    QFont font(toQString(style.fontFamily));
+    font.setPixelSize(std::max(1, style.fontSize));
+    font.setBold(style.bold);
+    font.setItalic(style.italic);
+    font.setLetterSpacing(QFont::AbsoluteSpacing, style.letterSpacing);
+    return resolveFont(font).font.family();
+}
+
 QVariantMap toMap(const TextBox& box, int index)
 {
     return {
@@ -43,6 +55,7 @@ QVariantMap toMap(const TextBox& box, int index)
         {"h", box.bounds.h},
         {"rotation", box.rotationDegrees},
         {"fontFamily", toQString(box.style.fontFamily)},
+        {"resolvedFontFamily", resolvedFontFamily(box.style)},
         {"fontSize", box.style.fontSize},
         {"color", toQString(box.style.textColor)},
         {"lineSpacing", box.style.lineSpacing},

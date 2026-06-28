@@ -31,6 +31,9 @@ add_library(textfx_core
     src/app/EditorController.h
     src/core/DocumentModel.cpp
     src/core/DocumentModel.h
+    src/fonts/FontResolver.cpp
+    src/fonts/FontResolver.h
+    src/fonts/SfntNames.h
     src/core/ProjectStore.cpp
     src/core/ProjectStore.h
     src/io/JsonSerializer.cpp
@@ -150,6 +153,16 @@ if(BUILD_TESTING)
     else()
         message(STATUS "Qt6 Test not found; Qt smoke tests are not built")
     endif()
+
+    add_executable(textfx_font_diagnostic
+        tools/font_diagnostic.cpp
+    )
+
+    target_link_libraries(textfx_font_diagnostic
+        PRIVATE
+            textfx_core
+            Qt6::Gui
+    )
 
     add_custom_target(verify_all
         DEPENDS ${TEXTFX_TEST_TARGETS}

@@ -1138,7 +1138,7 @@ ApplicationWindow {
                                 selectedTextColor: "transparent"
                                 selectionColor: "transparent"
                                 placeholderTextColor: "transparent"
-                                font.family: modelData.fontFamily
+                                font.family: modelData.resolvedFontFamily
                                 font.pixelSize: Math.max(1, modelData.fontSize * rootWindow.viewDocScale())
                                 font.bold: modelData.bold
                                 font.weight: modelData.bold ? Font.Bold : Font.Normal

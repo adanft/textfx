@@ -1,5 +1,7 @@
 #include "render/RenderGraph.h"
 
+#include "fonts/FontResolver.h"
+
 #include <QColor>
 #include <QFont>
 #include <QImage>
@@ -31,7 +33,7 @@ QFont qFontFor(const TextBox& box)
     font.setBold(box.style.bold);
     font.setItalic(box.style.italic);
     font.setLetterSpacing(QFont::AbsoluteSpacing, box.style.letterSpacing);
-    return font;
+    return resolveFont(font).font;
 }
 
 QPainterPath textPathFor(const TextBox& box, const QFont& font, double inset)
