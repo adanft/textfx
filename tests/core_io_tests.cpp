@@ -1,0 +1,248 @@
+#include "core/ProjectStore.h"
+#include "io/JsonSerializer.h"
+
+#include <catch2/catch_test_macros.hpp>
+
+#include <algorithm>
+#include <filesystem>
+#include <fstream>
+#include <random>
+#include <sstream>
+
+using namespace textfx;
+
+namespace {
+std::filesystem::path makeTempDir(const std::string& name)
+{
+    auto path = std::filesystem::temp_directory_path() / (name + std::to_string(std::random_device{}()));
+    std::filesystem::create_directories(path);
+    return path;
+}
+
+void touch(const std::filesystem::path& path)
+{
+    std::filesystem::create_directories(path.parent_path());
+    std::ofstream(path) << "x";
+}
+
+std::string readText(const std::filesystem::path& path)
+{
+    std::ifstream input(path);
+    std::ostringstream output;
+    output << input.rdbuf();
+    return output.str();
+}
+} // namespace
+
+TEST_CASE("Project pages are naturally sorted")
+{
+    const auto folder = makeTempDir("textfx-natural-sort-");
+    for (const auto& name : {"10.webp", "2.PNG", "notes.txt", "1.jpg", "3.jfif", "page-10.png", "page-2.jpeg"}) {
+        touch(folder / name);
+    }
+
+    const auto pages = ProjectStore(folder).listPagePaths();
+    std::vector<std::string> names;
+    std::ranges::transform(pages, std::back_inserter(names), [](const auto& path) { return path.filename().string(); });
+
+    CHECK(names == std::vector<std::string>{"1.jpg", "2.PNG", "3.jfif", "10.webp", "page-2.jpeg", "page-10.png"});
+    std::filesystem::remove_all(folder);
+}
+
+TEST_CASE("Missing typex page data opens an empty clean document")
+{
+    const auto folder = makeTempDir("textfx-missing-typex-");
+    const auto page = folder / "001.png";
+    touch(page);
+
+    DocumentModel document;
+    document.addTextBox({});
+    REQUIRE(ProjectStore(folder).loadPage(page, document));
+
+    CHECK(document.textBoxes().empty());
+    CHECK_FALSE(document.dirty());
+    std::filesystem::remove_all(folder);
+}
+
+TEST_CASE("Compatible page save preserves MVP editable fields")
+{
+    const auto folder = makeTempDir("textfx-compatible-save-");
+    const auto page = folder / "001.png";
+    touch(page);
+
+    TextBox box;
+    box.text = "Hello";
+    box.bounds = {1.0, 2.0, 30.0, 40.0};
+    box.rotationDegrees = 15.5;
+    box.style = {.fontFamily = "sans-serif", .fontSize = 24, .textColor = "ff0000ff", .lineSpacing = 8, .letterSpacing = 3, .bold = true, .italic = true, .uppercase = true, .alignment = TextAlignment::Center};
+    box.effects.outlineEnabled = true;
+    box.effects.outlineColor = "ffffffff";
+    box.effects.outlineSize = 4;
+    box.effects.blurEnabled = true;
+    box.effects.blurSize = 6;
+    box.effects.shadowEnabled = true;
+    box.effects.shadowColor = "000000ff";
+    box.effects.shadowOffsetX = 5;
+    box.effects.shadowOffsetY = 6;
+    box.effects.shadowBlurSize = 7;
+    box.effects.gradientEnabled = true;
+    box.effects.gradientDirection = 1;
+    box.effects.gradientColorA = "ff0000ff";
+    box.effects.gradientColorB = "0000ffff";
+    box.effects.pathEnabled = true;
+    box.effects.pathPoints = {{0.0, 0.5}, {1.0, 0.5}};
+    box.effects.perspectiveEnabled = true;
+    box.effects.perspectiveNw = {1.0, 2.0};
+
+    DocumentModel saved;
+    saved.addTextBox(box);
+    saved.markSaved();
+    REQUIRE(ProjectStore(folder).savePage(page, saved));
+
+    DocumentModel loaded;
+    REQUIRE(ProjectStore(folder).loadPage(page, loaded));
+    REQUIRE(loaded.textBoxes().size() == 1);
+    const auto& loadedBox = loaded.textBoxes().front();
+    CHECK(loadedBox.text == "Hello");
+    CHECK(loadedBox.bounds.w == 30.0);
+    CHECK(loadedBox.style.fontFamily == "sans-serif");
+    CHECK(loadedBox.style.alignment == TextAlignment::Center);
+    CHECK(loadedBox.effects.shadowBlurSize == 7);
+    CHECK(loadedBox.effects.gradientColorB == "0000ffff");
+    CHECK(loadedBox.effects.pathPoints.size() == 3);
+    CHECK(loadedBox.effects.perspectiveNw.x == 1.0);
+    std::filesystem::remove_all(folder);
+}
+
+TEST_CASE("Perspective offsets persist as TypeX pixel offsets")
+{
+    const auto folder = makeTempDir("textfx-perspective-offsets-");
+    const auto page = folder / "001.png";
+    touch(page);
+
+    TextBox box;
+    box.bounds = {10.0, 20.0, 100.0, 80.0};
+    box.effects.perspectiveEnabled = true;
+    box.effects.perspectiveNw = {5.0, -3.0};
+    box.effects.perspectiveNe = {-7.0, 4.0};
+
+    DocumentModel saved;
+    saved.addTextBox(box);
+    REQUIRE(ProjectStore(folder).savePage(page, saved));
+
+    const auto text = readText(ProjectStore(folder).pageSavePathFor(page));
+    CHECK(text.find("[\n                    5") != std::string::npos);
+
+    DocumentModel loaded;
+    REQUIRE(ProjectStore(folder).loadPage(page, loaded));
+    REQUIRE(loaded.textBoxes().size() == 1);
+    CHECK(loaded.textBoxes().front().effects.perspectiveNw.x == 5.0);
+    CHECK(loaded.textBoxes().front().effects.perspectiveNw.y == -3.0);
+    CHECK(loaded.textBoxes().front().effects.perspectiveNe.x == -7.0);
+    CHECK(loaded.textBoxes().front().effects.perspectiveNe.y == 4.0);
+    std::filesystem::remove_all(folder);
+}
+
+TEST_CASE("Unsupported fields are ignored on import and omitted on save")
+{
+    const auto folder = makeTempDir("textfx-unsupported-import-");
+    const auto page = folder / "001.png";
+    const auto savePath = ProjectStore(folder).pageSavePathFor(page);
+    touch(page);
+    std::filesystem::create_directories(savePath.parent_path());
+    std::ofstream(savePath) << R"({
+        "format": "typex.page-boxes.v1",
+        "page": "001.png",
+        "typebubblex_only": true,
+        "boxes": [{"text": "Kept", "x": 1, "y": 2, "w": 3, "h": 4, "mask_brush": {"unsupported": true}, "shadow_blur_size": 999}]
+    })";
+
+    DocumentModel document;
+    REQUIRE(ProjectStore(folder).loadPage(page, document));
+    REQUIRE(document.textBoxes().size() == 1);
+    CHECK(document.textBoxes().front().text == "Kept");
+    CHECK(document.textBoxes().front().effects.shadowBlurSize == 36);
+    REQUIRE(ProjectStore(folder).savePage(page, document));
+
+    const std::string text = readText(savePath);
+    CHECK(text.find("mask_brush") == std::string::npos);
+    CHECK(text.find("typebubblex_only") == std::string::npos);
+    CHECK(text.find("Kept") != std::string::npos);
+    std::filesystem::remove_all(folder);
+}
+
+TEST_CASE("texts.txt page texts are parsed by page section")
+{
+    const auto folder = makeTempDir("textfx-page-texts-");
+    std::ofstream(folder / "texts.txt") << R"(
+ignored before section
+[page2.png]
+ First line 
+
+Second line
+[ page10.png ]
+Third line
+)";
+
+    const auto texts = ProjectStore(folder).loadPageTexts();
+
+    REQUIRE(texts.at("page2.png").size() == 2);
+    CHECK(texts.at("page2.png").at(0) == "First line");
+    CHECK(texts.at("page2.png").at(1) == "Second line");
+    REQUIRE(texts.at("page10.png").size() == 1);
+    CHECK(texts.at("page10.png").at(0) == "Third line");
+    std::filesystem::remove_all(folder);
+}
+
+TEST_CASE("Missing project presets returns built-in defaults without writing a file")
+{
+    const auto folder = makeTempDir("textfx-default-presets-");
+    DocumentModel document;
+    std::vector<TextPreset> projectPresets;
+
+    REQUIRE(ProjectStore(folder).loadPresets(document, projectPresets));
+
+    CHECK_FALSE(std::filesystem::exists(ProjectStore(folder).presetsPath()));
+    REQUIRE(document.presets().size() == ProjectStore::defaultTextPresets().size());
+    CHECK(projectPresets.empty());
+    CHECK(document.presets().front().name == "Globo normal");
+    CHECK(document.presets().front().style.fontFamily == "Back Issues BB");
+    std::filesystem::remove_all(folder);
+}
+
+TEST_CASE("Project presets persist as TypeX presets file")
+{
+    const auto folder = makeTempDir("textfx-project-presets-");
+    ProjectStore store(folder);
+    std::vector<TextPreset> saved{{"Narration", {.fontFamily = "Inter", .fontSize = 18, .textColor = "112233ff", .bold = true}}};
+
+    REQUIRE(store.savePresets(saved));
+
+    DocumentModel document;
+    std::vector<TextPreset> projectPresets;
+    REQUIRE(store.loadPresets(document, projectPresets));
+    REQUIRE(projectPresets.size() == 1);
+    CHECK(projectPresets.front().name == "Narration");
+    CHECK(projectPresets.front().style.bold);
+    const std::string text = readText(store.presetsPath());
+    CHECK(text.find("typex.text-presets.v1") != std::string::npos);
+    CHECK(text.find("Narration") != std::string::npos);
+    std::filesystem::remove_all(folder);
+}
+
+TEST_CASE("Project preset overrides built-in preset by name")
+{
+    const auto folder = makeTempDir("textfx-override-presets-");
+    ProjectStore store(folder);
+    REQUIRE(store.savePresets({{"Globo normal", {.fontFamily = "Custom Bubble", .fontSize = 30}}}));
+
+    DocumentModel document;
+    std::vector<TextPreset> projectPresets;
+    REQUIRE(store.loadPresets(document, projectPresets));
+
+    CHECK(document.presets().size() == ProjectStore::defaultTextPresets().size());
+    CHECK(document.presets().front().name == "Globo normal");
+    CHECK(document.presets().front().style.fontFamily == "Custom Bubble");
+    CHECK(document.presets().front().style.fontSize == 30);
+    std::filesystem::remove_all(folder);
+}

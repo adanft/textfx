@@ -1,0 +1,19 @@
+{
+  "format": "typex.text-presets.v1",
+  "presets": [
+    {
+      "name": "MVP Caption",
+      "properties": {
+        "font_family": "sans-serif",
+        "font_size": 32,
+        "text_color": "ffffffff",
+        "line_spacing": 2,
+        "letter_spacing": 0,
+        "bold": true,
+        "italic": false,
+        "uppercase": false,
+        "alignment": 1
+      }
+    }
+  ]
+}

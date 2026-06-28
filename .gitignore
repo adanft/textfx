@@ -1,0 +1,27 @@
+# Build outputs
+build/
+cmake-build-*/
+out/
+
+# CMake local/user files
+CMakeUserPresets.json
+compile_commands.json
+
+# Runtime/project outputs
+.typex/
+exported/
+
+# Editor/OS noise
+.cache/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak

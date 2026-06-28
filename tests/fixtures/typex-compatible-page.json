@@ -1,0 +1,59 @@
+{
+  "format": "typex.page-boxes.v1",
+  "page": "fixture.png",
+  "typebubblex_only": true,
+  "boxes": [
+    {
+      "text": "Hello TextFX",
+      "x": 12,
+      "y": 24,
+      "w": 220,
+      "h": 80,
+      "font_family": "sans-serif",
+      "font_size": 28,
+      "text_color": "ffcc00ff",
+      "line_spacing": 4,
+      "letter_spacing": 1,
+      "bold": true,
+      "italic": false,
+      "uppercase": false,
+      "alignment": 1,
+      "rotation_degrees": 3.5,
+      "outline_enabled": true,
+      "outline_color": "000000ff",
+      "outline_size": 3,
+      "blur_enabled": false,
+      "blur_size": 0,
+      "shadow_enabled": true,
+      "shadow_color": "000000aa",
+      "shadow_offset_x": 6,
+      "shadow_offset_y": 8,
+      "shadow_blur_size": 12,
+      "gradient_enabled": true,
+      "gradient_direction": 1,
+      "gradient_color_a": "ffcc00ff",
+      "gradient_color_b": "ff6600ff",
+      "path_enabled": true,
+      "path_mode": 0,
+      "path_points": [[0, 0.5], [0.5, 0.2], [1, 0.5]],
+      "path_inactive_points": [1],
+      "perspective_enabled": true,
+      "perspective_offsets": {
+        "nw": [0, 0],
+        "ne": [1, 0.1],
+        "se": [0.95, 1],
+        "sw": [0.05, 0.9]
+      },
+      "mask_brush": {"unsupported": true}
+    },
+    {
+      "text": "Plain fallback",
+      "x": 40,
+      "y": 120,
+      "w": 180,
+      "h": 50,
+      "font_size": 18,
+      "text_color": "ffffffff"
+    }
+  ]
+}
