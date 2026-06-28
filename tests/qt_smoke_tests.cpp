@@ -14,9 +14,14 @@
 #include <QPainter>
 #include <QFontDatabase>
 #include <QFontInfo>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
+#include <QQuickItem>
+#include <QQuickWindow>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include <qqml.h>
 
 #include <cstring>
 #include <iterator>
@@ -24,6 +29,27 @@
 using namespace textfx;
 
 namespace {
+void registerQmlTypes()
+{
+    static const int registered = qmlRegisterType<textfx::OutlinedTextItem>("TextFX.Ui", 1, 0, "OutlinedTextItem");
+    Q_UNUSED(registered);
+}
+
+void typeText(QWindow* window, QStringView text)
+{
+    for (const QChar ch : text) QTest::keyClick(window, ch.toLatin1());
+}
+
+QObject* findVisualChildByName(QQuickItem* item, const QString& objectName)
+{
+    if (!item) return nullptr;
+    if (item->objectName() == objectName) return item;
+    for (QQuickItem* child : item->childItems()) {
+        if (QObject* found = findVisualChildByName(child, objectName)) return found;
+    }
+    return nullptr;
+}
+
 void touch(const QString& path, QSize size = {32, 24})
 {
     QImage image(size, QImage::Format_RGBA8888);
@@ -200,6 +226,65 @@ private slots:
             QCOMPARE(box.value(QStringLiteral("resolvedFontFamily")).toString(), beatDownResolution.font.family());
             QVERIFY(!box.value(QStringLiteral("resolvedFontFamily")).toString().isEmpty());
         }
+    }
+
+    void activeTextEditingDefersModelResetUntilEditEnds()
+    {
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(10, 20, 100, 50);
+        editor.beginTextEdit();
+
+        QSignalSpy documentChanged(&editor, &EditorController::documentChanged);
+        QSignalSpy stateChanged(&editor, &EditorController::stateChanged);
+
+        editor.updateSelectedText(QStringLiteral("abc"));
+
+        QCOMPARE(documentChanged.count(), 0);
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(), QStringLiteral("abc"));
+        QVERIFY(editor.dirty());
+        QVERIFY(stateChanged.count() >= 1);
+
+        editor.endTextEdit();
+
+        QCOMPARE(documentChanged.count(), 1);
+    }
+
+    void qmlTextEditOverlayKeepsFocusAndTextAcrossTyping()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(10, 20, 260, 90);
+        editor.setSelectedFontSize(20);
+        editor.setSelectedLineSpacing(7);
+        editor.beginTextEdit();
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QObject* textArea = nullptr;
+        QTRY_VERIFY(textArea = findVisualChildByName(window->contentItem(), QStringLiteral("boxTextArea")));
+        QTRY_VERIFY(textArea->property("visible").toBool());
+        QTRY_VERIFY(textArea->property("activeFocus").toBool());
+
+        // Qt Quick TextArea/TextEdit does not expose lineHeight in the supported runtime.
+        QVERIFY(!textArea->property("lineHeight").isValid());
+
+        typeText(window, u"abc");
+        QTRY_COMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(), QStringLiteral("abc"));
+        QVERIFY(editor.editingText());
+        QVERIFY(textArea->property("activeFocus").toBool());
+
+        typeText(window, u"def");
+        QTRY_COMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(), QStringLiteral("abcdef"));
+        QVERIFY(editor.editingText());
+        QVERIFY(textArea->property("activeFocus").toBool());
     }
 
     void copyPastePreservesCopiedBox()
@@ -1823,7 +1908,7 @@ private slots:
         QVERIFY(editorBlock.contains(QStringLiteral("visible: boxRef.selected && editorRef.editingText")));
         QVERIFY(editorBlock.contains(QStringLiteral("color: \"transparent\"")));
         QVERIFY(editorBlock.contains(QStringLiteral("selectedTextColor: \"transparent\"")));
-        QVERIFY(editorBlock.contains(QStringLiteral("selectionColor: \"transparent\"")));
+        QVERIFY(editorBlock.contains(QStringLiteral("selectionColor: Qt.alpha(rootWindow.palette.highlight, 0.35)")));
         QVERIFY(editorBlock.contains(QStringLiteral("cursorDelegate: Rectangle")));
         QVERIFY(editorBlock.contains(QStringLiteral("onTextChanged: if (activeFocus && editorRef) editorRef.updateSelectedText(text)")));
     }
@@ -1840,7 +1925,8 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("function visualHandlePosition(box, name, width, height)")));
         QVERIFY(source.contains(QStringLiteral("const corner = perspectiveLayoutCorner(box, name, width / scale, height / scale)")));
         QVERIFY(source.contains(QStringLiteral("x: corner.x * scale")));
-        QVERIFY(source.contains(QStringLiteral("property bool perspectiveActive: boxModel.perspective && !(selected && editorRef.editingText)")));
+        QVERIFY(source.contains(QStringLiteral("property bool editingSelected: selected && editorRef.editingText")));
+        QVERIFY(source.contains(QStringLiteral("property bool perspectiveActive: boxModel.perspective && !editingSelected")));
         QVERIFY(source.contains(QStringLiteral("id: boxTextPerspective")));
         QVERIFY(source.contains(QStringLiteral("transform: Matrix4x4 { matrix: boxTextPerspective.rootWindow.perspectiveMatrix(boxTextPerspective.boxRef.boxModel, boxTextPerspective.width, boxTextPerspective.height, boxTextPerspective.rootWindow.viewDocScale(), boxTextPerspective.boxRef.perspectiveActive) }")));
         QVERIFY(!source.contains(QStringLiteral("transform: Matrix4x4 { matrix: rootWindow.perspectiveMatrix(boxRef.boxModel, boxTextPerspective.width, boxTextPerspective.height, rootWindow.viewDocScale(), boxRef.perspectiveActive) }")));

@@ -117,6 +117,23 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    DocumentModel overlappedGlyphs;
+    TextBox overlap;
+    overlap.text = "XX";
+    overlap.bounds = {40.0, 35.0, 140.0, 90.0};
+    overlap.style.fontSize = 72;
+    overlap.style.textColor = "000000ff";
+    overlap.effects.pathEnabled = true;
+    overlap.effects.pathPoints = {{0.5, 0.7}, {0.5, 0.7}};
+    overlappedGlyphs.addTextBox(overlap);
+
+    const auto overlapImage = exportedImage(graph, overlappedGlyphs, pagePath, std::filesystem::temp_directory_path() / "textfx-export-overlap.png");
+    const int darkOverlapPixels = countPixels(overlapImage, background, [](const QColor& color) { return color.red() < 40 && color.green() < 40 && color.blue() < 40; });
+    if (overlapImage.isNull() || darkOverlapPixels < 100) {
+        std::cerr << "Overlapped glyphs cut out instead of filling: darkPixels=" << darkOverlapPixels << '\n';
+        return 1;
+    }
+
     DocumentModel allEffects;
     TextBox fx;
     fx.text = "AllEffects";

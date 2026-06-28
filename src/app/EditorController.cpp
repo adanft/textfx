@@ -438,6 +438,12 @@ void EditorController::updateSelectedText(const QString& text)
 {
     if (auto* box = selectedBox()) {
         box->text = toStdString(text);
+        if (editingText_) {
+            document_.setDirty(true);
+            pendingDocumentChanged_ = true;
+            emit stateChanged();
+            return;
+        }
         markDocumentChanged();
     }
 }

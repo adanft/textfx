@@ -1033,8 +1033,9 @@ ApplicationWindow {
                             readonly property var rootWindow: ApplicationWindow.window
                             readonly property var editorRef: rootWindow ? rootWindow.editor : null
                             property bool selected: editorRef && modelData.index === editorRef.selectedIndex
+                            property bool editingSelected: selected && editorRef.editingText
                             property var boxModel: modelData
-                            property bool perspectiveActive: boxModel.perspective && !(selected && editorRef.editingText)
+                            property bool perspectiveActive: boxModel.perspective && !editingSelected
                             property bool moveActive: rootWindow.dragMode === 7 && rootWindow.activeMoveIndex === modelData.index
                             property bool resizeActive: rootWindow.dragMode === 4 && rootWindow.activeResizeDelegate === boxDelegate
                             property real visualDocX: moveActive ? rootWindow.moveX : resizeActive ? rootWindow.resizeX : modelData.x
@@ -1047,7 +1048,7 @@ ApplicationWindow {
                             height: visualDocH * rootWindow.viewDocScale()
                             color: "transparent"
                             border.width: perspectiveActive ? 0 : selected ? rootWindow.selectionLineWidth() : Math.max(1, rootWindow.documentToViewLength(1))
-                            border.color: selected ? rootWindow.palette.highlight : rootWindow.palette.mid
+                            border.color: editingSelected ? Qt.rgba(1, 0.84, 0, 1) : selected ? rootWindow.palette.highlight : rootWindow.palette.mid
                             rotation: modelData.rotation
 
                             Canvas {
@@ -1126,17 +1127,22 @@ ApplicationWindow {
 
                             TextArea {
                                 id: boxTextArea
+                                objectName: "boxTextArea"
 
                                 property var boxRef: parent
                                 property var rootWindow: boxRef.rootWindow
                                 property var editorRef: boxRef.editorRef
+                                function focusForEdit() {
+                                    if (boxRef.selected && editorRef.editingText && !activeFocus)
+                                        forceActiveFocus()
+                                }
                                 z: 1
                                 anchors.fill: parent
                                 visible: boxRef.selected && editorRef.editingText
                                 text: modelData.uppercase ? String(modelData.text).toUpperCase() : modelData.text
                                 color: "transparent"
                                 selectedTextColor: "transparent"
-                                selectionColor: "transparent"
+                                selectionColor: Qt.alpha(rootWindow.palette.highlight, 0.35)
                                 placeholderTextColor: "transparent"
                                 font.family: modelData.resolvedFontFamily
                                 font.pixelSize: Math.max(1, modelData.fontSize * rootWindow.viewDocScale())
@@ -1144,12 +1150,30 @@ ApplicationWindow {
                                 font.weight: modelData.bold ? Font.Bold : Font.Normal
                                 font.italic: modelData.italic
                                 font.letterSpacing: modelData.letterSpacing * rootWindow.viewDocScale()
+                                // Qt Quick TextArea/TextEdit in the supported runtime does not expose lineHeight;
+                                // modelData.lineSpacing remains render-only to avoid assigning unsupported QML properties.
                                 horizontalAlignment: modelData.alignment === 1 ? TextEdit.AlignHCenter : modelData.alignment === 2 ? TextEdit.AlignRight : TextEdit.AlignLeft
+                                padding: 0
+                                topPadding: 0
+                                leftPadding: 0
+                                rightPadding: 0
+                                bottomPadding: 0
                                 background: null
-                                cursorDelegate: Rectangle { width: 1; color: boxTextArea.rootWindow.palette.highlight }
+                                cursorDelegate: Rectangle {
+                                    width: 2
+                                    color: boxTextArea.rootWindow.palette.highlight
+                                    SequentialAnimation on opacity {
+                                        loops: Animation.Infinite
+                                        running: boxTextArea.visible && boxTextArea.activeFocus
+                                        NumberAnimation { to: 0; duration: 450 }
+                                        NumberAnimation { to: 1; duration: 450 }
+                                    }
+                                }
                                 wrapMode: TextEdit.Wrap
                                 selectByMouse: boxRef.selected && editorRef.editingText
                                 readOnly: !(boxRef.selected && editorRef.editingText)
+                                Component.onCompleted: Qt.callLater(focusForEdit)
+                                onVisibleChanged: if (visible) Qt.callLater(focusForEdit)
                                 Keys.onPressed: event => {
                                     if (event.key === Qt.Key_Escape) { rootWindow.handleEscape(); event.accepted = true }
                                 }

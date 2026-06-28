@@ -153,7 +153,9 @@ void OutlinedTextItem::paint(QPainter* painter)
         QPainterPathStroker stroker;
         stroker.setWidth(outlineSize_);
         stroker.setJoinStyle(Qt::RoundJoin);
-        painter->fillPath(stroker.createStroke(path), outlineColor_);
+        QPainterPath stroke = stroker.createStroke(path);
+        stroke.setFillRule(Qt::WindingFill);
+        painter->fillPath(stroke, outlineColor_);
     }
     painter->fillPath(path, color_);
     painter->restore();
@@ -196,6 +198,7 @@ QPainterPath OutlinedTextItem::textPath(const QFont& font, qreal layoutWidth, qr
         }
         layout.endLayout();
     }
+    path.setFillRule(Qt::WindingFill);
     return path;
 }
 

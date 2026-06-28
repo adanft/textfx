@@ -62,6 +62,7 @@ QPainterPath textPathFor(const TextBox& box, const QFont& font, double inset)
         }
         layout.endLayout();
     }
+    path.setFillRule(Qt::WindingFill);
     return path;
 }
 
@@ -108,6 +109,7 @@ QPainterPath pathTextFor(const TextBox& box, const QFont& font)
         transform.rotate(pathAngleAt(box.effects.pathPoints, t, box.effects.pathMode == 1));
         path.addPath(transform.map(glyph));
     }
+    path.setFillRule(Qt::WindingFill);
     return path;
 }
 
@@ -152,7 +154,9 @@ void drawTextBox(QPainter& painter, const TextBox& box)
         QPainterPathStroker stroker;
         stroker.setWidth(outline);
         stroker.setJoinStyle(Qt::RoundJoin);
-        painter.fillPath(stroker.createStroke(path), toQColor(box.effects.outlineColor));
+        QPainterPath stroke = stroker.createStroke(path);
+        stroke.setFillRule(Qt::WindingFill);
+        painter.fillPath(stroke, toQColor(box.effects.outlineColor));
     }
     fillPath(painter, path, fillBrushFor(box), box.effects.blurEnabled ? box.effects.blurSize : 0);
     painter.restore();
