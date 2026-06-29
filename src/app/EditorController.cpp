@@ -9,6 +9,11 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QQuickTextDocument>
+#include <QTextBlock>
+#include <QTextBlockFormat>
+#include <QTextCursor>
+#include <QTextDocument>
 #include <QUrl>
 
 #include <algorithm>
@@ -965,6 +970,25 @@ void EditorController::endTextEdit()
     editingText_ = false;
     emit stateChanged();
     if (wasEditing) endInteraction();
+}
+
+void EditorController::applyTextLineSpacing(QObject* quickTextDocument, double spacing)
+{
+    if (!quickTextDocument) return;
+    auto* wrapper = qobject_cast<QQuickTextDocument*>(quickTextDocument);
+    auto* document = wrapper ? wrapper->textDocument() : nullptr;
+    if (!document) return;
+
+    QTextCursor cursor(document);
+    for (QTextBlock block = document->begin(); block.isValid(); block = block.next()) {
+        const QTextBlockFormat current = block.blockFormat();
+        if (qFuzzyIsNull(current.lineHeight() - spacing) && current.lineHeightType() == QTextBlockFormat::LineDistanceHeight) continue;
+
+        QTextBlockFormat updated;
+        updated.setLineHeight(spacing, QTextBlockFormat::LineDistanceHeight);
+        cursor.setPosition(block.position());
+        cursor.mergeBlockFormat(updated);
+    }
 }
 
 void EditorController::notify(const QString& message)

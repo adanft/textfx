@@ -48,6 +48,7 @@ target_link_libraries(textfx_core
     PUBLIC
         Qt6::Core
         Qt6::Gui
+        Qt6::Quick
 )
 
 qt_add_qml_module(textfx

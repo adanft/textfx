@@ -1132,10 +1132,12 @@ ApplicationWindow {
                                 property var boxRef: parent
                                 property var rootWindow: boxRef.rootWindow
                                 property var editorRef: boxRef.editorRef
+                                property real editLineSpacing: modelData.lineSpacing * rootWindow.viewDocScale()
                                 function focusForEdit() {
                                     if (boxRef.selected && editorRef.editingText && !activeFocus)
                                         forceActiveFocus()
                                 }
+                                function applyLineSpacing() { editorRef.applyTextLineSpacing(textDocument, editLineSpacing) }
                                 z: 1
                                 anchors.fill: parent
                                 visible: boxRef.selected && editorRef.editingText
@@ -1150,8 +1152,6 @@ ApplicationWindow {
                                 font.weight: modelData.bold ? Font.Bold : Font.Normal
                                 font.italic: modelData.italic
                                 font.letterSpacing: modelData.letterSpacing * rootWindow.viewDocScale()
-                                // Qt Quick TextArea/TextEdit in the supported runtime does not expose lineHeight;
-                                // modelData.lineSpacing remains render-only to avoid assigning unsupported QML properties.
                                 horizontalAlignment: modelData.alignment === 1 ? TextEdit.AlignHCenter : modelData.alignment === 2 ? TextEdit.AlignRight : TextEdit.AlignLeft
                                 padding: 0
                                 topPadding: 0
@@ -1172,13 +1172,14 @@ ApplicationWindow {
                                 wrapMode: TextEdit.Wrap
                                 selectByMouse: boxRef.selected && editorRef.editingText
                                 readOnly: !(boxRef.selected && editorRef.editingText)
-                                Component.onCompleted: Qt.callLater(focusForEdit)
-                                onVisibleChanged: if (visible) Qt.callLater(focusForEdit)
+                                Component.onCompleted: { applyLineSpacing(); Qt.callLater(focusForEdit) }
+                                onVisibleChanged: if (visible) { applyLineSpacing(); Qt.callLater(focusForEdit) }
+                                onEditLineSpacingChanged: applyLineSpacing()
                                 Keys.onPressed: event => {
                                     if (event.key === Qt.Key_Escape) { rootWindow.handleEscape(); event.accepted = true }
                                 }
                                 onActiveFocusChanged: if (editorRef) activeFocus ? editorRef.beginTextEdit() : editorRef.endTextEdit()
-                                onTextChanged: if (activeFocus && editorRef) editorRef.updateSelectedText(text)
+                                onTextChanged: { applyLineSpacing(); if (activeFocus && editorRef) editorRef.updateSelectedText(text) }
                             }
 
                             MouseArea {

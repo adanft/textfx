@@ -130,6 +130,7 @@ public:
     Q_INVOKABLE void endInteraction();
     Q_INVOKABLE void beginTextEdit();
     Q_INVOKABLE void endTextEdit();
+    Q_INVOKABLE void applyTextLineSpacing(QObject* quickTextDocument, double spacing);
     Q_INVOKABLE void notify(const QString& message);
 
 public slots:

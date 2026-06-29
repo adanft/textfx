@@ -17,14 +17,19 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickItem>
+#include <QQuickTextDocument>
 #include <QQuickWindow>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QTextBlock>
+#include <QTextBlockFormat>
+#include <QTextDocument>
 #include <QTest>
 #include <qqml.h>
 
 #include <cstring>
 #include <iterator>
+#include <limits>
 
 using namespace textfx;
 
@@ -273,8 +278,29 @@ private slots:
         QTRY_VERIFY(textArea->property("visible").toBool());
         QTRY_VERIFY(textArea->property("activeFocus").toBool());
 
-        // Qt Quick TextArea/TextEdit does not expose lineHeight in the supported runtime.
-        QVERIFY(!textArea->property("lineHeight").isValid());
+        auto* quickTextDocument = textArea->property("textDocument").value<QObject*>();
+        QVERIFY(quickTextDocument);
+        auto* documentWrapper = qobject_cast<QQuickTextDocument*>(quickTextDocument);
+        QVERIFY(documentWrapper);
+        auto* document = documentWrapper->textDocument();
+        QVERIFY(document);
+        const auto currentDocument = [&]() -> QTextDocument* {
+            auto* currentTextArea = findVisualChildByName(window->contentItem(), QStringLiteral("boxTextArea"));
+            if (!currentTextArea) return nullptr;
+            auto* currentQuickTextDocument = currentTextArea->property("textDocument").value<QObject*>();
+            auto* currentDocumentWrapper = qobject_cast<QQuickTextDocument*>(currentQuickTextDocument);
+            return currentDocumentWrapper ? currentDocumentWrapper->textDocument() : nullptr;
+        };
+        const auto lineSpacing = [&]() {
+            auto* current = currentDocument();
+            return current ? current->firstBlock().blockFormat().lineHeight() : std::numeric_limits<double>::quiet_NaN();
+        };
+        const auto lineSpacingType = [&]() {
+            auto* current = currentDocument();
+            return current ? current->firstBlock().blockFormat().lineHeightType() : -1;
+        };
+        QCOMPARE(lineSpacingType(), int(QTextBlockFormat::LineDistanceHeight));
+        QCOMPARE(lineSpacing(), 7.0);
 
         typeText(window, u"abc");
         QTRY_COMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(), QStringLiteral("abc"));
@@ -285,6 +311,12 @@ private slots:
         QTRY_COMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(), QStringLiteral("abcdef"));
         QVERIFY(editor.editingText());
         QVERIFY(textArea->property("activeFocus").toBool());
+
+        QVERIFY(window->setProperty("zoom", 2.0));
+        QTRY_COMPARE(lineSpacing(), 14.0);
+
+        editor.setSelectedLineSpacing(9);
+        QTRY_COMPARE(lineSpacing(), 18.0);
     }
 
     void copyPastePreservesCopiedBox()
@@ -1909,8 +1941,11 @@ private slots:
         QVERIFY(editorBlock.contains(QStringLiteral("color: \"transparent\"")));
         QVERIFY(editorBlock.contains(QStringLiteral("selectedTextColor: \"transparent\"")));
         QVERIFY(editorBlock.contains(QStringLiteral("selectionColor: Qt.alpha(rootWindow.palette.highlight, 0.35)")));
+        QVERIFY(editorBlock.contains(QStringLiteral("property real editLineSpacing: modelData.lineSpacing * rootWindow.viewDocScale()")));
+        QVERIFY(editorBlock.contains(QStringLiteral("applyTextLineSpacing(textDocument, editLineSpacing)")));
+        QVERIFY(editorBlock.contains(QStringLiteral("onEditLineSpacingChanged: applyLineSpacing()")));
         QVERIFY(editorBlock.contains(QStringLiteral("cursorDelegate: Rectangle")));
-        QVERIFY(editorBlock.contains(QStringLiteral("onTextChanged: if (activeFocus && editorRef) editorRef.updateSelectedText(text)")));
+        QVERIFY(editorBlock.contains(QStringLiteral("onTextChanged: { applyLineSpacing(); if (activeFocus && editorRef) editorRef.updateSelectedText(text) }")));
     }
 
     void qmlPerspectiveWarpsLiveOutlinedRenderer()
