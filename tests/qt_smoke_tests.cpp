@@ -28,6 +28,7 @@
 #include <QTest>
 #include <qqml.h>
 
+#include <cmath>
 #include <cstring>
 #include <iterator>
 #include <limits>
@@ -775,6 +776,48 @@ private slots:
         editor.beginTextEdit();
         QTRY_VERIFY(textArea->property("visible").toBool());
         QTRY_VERIFY(outlinedText->property("visible").toBool());
+    }
+
+    void qmlOutlinedRendererVisualSizeTracksZoom()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(4, 4, 120, 40);
+        editor.updateSelectedText(QStringLiteral("Scale"));
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QObject* object = nullptr;
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("boxOutlinedText")));
+        auto* outlinedText = qobject_cast<QQuickItem*>(object);
+        QVERIFY(outlinedText);
+        auto* boxTextPerspective = outlinedText->parentItem();
+        QVERIFY(boxTextPerspective);
+
+        const auto nearlyEqual = [](qreal a, qreal b) { return std::abs(a - b) <= 0.5; };
+        const auto verifyGeometry = [&]() {
+            QVERIFY(nearlyEqual(outlinedText->width() * outlinedText->scale(), boxTextPerspective->width()));
+            QVERIFY(nearlyEqual(outlinedText->height() * outlinedText->scale(), boxTextPerspective->height()));
+            QVERIFY(outlinedText->property("renderScale").toReal() <= 1.0 + 0.001);
+        };
+
+        QTRY_VERIFY(boxTextPerspective->width() > 0);
+        verifyGeometry();
+
+        QVERIFY(window->setProperty("zoom", 2.0));
+        QTRY_VERIFY(nearlyEqual(outlinedText->property("renderScale").toReal(), 1.0));
+        verifyGeometry();
+
+        QVERIFY(window->setProperty("zoom", 0.5));
+        QTRY_VERIFY(outlinedText->property("renderScale").toReal() < 1.0);
+        verifyGeometry();
     }
 
     void liveInteractionDefersPreviewButRefreshesModel()
@@ -2066,8 +2109,10 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("OutlinedTextItem {")));
         QCOMPARE(source.count(QStringLiteral("OutlinedTextItem {")), 1);
         QVERIFY(source.contains(QStringLiteral("id: boxOutlinedText")));
-        QVERIFY(source.contains(QStringLiteral("anchors.fill: parent")));
-        QVERIFY(source.contains(QStringLiteral("renderScale: rootWindow.viewDocScale()")));
+        QVERIFY(source.contains(QStringLiteral("width: boxRef.visualDocW * rootWindow.livePreviewScale()")));
+        QVERIFY(source.contains(QStringLiteral("height: boxRef.visualDocH * rootWindow.livePreviewScale()")));
+        QVERIFY(source.contains(QStringLiteral("scale: rootWindow.viewDocScale() / rootWindow.livePreviewScale()")));
+        QVERIFY(source.contains(QStringLiteral("renderScale: rootWindow.livePreviewScale()")));
         QVERIFY(!source.contains(QStringLiteral("liveGpuBlurActive")));
         QVERIFY(!source.contains(QStringLiteral("MultiEffect {")));
         QVERIFY(!source.contains(QStringLiteral("source: boxOutlinedText")));
@@ -2096,7 +2141,7 @@ private slots:
         const QString rendererBlock = source.mid(renderer, editor - renderer);
         QVERIFY(rendererBlock.contains(QStringLiteral("visible: !canvas.effectsPreviewDisplayable || (boxRef.selected && editorRef.editingText)")));
         QVERIFY(rendererBlock.contains(QStringLiteral("text: boxRef.selected && editorRef.editingText ? boxTextArea.text : (modelData.uppercase ? String(modelData.text).toUpperCase() : modelData.text)")));
-        QVERIFY(rendererBlock.contains(QStringLiteral("renderScale: rootWindow.viewDocScale()")));
+        QVERIFY(rendererBlock.contains(QStringLiteral("renderScale: rootWindow.livePreviewScale()")));
         QVERIFY(rendererBlock.contains(QStringLiteral("outlineSize: modelData.outline && modelData.outlineSize > 0 ? modelData.outlineSize : 0")));
         QVERIFY(rendererBlock.contains(QStringLiteral("blurSize: modelData.blur && modelData.blurSize > 0 ? modelData.blurSize : 0")));
         QVERIFY(rendererBlock.contains(QStringLiteral("shadowEnabled: modelData.shadow")));
@@ -2287,7 +2332,11 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("function documentToViewLength(value) { return value * viewDocScale() }")));
         QVERIFY(source.contains(QStringLiteral("width: visualDocW * rootWindow.viewDocScale()")));
         QVERIFY(source.contains(QStringLiteral("height: visualDocH * rootWindow.viewDocScale()")));
-        QVERIFY(rendererBlock.contains(QStringLiteral("renderScale: rootWindow.viewDocScale()")));
+        QVERIFY(source.contains(QStringLiteral("function livePreviewScale() { return Math.min(1.0, viewDocScale()) }")));
+        QVERIFY(rendererBlock.contains(QStringLiteral("width: boxRef.visualDocW * rootWindow.livePreviewScale()")));
+        QVERIFY(rendererBlock.contains(QStringLiteral("height: boxRef.visualDocH * rootWindow.livePreviewScale()")));
+        QVERIFY(rendererBlock.contains(QStringLiteral("scale: rootWindow.viewDocScale() / rootWindow.livePreviewScale()")));
+        QVERIFY(rendererBlock.contains(QStringLiteral("renderScale: rootWindow.livePreviewScale()")));
         QVERIFY(rendererBlock.contains(QStringLiteral("pixelSize: Math.max(1, modelData.fontSize)")));
         QVERIFY(rendererBlock.contains(QStringLiteral("letterSpacing: modelData.letterSpacing")));
         QVERIFY(rendererBlock.contains(QStringLiteral("lineSpacing: modelData.lineSpacing")));

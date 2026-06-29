@@ -148,6 +148,7 @@ ApplicationWindow {
     function pageLeft() { return (canvas.width - pageDisplayWidth()) / 2 }
     function pageTop() { return (canvas.height - pageDisplayHeight()) / 2 }
     function viewDocScale() { return pageScale() * window.zoom }
+    function livePreviewScale() { return Math.min(1.0, viewDocScale()) }
     function documentToViewLength(value) { return value * viewDocScale() }
     function selectionLineWidth() { return Math.max(1, documentToViewLength(2)) }
     function handleSize() { return Math.max(1, documentToViewLength(12)) }
@@ -1122,7 +1123,10 @@ ApplicationWindow {
                                     property var boxRef: boxTextPerspective.boxRef
                                     property var rootWindow: boxTextPerspective.rootWindow
                                     property var editorRef: boxTextPerspective.editorRef
-                                    anchors.fill: parent
+                                    width: boxRef.visualDocW * rootWindow.livePreviewScale()
+                                    height: boxRef.visualDocH * rootWindow.livePreviewScale()
+                                    transformOrigin: Item.TopLeft
+                                    scale: rootWindow.viewDocScale() / rootWindow.livePreviewScale()
                                     visible: !canvas.effectsPreviewDisplayable || (boxRef.selected && editorRef.editingText)
                                     text: boxRef.selected && editorRef.editingText ? boxTextArea.text : (modelData.uppercase ? String(modelData.text).toUpperCase() : modelData.text)
                                     color: rootWindow.qmlColor(modelData.color)
@@ -1141,7 +1145,7 @@ ApplicationWindow {
                                     shadowOffsetX: modelData.shadowOffsetX
                                     shadowOffsetY: modelData.shadowOffsetY
                                     shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? modelData.shadowBlurSize : 0
-                                    renderScale: rootWindow.viewDocScale()
+                                    renderScale: rootWindow.livePreviewScale()
                                 }
                             }
 
