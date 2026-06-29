@@ -417,7 +417,7 @@ ApplicationWindow {
     }
 
     function boxNeedsPreviewArtifact(box) {
-        return box && (box.blur || box.shadow || box.gradient || box.perspective || box.path)
+        return box && (box.blur || box.shadow || box.gradient || box.path)
     }
 
     function anyBoxNeedsPreviewArtifact() {
@@ -1112,6 +1112,7 @@ ApplicationWindow {
                                 property var editorRef: boxRef.editorRef
                                 z: 1
                                 anchors.fill: parent
+                                clip: true
                                 transform: Matrix4x4 { matrix: boxTextPerspective.rootWindow.perspectiveMatrix(boxTextPerspective.boxRef.boxModel, boxTextPerspective.width, boxTextPerspective.height, boxTextPerspective.rootWindow.viewDocScale(), boxTextPerspective.boxRef.perspectiveActive) }
 
                                 OutlinedTextItem {
@@ -1152,6 +1153,7 @@ ApplicationWindow {
                                 function applyLineSpacing() { editorRef.applyTextLineSpacing(textDocument, editLineSpacing) }
                                 z: 1
                                 anchors.fill: parent
+                                clip: true
                                 visible: boxRef.selected && editorRef.editingText
                                 text: modelData.uppercase ? String(modelData.text).toUpperCase() : modelData.text
                                 color: "transparent"

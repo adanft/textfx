@@ -600,7 +600,7 @@ private slots:
         QVERIFY2(hasPngMagic(editor.previewImageUrl().toLocalFile()), qPrintable(editor.previewImageUrl().toString()));
     }
 
-    void outlineEffectChangesUseFreshPreviewUrl()
+    void outlineEffectDoesNotGeneratePreviewArtifact()
     {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
@@ -612,15 +612,56 @@ private slots:
         editor.setSelectedTextColor(QStringLiteral("#ff0000"));
         editor.updateSelectedText(QStringLiteral("Outline"));
         editor.setSelectedOutlineEnabled(true);
-        const auto before = editor.previewImageUrl();
-        QVERIFY(!before.isEmpty());
+        QVERIFY(editor.previewImageUrl().isEmpty());
+        QVERIFY(!editor.effectsPreviewActive());
 
         editor.setSelectedOutlineSize(7);
 
-        QVERIFY(editor.effectsPreviewActive());
-        QVERIFY(editor.previewImageUrl() != before);
-        QVERIFY2(hasPngMagic(editor.previewImageUrl().toLocalFile()), qPrintable(editor.previewImageUrl().toString()));
-        QVERIFY(imageDiffers(dir.filePath(QStringLiteral("page1.png")), editor.previewImageUrl().toLocalFile()));
+        QVERIFY(editor.previewImageUrl().isEmpty());
+        QVERIFY(!editor.effectsPreviewActive());
+    }
+
+    void perspectiveUsesLiveClippedRendererWithoutPreviewArtifact()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        touch(dir.filePath(QStringLiteral("page1.png")), {160, 80});
+
+        EditorController editor;
+        editor.openProject(dir.path());
+        editor.createTextBox(4, 4, 120, 40);
+        editor.updateSelectedText(QStringLiteral("Perspective"));
+        editor.setSelectedPerspectiveEnabled(true);
+        QVERIFY(editor.previewImageUrl().isEmpty());
+        QVERIFY(!editor.effectsPreviewActive());
+
+        QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+        QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString source = QString::fromUtf8(qml.readAll());
+
+        const qsizetype previewStart = source.indexOf(QStringLiteral("function boxNeedsPreviewArtifact(box)"));
+        const qsizetype previewEnd = source.indexOf(QStringLiteral("function anyBoxNeedsPreviewArtifact()"), previewStart);
+        QVERIFY(previewStart >= 0);
+        QVERIFY(previewEnd > previewStart);
+        const QString previewSource = source.mid(previewStart, previewEnd - previewStart);
+        QVERIFY(previewSource.contains(QStringLiteral("box.blur || box.shadow || box.gradient || box.path")));
+        QVERIFY(!previewSource.contains(QStringLiteral("box.perspective")));
+
+        const qsizetype delegateStart = source.indexOf(QStringLiteral("delegate: Rectangle {\n                            id: boxDelegate"));
+        const qsizetype textPerspectiveStart = source.indexOf(QStringLiteral("id: boxTextPerspective"), delegateStart);
+        const qsizetype textAreaStart = source.indexOf(QStringLiteral("id: boxTextArea"), textPerspectiveStart);
+        const qsizetype mouseAreaStart = source.indexOf(QStringLiteral("MouseArea {"), textAreaStart);
+        QVERIFY(delegateStart >= 0);
+        QVERIFY(textPerspectiveStart > delegateStart);
+        QVERIFY(textAreaStart > textPerspectiveStart);
+        QVERIFY(mouseAreaStart > textAreaStart);
+        const QString delegateSource = source.mid(delegateStart, textAreaStart - delegateStart);
+        const QString textPerspectiveSource = source.mid(textPerspectiveStart, textAreaStart - textPerspectiveStart);
+        const QString textAreaSource = source.mid(textAreaStart, mouseAreaStart - textAreaStart);
+
+        QVERIFY(delegateSource.contains(QStringLiteral("property bool perspectiveActive: boxModel.perspective && !editingSelected")));
+        QVERIFY(textPerspectiveSource.contains(QStringLiteral("clip: true")));
+        QVERIFY(textAreaSource.contains(QStringLiteral("clip: true")));
     }
 
     void liveInteractionDefersPreviewButRefreshesModel()
@@ -1906,7 +1947,7 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("function boxHasRenderEffects(box)")));
         QVERIFY(source.contains(QStringLiteral("function boxNeedsPreviewArtifact(box)")));
         QVERIFY(source.contains(QStringLiteral("function anyBoxNeedsPreviewArtifact()")));
-        QVERIFY(source.contains(QStringLiteral("return box && (box.blur || box.shadow || box.gradient || box.perspective || box.path)")));
+        QVERIFY(source.contains(QStringLiteral("return box && (box.blur || box.shadow || box.gradient || box.path)")));
         QVERIFY(source.contains(QStringLiteral("return box && (box.outline || boxNeedsPreviewArtifact(box))")));
         QVERIFY(source.contains(QStringLiteral("visible: boxRef.selected && editorRef.editingText")));
         QVERIFY(source.contains(QStringLiteral("OutlinedTextItem {")));
