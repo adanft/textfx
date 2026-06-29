@@ -1053,7 +1053,7 @@ void EditorController::updatePreviewImage()
 bool EditorController::documentHasRenderEffects() const
 {
     return std::ranges::any_of(document_.textBoxes(), [](const TextBox& box) {
-        return box.effects.shadowEnabled || box.effects.gradientEnabled || box.effects.pathEnabled;
+        return box.effects.gradientEnabled || box.effects.pathEnabled;
     });
 }
 

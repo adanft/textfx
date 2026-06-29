@@ -112,6 +112,47 @@ void OutlinedTextItem::setBlurSize(int value)
     emit blurSizeChanged();
 }
 
+void OutlinedTextItem::setShadowEnabled(bool value)
+{
+    if (shadowEnabled_ == value) return;
+    shadowEnabled_ = value;
+    update();
+    emit shadowEnabledChanged();
+}
+
+void OutlinedTextItem::setShadowColor(const QColor& value)
+{
+    if (shadowColor_ == value) return;
+    shadowColor_ = value;
+    update();
+    emit shadowColorChanged();
+}
+
+void OutlinedTextItem::setShadowOffsetX(qreal value)
+{
+    if (qFuzzyCompare(shadowOffsetX_, value)) return;
+    shadowOffsetX_ = value;
+    update();
+    emit shadowOffsetXChanged();
+}
+
+void OutlinedTextItem::setShadowOffsetY(qreal value)
+{
+    if (qFuzzyCompare(shadowOffsetY_, value)) return;
+    shadowOffsetY_ = value;
+    update();
+    emit shadowOffsetYChanged();
+}
+
+void OutlinedTextItem::setShadowBlurSize(int value)
+{
+    value = std::max(0, value);
+    if (shadowBlurSize_ == value) return;
+    shadowBlurSize_ = value;
+    update();
+    emit shadowBlurSizeChanged();
+}
+
 void OutlinedTextItem::setRenderScale(qreal value)
 {
     value = std::max<qreal>(0.0001, value);
@@ -160,7 +201,39 @@ void OutlinedTextItem::paint(QPainter* painter)
         paintedBounds.translate(dx, dy);
     }
 
+    const int shadowRadius = shadowEnabled_ ? cappedBlurKernelRadius(shadowBlurSize_ * scale) : 0;
+    QRectF effectBounds = paintedBounds;
+    const QRectF shadowBounds = path.boundingRect().translated(shadowOffsetX_, shadowOffsetY_);
+    if (shadowEnabled_) effectBounds = effectBounds.united(shadowBounds.adjusted(-shadowRadius / scale, -shadowRadius / scale, shadowRadius / scale, shadowRadius / scale));
+
+    auto paintShadow = [&](QPainter& target) {
+        if (!shadowEnabled_) return;
+        const QPainterPath shadowPath = path.translated(shadowOffsetX_, shadowOffsetY_);
+        if (shadowRadius <= 0) {
+            target.save();
+            target.scale(scale, scale);
+            target.fillPath(shadowPath, shadowColor_);
+            target.restore();
+            return;
+        }
+        const QRect sourceRect = QRectF(shadowBounds.left() * scale - shadowRadius,
+                                        shadowBounds.top() * scale - shadowRadius,
+                                        shadowBounds.width() * scale + shadowRadius * 2,
+                                        shadowBounds.height() * scale + shadowRadius * 2)
+                                     .toAlignedRect();
+        if (sourceRect.isEmpty()) return;
+        QImage layer(sourceRect.size(), QImage::Format_ARGB32_Premultiplied);
+        layer.fill(Qt::transparent);
+        QPainter layerPainter(&layer);
+        layerPainter.setRenderHint(QPainter::Antialiasing, true);
+        layerPainter.translate(-sourceRect.topLeft());
+        layerPainter.scale(scale, scale);
+        layerPainter.fillPath(shadowPath, shadowColor_);
+        layerPainter.end();
+        target.drawImage(sourceRect.topLeft(), gaussianBlurred(layer, shadowRadius));
+    };
     auto paintText = [&](QPainter& target) {
+        paintShadow(target);
         target.scale(scale, scale);
         if (outlineSize_ > 0) {
             QPainterPathStroker stroker;
@@ -176,10 +249,10 @@ void OutlinedTextItem::paint(QPainter* painter)
     const int radius = cappedBlurKernelRadius(blurSize_ * scale);
     if (radius > 0) {
         const QRect itemRect(0, 0, static_cast<int>(std::ceil(width())), static_cast<int>(std::ceil(height())));
-        const QRect sourceRect = QRectF(paintedBounds.left() * scale - radius,
-                                        paintedBounds.top() * scale - radius,
-                                        paintedBounds.width() * scale + radius * 2,
-                                        paintedBounds.height() * scale + radius * 2)
+        const QRect sourceRect = QRectF(effectBounds.left() * scale - radius,
+                                        effectBounds.top() * scale - radius,
+                                        effectBounds.width() * scale + radius * 2,
+                                        effectBounds.height() * scale + radius * 2)
                                      .toAlignedRect()
                                      .intersected(itemRect.adjusted(-radius, -radius, radius, radius));
         if (sourceRect.isEmpty()) {
@@ -210,10 +283,11 @@ QString OutlinedTextItem::blurCacheKey(int radius, const QRect& sourceRect) cons
 {
     return QStringList{
                text_, fontFamily_, QString::number(pixelSize_, 'g', 17), bold_ ? QStringLiteral("1") : QStringLiteral("0"), italic_ ? QStringLiteral("1") : QStringLiteral("0"),
-               QString::number(letterSpacing_, 'g', 17), QString::number(lineSpacing_, 'g', 17), QString::number(color_.rgba()), QString::number(outlineColor_.rgba()),
-               QString::number(outlineSize_, 'g', 17), QString::number(renderScale_, 'g', 17), QString::number(width(), 'g', 17), QString::number(height(), 'g', 17),
-                QString::number(horizontalAlignment_), QString::number(radius), QString::number(sourceRect.x()), QString::number(sourceRect.y()), QString::number(sourceRect.width()),
-                QString::number(sourceRect.height())}
+                QString::number(letterSpacing_, 'g', 17), QString::number(lineSpacing_, 'g', 17), QString::number(color_.rgba()), QString::number(outlineColor_.rgba()),
+                QString::number(outlineSize_, 'g', 17), QString::number(renderScale_, 'g', 17), QString::number(width(), 'g', 17), QString::number(height(), 'g', 17),
+                 QString::number(horizontalAlignment_), shadowEnabled_ ? QStringLiteral("1") : QStringLiteral("0"), QString::number(shadowColor_.rgba()),
+                QString::number(shadowOffsetX_, 'g', 17), QString::number(shadowOffsetY_, 'g', 17), QString::number(shadowBlurSize_), QString::number(radius), QString::number(sourceRect.x()), QString::number(sourceRect.y()), QString::number(sourceRect.width()),
+                 QString::number(sourceRect.height())}
         .join(u'\n');
 }
 

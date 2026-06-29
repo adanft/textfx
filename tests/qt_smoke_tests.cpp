@@ -622,7 +622,7 @@ private slots:
         editor.openProject(dir.path());
         editor.createTextBox(1, 2, 24, 18);
         editor.updateSelectedText(QStringLiteral("FX"));
-        editor.setSelectedShadowEnabled(true);
+        editor.setSelectedGradientEnabled(true);
 
         QVERIFY(editor.effectsPreviewActive());
         QVERIFY(editor.previewImageUrl().isLocalFile());
@@ -673,7 +673,8 @@ private slots:
         QVERIFY(previewStart >= 0);
         QVERIFY(previewEnd > previewStart);
         const QString previewSource = source.mid(previewStart, previewEnd - previewStart);
-        QVERIFY(previewSource.contains(QStringLiteral("box.shadow || box.gradient || box.path")));
+        QVERIFY(previewSource.contains(QStringLiteral("box.gradient || box.path")));
+        QVERIFY(!previewSource.contains(QStringLiteral("box.shadow")));
         QVERIFY(!previewSource.contains(QStringLiteral("box.blur")));
         QVERIFY(!previewSource.contains(QStringLiteral("box.perspective")));
 
@@ -717,6 +718,29 @@ private slots:
         QVERIFY(!source.contains(QStringLiteral("MultiEffect {")));
         QVERIFY(!source.contains(QStringLiteral("liveGpuBlurActive")));
         QVERIFY(source.contains(QStringLiteral("blurSize: modelData.blur && modelData.blurSize > 0 ? modelData.blurSize : 0")));
+    }
+
+    void shadowUsesLiveRendererWithoutPreviewArtifact()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        touch(dir.filePath(QStringLiteral("page1.png")), {160, 80});
+
+        EditorController editor;
+        editor.openProject(dir.path());
+        editor.createTextBox(4, 4, 120, 40);
+        editor.updateSelectedText(QStringLiteral("Shadow"));
+        editor.setSelectedShadowEnabled(true);
+        editor.setSelectedShadowBlurSize(6);
+
+        QVERIFY(editor.previewImageUrl().isEmpty());
+        QVERIFY(!editor.effectsPreviewActive());
+
+        QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+        QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString source = QString::fromUtf8(qml.readAll());
+        QVERIFY(source.contains(QStringLiteral("shadowEnabled: modelData.shadow")));
+        QVERIFY(source.contains(QStringLiteral("shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? modelData.shadowBlurSize : 0")));
     }
 
     void qmlBlurEnabledBoxKeepsOutlinedRendererVisibleUntilEditing()
@@ -786,7 +810,7 @@ private slots:
         editor.openProject(dir.path());
         editor.createTextBox(1, 2, 24, 18);
         editor.updateSelectedText(QStringLiteral("FX"));
-        editor.setSelectedShadowEnabled(true);
+        editor.setSelectedGradientEnabled(true);
         const auto before = editor.previewImageUrl();
         QVERIFY(!before.isEmpty());
         QSignalSpy changed(&editor, &EditorController::documentChanged);
@@ -2036,7 +2060,7 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("function boxHasRenderEffects(box)")));
         QVERIFY(source.contains(QStringLiteral("function boxNeedsPreviewArtifact(box)")));
         QVERIFY(source.contains(QStringLiteral("function anyBoxNeedsPreviewArtifact()")));
-        QVERIFY(source.contains(QStringLiteral("return box && (box.shadow || box.gradient || box.path)")));
+        QVERIFY(source.contains(QStringLiteral("return box && (box.gradient || box.path)")));
         QVERIFY(source.contains(QStringLiteral("return box && (box.outline || boxNeedsPreviewArtifact(box))")));
         QVERIFY(source.contains(QStringLiteral("visible: boxRef.selected && editorRef.editingText")));
         QVERIFY(source.contains(QStringLiteral("OutlinedTextItem {")));
@@ -2049,6 +2073,8 @@ private slots:
         QVERIFY(!source.contains(QStringLiteral("source: boxOutlinedText")));
         QVERIFY(source.contains(QStringLiteral("outlineSize: modelData.outline && modelData.outlineSize > 0 ? modelData.outlineSize : 0")));
         QVERIFY(source.contains(QStringLiteral("blurSize: modelData.blur && modelData.blurSize > 0 ? modelData.blurSize : 0")));
+        QVERIFY(source.contains(QStringLiteral("shadowEnabled: modelData.shadow")));
+        QVERIFY(source.contains(QStringLiteral("shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? modelData.shadowBlurSize : 0")));
         QVERIFY(source.contains(QStringLiteral("lineSpacing: modelData.lineSpacing")));
         QVERIFY(source.contains(QStringLiteral("outlineColor: rootWindow.qmlColor(modelData.outlineColor)")));
         QVERIFY(source.indexOf(QStringLiteral("id: boxOutlinedText")) < source.indexOf(QStringLiteral("TextArea {")));
@@ -2073,6 +2099,8 @@ private slots:
         QVERIFY(rendererBlock.contains(QStringLiteral("renderScale: rootWindow.viewDocScale()")));
         QVERIFY(rendererBlock.contains(QStringLiteral("outlineSize: modelData.outline && modelData.outlineSize > 0 ? modelData.outlineSize : 0")));
         QVERIFY(rendererBlock.contains(QStringLiteral("blurSize: modelData.blur && modelData.blurSize > 0 ? modelData.blurSize : 0")));
+        QVERIFY(rendererBlock.contains(QStringLiteral("shadowEnabled: modelData.shadow")));
+        QVERIFY(rendererBlock.contains(QStringLiteral("shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? modelData.shadowBlurSize : 0")));
         QVERIFY(rendererBlock.contains(QStringLiteral("lineSpacing: modelData.lineSpacing")));
 
         const QString editorBlock = source.mid(editor, source.indexOf(QStringLiteral("MouseArea {"), editor) - editor);
@@ -2347,6 +2375,38 @@ private slots:
             item.setBlurSize(blurSize);
 
             QImage image(180, 80, QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::transparent);
+            QPainter painter(&image);
+            item.paint(&painter);
+            return image;
+        };
+        const QImage sharp = render(0);
+        const QImage blurred = render(6);
+        const int hardSharpPixels = countPixels(sharp, [](const QColor& color) { return color.alpha() > 220; });
+        const int hardBlurredPixels = countPixels(blurred, [](const QColor& color) { return color.alpha() > 220; });
+        const int softBlurredPixels = countPixels(blurred, [](const QColor& color) { return color.alpha() > 20 && color.alpha() < 220; });
+
+        QVERIFY(imagesDiffer(sharp, blurred));
+        QVERIFY(hardBlurredPixels < hardSharpPixels);
+        QVERIFY(softBlurredPixels > 200);
+    }
+
+    void outlinedTextItemShadowBlurSoftensRenderedShadow()
+    {
+        auto render = [](int shadowBlurSize) {
+            OutlinedTextItem item;
+            item.setWidth(200);
+            item.setHeight(90);
+            item.setText(QStringLiteral("Shadow"));
+            item.setPixelSize(42);
+            item.setColor(Qt::transparent);
+            item.setShadowEnabled(true);
+            item.setShadowColor(Qt::black);
+            item.setShadowOffsetX(8);
+            item.setShadowOffsetY(6);
+            item.setShadowBlurSize(shadowBlurSize);
+
+            QImage image(200, 90, QImage::Format_ARGB32_Premultiplied);
             image.fill(Qt::transparent);
             QPainter painter(&image);
             item.paint(&painter);

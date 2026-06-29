@@ -417,7 +417,7 @@ ApplicationWindow {
     }
 
     function boxNeedsPreviewArtifact(box) {
-        return box && (box.shadow || box.gradient || box.path)
+        return box && (box.gradient || box.path)
     }
 
     function anyBoxNeedsPreviewArtifact() {
@@ -1136,6 +1136,11 @@ ApplicationWindow {
                                     outlineColor: rootWindow.qmlColor(modelData.outlineColor)
                                     outlineSize: modelData.outline && modelData.outlineSize > 0 ? modelData.outlineSize : 0
                                     blurSize: modelData.blur && modelData.blurSize > 0 ? modelData.blurSize : 0
+                                    shadowEnabled: modelData.shadow
+                                    shadowColor: rootWindow.qmlColor(modelData.shadowColor)
+                                    shadowOffsetX: modelData.shadowOffsetX
+                                    shadowOffsetY: modelData.shadowOffsetY
+                                    shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? modelData.shadowBlurSize : 0
                                     renderScale: rootWindow.viewDocScale()
                                 }
                             }

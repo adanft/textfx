@@ -21,6 +21,11 @@ class OutlinedTextItem : public QQuickPaintedItem {
     Q_PROPERTY(QColor outlineColor READ outlineColor WRITE setOutlineColor NOTIFY outlineColorChanged)
     Q_PROPERTY(qreal outlineSize READ outlineSize WRITE setOutlineSize NOTIFY outlineSizeChanged)
     Q_PROPERTY(int blurSize READ blurSize WRITE setBlurSize NOTIFY blurSizeChanged)
+    Q_PROPERTY(bool shadowEnabled READ shadowEnabled WRITE setShadowEnabled NOTIFY shadowEnabledChanged)
+    Q_PROPERTY(QColor shadowColor READ shadowColor WRITE setShadowColor NOTIFY shadowColorChanged)
+    Q_PROPERTY(qreal shadowOffsetX READ shadowOffsetX WRITE setShadowOffsetX NOTIFY shadowOffsetXChanged)
+    Q_PROPERTY(qreal shadowOffsetY READ shadowOffsetY WRITE setShadowOffsetY NOTIFY shadowOffsetYChanged)
+    Q_PROPERTY(int shadowBlurSize READ shadowBlurSize WRITE setShadowBlurSize NOTIFY shadowBlurSizeChanged)
     Q_PROPERTY(qreal renderScale READ renderScale WRITE setRenderScale NOTIFY renderScaleChanged)
     Q_PROPERTY(int horizontalAlignment READ horizontalAlignment WRITE setHorizontalAlignment NOTIFY horizontalAlignmentChanged)
 
@@ -49,6 +54,16 @@ public:
     void setOutlineSize(qreal value);
     int blurSize() const { return blurSize_; }
     void setBlurSize(int value);
+    bool shadowEnabled() const { return shadowEnabled_; }
+    void setShadowEnabled(bool value);
+    QColor shadowColor() const { return shadowColor_; }
+    void setShadowColor(const QColor& value);
+    qreal shadowOffsetX() const { return shadowOffsetX_; }
+    void setShadowOffsetX(qreal value);
+    qreal shadowOffsetY() const { return shadowOffsetY_; }
+    void setShadowOffsetY(qreal value);
+    int shadowBlurSize() const { return shadowBlurSize_; }
+    void setShadowBlurSize(int value);
     qreal renderScale() const { return renderScale_; }
     void setRenderScale(qreal value);
     int horizontalAlignment() const { return horizontalAlignment_; }
@@ -72,6 +87,11 @@ signals:
     void outlineColorChanged();
     void outlineSizeChanged();
     void blurSizeChanged();
+    void shadowEnabledChanged();
+    void shadowColorChanged();
+    void shadowOffsetXChanged();
+    void shadowOffsetYChanged();
+    void shadowBlurSizeChanged();
     void renderScaleChanged();
     void horizontalAlignmentChanged();
 
@@ -90,6 +110,11 @@ private:
     QColor outlineColor_ = Qt::white;
     qreal outlineSize_ = 0.0;
     int blurSize_ = 0;
+    bool shadowEnabled_ = false;
+    QColor shadowColor_ = QColor(0, 0, 0, 160);
+    qreal shadowOffsetX_ = 0.0;
+    qreal shadowOffsetY_ = 0.0;
+    int shadowBlurSize_ = 0;
     qreal renderScale_ = 1.0;
     int horizontalAlignment_ = Qt::AlignLeft;
     QString blurCacheKey_;

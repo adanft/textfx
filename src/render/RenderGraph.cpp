@@ -80,20 +80,23 @@ QBrush fillBrushFor(const TextBox& box)
     return QBrush(gradient);
 }
 
-void fillPath(QPainter& painter, const QPainterPath& path, const QBrush& brush, int blurSize)
+void fillShadow(QPainter& painter, const QPainterPath& path, const QColor& color, int blurSize)
 {
-    const int radius = std::max(0, blurSize);
-    if (radius > 0) {
-        painter.save();
-        painter.setOpacity(0.18);
-        for (int y = -radius; y <= radius; ++y) {
-            for (int x = -radius; x <= radius; ++x) {
-                if (x * x + y * y <= radius * radius) painter.fillPath(path.translated(x, y), brush);
-            }
-        }
-        painter.restore();
+    const int radius = cappedBlurKernelRadius(blurSize);
+    if (radius <= 0) {
+        painter.fillPath(path, color);
+        return;
     }
-    painter.fillPath(path, brush);
+    const QRect sourceRect = path.boundingRect().adjusted(-radius, -radius, radius, radius).toAlignedRect();
+    if (sourceRect.isEmpty()) return;
+    QImage layer(sourceRect.size(), QImage::Format_ARGB32_Premultiplied);
+    layer.fill(Qt::transparent);
+    QPainter layerPainter(&layer);
+    layerPainter.setRenderHint(QPainter::Antialiasing, true);
+    layerPainter.translate(-sourceRect.topLeft());
+    layerPainter.fillPath(path, color);
+    layerPainter.end();
+    painter.drawImage(sourceRect.topLeft(), gaussianBlurred(layer, radius));
 }
 
 QPainterPath pathTextFor(const TextBox& box, const QFont& font)
@@ -140,10 +143,11 @@ void drawTextBox(QPainter& painter, const TextBox& box)
         paintedBounds.translate(dx, dy);
     }
     QRectF effectBounds = paintedBounds;
+    const int shadowRadius = box.effects.shadowEnabled ? cappedBlurKernelRadius(box.effects.shadowBlurSize) : 0;
     if (box.effects.shadowEnabled) {
         effectBounds = effectBounds.united(path.boundingRect()
                                                .translated(box.effects.shadowOffsetX, box.effects.shadowOffsetY)
-                                               .adjusted(-box.effects.shadowBlurSize, -box.effects.shadowBlurSize, box.effects.shadowBlurSize, box.effects.shadowBlurSize));
+                                               .adjusted(-shadowRadius, -shadowRadius, shadowRadius, shadowRadius));
     }
 
     painter.save();
@@ -160,8 +164,17 @@ void drawTextBox(QPainter& painter, const TextBox& box)
         QTransform transform;
         if (QTransform::quadToQuad(source, target, transform)) painter.setTransform(transform, true);
     }
-    auto paintText = [&](QPainter& target) {
-        if (box.effects.shadowEnabled) fillPath(target, path.translated(box.effects.shadowOffsetX, box.effects.shadowOffsetY), QBrush(toQColor(box.effects.shadowColor)), box.effects.shadowBlurSize);
+    auto paintText = [&](QPainter& target, bool clipShadow) {
+        if (box.effects.shadowEnabled) {
+            if (clipShadow) {
+                target.save();
+                target.setClipRect(QRectF(0, 0, box.bounds.w, box.bounds.h));
+                fillShadow(target, path.translated(box.effects.shadowOffsetX, box.effects.shadowOffsetY), toQColor(box.effects.shadowColor), box.effects.shadowBlurSize);
+                target.restore();
+            } else {
+                fillShadow(target, path.translated(box.effects.shadowOffsetX, box.effects.shadowOffsetY), toQColor(box.effects.shadowColor), box.effects.shadowBlurSize);
+            }
+        }
         if (outline <= 0) return;
         QPainterPathStroker stroker;
         stroker.setWidth(outline);
@@ -187,7 +200,7 @@ void drawTextBox(QPainter& painter, const TextBox& box)
         QPainter layerPainter(&layer);
         layerPainter.setRenderHint(QPainter::Antialiasing, true);
         layerPainter.translate(-sourceRect.topLeft());
-        paintText(layerPainter);
+        paintText(layerPainter, false);
         paintFill(layerPainter);
         layerPainter.end();
         painter.save();
@@ -195,7 +208,7 @@ void drawTextBox(QPainter& painter, const TextBox& box)
         painter.drawImage(sourceRect.topLeft(), gaussianBlurred(layer, pad));
         painter.restore();
     } else {
-        paintText(painter);
+        paintText(painter, true);
         paintFill(painter);
     }
     painter.restore();

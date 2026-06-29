@@ -161,6 +161,37 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    DocumentModel shadowSharp;
+    TextBox shadowBox;
+    shadowBox.text = "Shadow";
+    shadowBox.bounds = {35.0, 40.0, 170.0, 75.0};
+    shadowBox.style.fontSize = 40;
+    shadowBox.style.textColor = "00000000";
+    shadowBox.effects.shadowEnabled = true;
+    shadowBox.effects.shadowColor = "000000ff";
+    shadowBox.effects.shadowOffsetX = 6;
+    shadowBox.effects.shadowOffsetY = 5;
+    shadowSharp.addTextBox(shadowBox);
+
+    DocumentModel shadowBlurred;
+    shadowBox.effects.shadowBlurSize = 6;
+    shadowBlurred.addTextBox(shadowBox);
+
+    const auto shadowSharpImage = exportedImage(graph, shadowSharp, pagePath, std::filesystem::temp_directory_path() / "textfx-export-shadow-sharp.png");
+    const auto shadowBlurredImage = exportedImage(graph, shadowBlurred, pagePath, std::filesystem::temp_directory_path() / "textfx-export-shadow-blur.png");
+    const auto shadowSharpBounds = nonBackgroundBounds(shadowSharpImage, background);
+    const auto shadowBlurredBounds = nonBackgroundBounds(shadowBlurredImage, background);
+    const int hardShadowSharpPixels = countPixels(shadowSharpImage, background, [](const QColor& color) { return color.red() < 40 && color.green() < 40 && color.blue() < 40; });
+    const int hardShadowBlurredPixels = countPixels(shadowBlurredImage, background, [](const QColor& color) { return color.red() < 40 && color.green() < 40 && color.blue() < 40; });
+    const int softShadowBlurredPixels = countPixels(shadowBlurredImage, background, [](const QColor& color) { return color.red() > 40 && color.red() < 220 && color.green() > 40 && color.green() < 220 && color.blue() > 40 && color.blue() < 220; });
+    if (shadowBlurredImage.isNull() || !imagesDiffer(shadowSharpImage, shadowBlurredImage) || shadowBlurredBounds.width() <= shadowSharpBounds.width()
+        || shadowBlurredBounds.height() <= shadowSharpBounds.height() || hardShadowBlurredPixels >= hardShadowSharpPixels || softShadowBlurredPixels < 200) {
+        std::cerr << "Shadow blur is not a soft Gaussian filter: hard=" << hardShadowBlurredPixels << '/' << hardShadowSharpPixels
+                  << " soft=" << softShadowBlurredPixels << " bounds=" << shadowBlurredBounds.width() << 'x' << shadowBlurredBounds.height()
+                  << " vs " << shadowSharpBounds.width() << 'x' << shadowSharpBounds.height() << '\n';
+        return 1;
+    }
+
     DocumentModel edgeBlur;
     TextBox edgeBox;
     edgeBox.text = "W";
@@ -180,6 +211,34 @@ int main(int argc, char** argv)
     }
     if (edgeBlurImage.isNull() || edgeBleedPixels != 0) {
         std::cerr << "Blur export bled outside the box: pixels=" << edgeBleedPixels << '\n';
+        return 1;
+    }
+
+    DocumentModel edgeShadow;
+    TextBox edgeShadowBox;
+    edgeShadowBox.text = "W";
+    edgeShadowBox.bounds = {80.0, 60.0, 48.0, 48.0};
+    edgeShadowBox.style.fontSize = 60;
+    edgeShadowBox.style.textColor = "00000000";
+    edgeShadowBox.effects.shadowEnabled = true;
+    edgeShadowBox.effects.shadowColor = "000000ff";
+    edgeShadowBox.effects.shadowOffsetX = 12;
+    edgeShadowBox.effects.shadowOffsetY = 8;
+    edgeShadowBox.effects.shadowBlurSize = 8;
+    edgeShadow.addTextBox(edgeShadowBox);
+    const auto edgeShadowImage = exportedImage(graph, edgeShadow, pagePath, std::filesystem::temp_directory_path() / "textfx-export-shadow-clipped.png");
+    const QRect edgeShadowRect(static_cast<int>(edgeShadowBox.bounds.x), static_cast<int>(edgeShadowBox.bounds.y), static_cast<int>(edgeShadowBox.bounds.w), static_cast<int>(edgeShadowBox.bounds.h));
+    int edgeShadowBleedPixels = 0;
+    int edgeShadowInsidePixels = 0;
+    for (int y = 0; y < edgeShadowImage.height(); ++y) {
+        for (int x = 0; x < edgeShadowImage.width(); ++x) {
+            if (edgeShadowImage.pixelColor(x, y) == background) continue;
+            if (edgeShadowRect.contains(x, y)) ++edgeShadowInsidePixels;
+            else ++edgeShadowBleedPixels;
+        }
+    }
+    if (edgeShadowImage.isNull() || edgeShadowBleedPixels != 0 || edgeShadowInsidePixels < 50) {
+        std::cerr << "Shadow export bled outside the box or disappeared: bleed=" << edgeShadowBleedPixels << " inside=" << edgeShadowInsidePixels << '\n';
         return 1;
     }
 
