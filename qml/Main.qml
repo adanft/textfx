@@ -418,7 +418,7 @@ ApplicationWindow {
     }
 
     function boxNeedsPreviewArtifact(box) {
-        return box && (box.gradient || box.path)
+        return false
     }
 
     function anyBoxNeedsPreviewArtifact() {
@@ -430,7 +430,7 @@ ApplicationWindow {
     }
 
     function boxHasRenderEffects(box) {
-        return box && (box.outline || boxNeedsPreviewArtifact(box))
+        return box && (box.outline || box.blur || box.shadow || box.gradient || box.path)
     }
 
     function selectedBoxHasRenderEffects() {
@@ -1145,6 +1145,13 @@ ApplicationWindow {
                                     shadowOffsetX: modelData.shadowOffsetX
                                     shadowOffsetY: modelData.shadowOffsetY
                                     shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? modelData.shadowBlurSize : 0
+                                    gradientEnabled: modelData.gradient
+                                    gradientDirection: modelData.gradientDirection
+                                    gradientColorA: rootWindow.qmlColor(modelData.gradientColorA)
+                                    gradientColorB: rootWindow.qmlColor(modelData.gradientColorB)
+                                    pathEnabled: modelData.path
+                                    pathMode: modelData.pathMode
+                                    pathPoints: modelData.pathPoints
                                     renderScale: rootWindow.livePreviewScale()
                                 }
                             }

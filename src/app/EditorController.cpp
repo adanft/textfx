@@ -1052,9 +1052,7 @@ void EditorController::updatePreviewImage()
 
 bool EditorController::documentHasRenderEffects() const
 {
-    return std::ranges::any_of(document_.textBoxes(), [](const TextBox& box) {
-        return box.effects.gradientEnabled || box.effects.pathEnabled;
-    });
+    return false;
 }
 
 void EditorController::setNotification(QString message)

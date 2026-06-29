@@ -2,6 +2,7 @@
 #include "core/EffectLimits.h"
 #include "fonts/FontResolver.h"
 #include "fonts/SfntNames.h"
+#include "render/RenderGraph.h"
 #include "ui/OutlinedTextItem.h"
 
 #include <QClipboard>
@@ -96,6 +97,18 @@ bool imagesDiffer(const QImage& first, const QImage& second)
         if (std::memcmp(first.constScanLine(y), second.constScanLine(y), static_cast<std::size_t>(first.bytesPerLine())) != 0) return true;
     }
     return false;
+}
+
+QRect visibleBounds(const QImage& image, const QColor& background)
+{
+    QRect bounds;
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            const QColor color = image.pixelColor(x, y);
+            if (color.alpha() > 0 && color != background) bounds = bounds.isNull() ? QRect(x, y, 1, 1) : bounds.united(QRect(x, y, 1, 1));
+        }
+    }
+    return bounds;
 }
 
 int countPixels(const QImage& image, const auto& predicate)
@@ -613,7 +626,7 @@ private slots:
         QVERIFY(!editor.effectsPreviewActive());
     }
 
-    void renderEffectsUsePreviewArtifact()
+    void gradientAndPathUseLiveRendererWithoutPreviewArtifact()
     {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
@@ -624,10 +637,21 @@ private slots:
         editor.createTextBox(1, 2, 24, 18);
         editor.updateSelectedText(QStringLiteral("FX"));
         editor.setSelectedGradientEnabled(true);
+        editor.setSelectedPathEnabled(true);
 
-        QVERIFY(editor.effectsPreviewActive());
-        QVERIFY(editor.previewImageUrl().isLocalFile());
-        QVERIFY2(hasPngMagic(editor.previewImageUrl().toLocalFile()), qPrintable(editor.previewImageUrl().toString()));
+        QVERIFY(editor.previewImageUrl().isEmpty());
+        QVERIFY(!editor.effectsPreviewActive());
+
+        QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+        QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString source = QString::fromUtf8(qml.readAll());
+        QVERIFY(source.contains(QStringLiteral("gradientEnabled: modelData.gradient")));
+        QVERIFY(source.contains(QStringLiteral("gradientDirection: modelData.gradientDirection")));
+        QVERIFY(source.contains(QStringLiteral("gradientColorA: rootWindow.qmlColor(modelData.gradientColorA)")));
+        QVERIFY(source.contains(QStringLiteral("gradientColorB: rootWindow.qmlColor(modelData.gradientColorB)")));
+        QVERIFY(source.contains(QStringLiteral("pathEnabled: modelData.path")));
+        QVERIFY(source.contains(QStringLiteral("pathMode: modelData.pathMode")));
+        QVERIFY(source.contains(QStringLiteral("pathPoints: modelData.pathPoints")));
     }
 
     void outlineEffectDoesNotGeneratePreviewArtifact()
@@ -674,7 +698,9 @@ private slots:
         QVERIFY(previewStart >= 0);
         QVERIFY(previewEnd > previewStart);
         const QString previewSource = source.mid(previewStart, previewEnd - previewStart);
-        QVERIFY(previewSource.contains(QStringLiteral("box.gradient || box.path")));
+        QVERIFY(previewSource.contains(QStringLiteral("return false")));
+        QVERIFY(!previewSource.contains(QStringLiteral("box.gradient")));
+        QVERIFY(!previewSource.contains(QStringLiteral("box.path")));
         QVERIFY(!previewSource.contains(QStringLiteral("box.shadow")));
         QVERIFY(!previewSource.contains(QStringLiteral("box.blur")));
         QVERIFY(!previewSource.contains(QStringLiteral("box.perspective")));
@@ -843,7 +869,7 @@ private slots:
         QCOMPARE(editor.previewImageUrl(), before);
     }
 
-    void effectPreviewRefreshIsDeferredDuringInteraction()
+    void gradientPathInteractionDoesNotGeneratePreviewArtifact()
     {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
@@ -854,8 +880,9 @@ private slots:
         editor.createTextBox(1, 2, 24, 18);
         editor.updateSelectedText(QStringLiteral("FX"));
         editor.setSelectedGradientEnabled(true);
+        editor.setSelectedPathEnabled(true);
         const auto before = editor.previewImageUrl();
-        QVERIFY(!before.isEmpty());
+        QVERIFY(before.isEmpty());
         QSignalSpy changed(&editor, &EditorController::documentChanged);
 
         editor.beginInteraction();
@@ -866,8 +893,8 @@ private slots:
         editor.endInteraction();
 
         QCOMPARE(changed.count(), 2);
-        QVERIFY(editor.effectsPreviewActive());
-        QVERIFY(editor.previewImageUrl() != before);
+        QVERIFY(!editor.effectsPreviewActive());
+        QCOMPARE(editor.previewImageUrl(), before);
     }
 
     void transformChangesPersistOnSave()
@@ -2103,8 +2130,9 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("function boxHasRenderEffects(box)")));
         QVERIFY(source.contains(QStringLiteral("function boxNeedsPreviewArtifact(box)")));
         QVERIFY(source.contains(QStringLiteral("function anyBoxNeedsPreviewArtifact()")));
-        QVERIFY(source.contains(QStringLiteral("return box && (box.gradient || box.path)")));
-        QVERIFY(source.contains(QStringLiteral("return box && (box.outline || boxNeedsPreviewArtifact(box))")));
+        QVERIFY(source.contains(QStringLiteral("function boxNeedsPreviewArtifact(box)")));
+        QVERIFY(source.contains(QStringLiteral("return false")));
+        QVERIFY(source.contains(QStringLiteral("return box && (box.outline || box.blur || box.shadow || box.gradient || box.path)")));
         QVERIFY(source.contains(QStringLiteral("visible: boxRef.selected && editorRef.editingText")));
         QVERIFY(source.contains(QStringLiteral("OutlinedTextItem {")));
         QCOMPARE(source.count(QStringLiteral("OutlinedTextItem {")), 1);
@@ -2120,6 +2148,9 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("blurSize: modelData.blur && modelData.blurSize > 0 ? modelData.blurSize : 0")));
         QVERIFY(source.contains(QStringLiteral("shadowEnabled: modelData.shadow")));
         QVERIFY(source.contains(QStringLiteral("shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? modelData.shadowBlurSize : 0")));
+        QVERIFY(source.contains(QStringLiteral("gradientEnabled: modelData.gradient")));
+        QVERIFY(source.contains(QStringLiteral("pathEnabled: modelData.path")));
+        QVERIFY(source.contains(QStringLiteral("pathPoints: modelData.pathPoints")));
         QVERIFY(source.contains(QStringLiteral("lineSpacing: modelData.lineSpacing")));
         QVERIFY(source.contains(QStringLiteral("outlineColor: rootWindow.qmlColor(modelData.outlineColor)")));
         QVERIFY(source.indexOf(QStringLiteral("id: boxOutlinedText")) < source.indexOf(QStringLiteral("TextArea {")));
@@ -2146,6 +2177,9 @@ private slots:
         QVERIFY(rendererBlock.contains(QStringLiteral("blurSize: modelData.blur && modelData.blurSize > 0 ? modelData.blurSize : 0")));
         QVERIFY(rendererBlock.contains(QStringLiteral("shadowEnabled: modelData.shadow")));
         QVERIFY(rendererBlock.contains(QStringLiteral("shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? modelData.shadowBlurSize : 0")));
+        QVERIFY(rendererBlock.contains(QStringLiteral("gradientEnabled: modelData.gradient")));
+        QVERIFY(rendererBlock.contains(QStringLiteral("pathEnabled: modelData.path")));
+        QVERIFY(rendererBlock.contains(QStringLiteral("pathPoints: modelData.pathPoints")));
         QVERIFY(rendererBlock.contains(QStringLiteral("lineSpacing: modelData.lineSpacing")));
 
         const QString editorBlock = source.mid(editor, source.indexOf(QStringLiteral("MouseArea {"), editor) - editor);
@@ -2470,6 +2504,106 @@ private slots:
         QVERIFY(imagesDiffer(sharp, blurred));
         QVERIFY(hardBlurredPixels < hardSharpPixels);
         QVERIFY(softBlurredPixels > 200);
+    }
+
+    void outlinedTextItemGradientAndPathAffectRenderedText()
+    {
+        auto render = [](bool gradient, bool path) {
+            OutlinedTextItem item;
+            item.setWidth(200);
+            item.setHeight(100);
+            item.setText(QStringLiteral("GradientPath"));
+            item.setPixelSize(28);
+            item.setColor(Qt::black);
+            item.setGradientEnabled(gradient);
+            item.setGradientDirection(1);
+            item.setGradientColorA(Qt::red);
+            item.setGradientColorB(Qt::blue);
+            item.setPathEnabled(path);
+            item.setPathPoints(QVariantList{QVariantList{0.0, 0.85}, QVariantList{0.5, 0.2}, QVariantList{1.0, 0.85}});
+
+            QImage image(200, 100, QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::transparent);
+            QPainter painter(&image);
+            item.paint(&painter);
+            return image;
+        };
+
+        const QImage plain = render(false, false);
+        const QImage gradient = render(true, false);
+        const QImage path = render(false, true);
+        QVERIFY(imagesDiffer(plain, gradient));
+        QVERIFY(imagesDiffer(plain, path));
+    }
+
+    void outlinedTextItemGradientPathMatchesExportSemantics()
+    {
+        const QColor background(240, 240, 240, 255);
+        constexpr int width = 200;
+        constexpr int height = 100;
+        const QVariantList points{QVariantList{0.0, 0.85}, QVariantList{0.5, 0.2}, QVariantList{1.0, 0.85}};
+
+        OutlinedTextItem item;
+        item.setWidth(width);
+        item.setHeight(height);
+        item.setText(QStringLiteral("GradientPath"));
+        item.setPixelSize(28);
+        item.setColor(Qt::black);
+        item.setGradientEnabled(true);
+        item.setGradientDirection(1);
+        item.setGradientColorA(Qt::red);
+        item.setGradientColorB(Qt::blue);
+        item.setPathEnabled(true);
+        item.setPathPoints(points);
+
+        QImage live(width, height, QImage::Format_ARGB32_Premultiplied);
+        live.fill(background);
+        QPainter painter(&live);
+        item.paint(&painter);
+
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString pagePath = dir.filePath(QStringLiteral("page.png"));
+        const QString exportPath = dir.filePath(QStringLiteral("export.png"));
+        QImage page(width, height, QImage::Format_RGBA8888);
+        page.fill(background);
+        QVERIFY(page.save(pagePath, "PNG"));
+
+        DocumentModel document;
+        TextBox box;
+        box.text = "GradientPath";
+        box.bounds = {0.0, 0.0, width, height};
+        box.style.fontSize = 28;
+        box.style.textColor = "000000ff";
+        box.effects.gradientEnabled = true;
+        box.effects.gradientDirection = 1;
+        box.effects.gradientColorA = "ff0000ff";
+        box.effects.gradientColorB = "0000ffff";
+        box.effects.pathEnabled = true;
+        box.effects.pathPoints = {{0.0, 0.85}, {0.5, 0.2}, {1.0, 0.85}};
+        document.addTextBox(box);
+
+        std::string error;
+        const RenderGraph graph;
+        QVERIFY2(graph.exportPagePng(document, pagePath.toStdString(), exportPath.toStdString(), &error), error.c_str());
+        const QImage exported(exportPath);
+        QVERIFY(!exported.isNull());
+
+        const QRect liveBounds = visibleBounds(live, background);
+        const QRect exportBounds = visibleBounds(exported, background);
+        QVERIFY(!liveBounds.isEmpty());
+        QVERIFY(!exportBounds.isEmpty());
+        QVERIFY(std::abs(liveBounds.center().x() - exportBounds.center().x()) <= 8);
+        QVERIFY(std::abs(liveBounds.center().y() - exportBounds.center().y()) <= 8);
+
+        const int liveRed = countPixels(live, [&](const QColor& color) { return color != background && color.red() > color.blue() + 30; });
+        const int liveBlue = countPixels(live, [&](const QColor& color) { return color != background && color.blue() > color.red() + 30; });
+        const int exportRed = countPixels(exported, [&](const QColor& color) { return color != background && color.red() > color.blue() + 30; });
+        const int exportBlue = countPixels(exported, [&](const QColor& color) { return color != background && color.blue() > color.red() + 30; });
+        QVERIFY(liveRed > 0);
+        QVERIFY(liveBlue > 0);
+        QVERIFY(exportRed > 0);
+        QVERIFY(exportBlue > 0);
     }
 
     void outlinedTextItemWrapsWithinOutlineInset()

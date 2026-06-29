@@ -5,6 +5,7 @@
 #include <QImage>
 #include <QQuickPaintedItem>
 #include <QStringList>
+#include <QVariantList>
 
 namespace textfx {
 
@@ -26,6 +27,13 @@ class OutlinedTextItem : public QQuickPaintedItem {
     Q_PROPERTY(qreal shadowOffsetX READ shadowOffsetX WRITE setShadowOffsetX NOTIFY shadowOffsetXChanged)
     Q_PROPERTY(qreal shadowOffsetY READ shadowOffsetY WRITE setShadowOffsetY NOTIFY shadowOffsetYChanged)
     Q_PROPERTY(int shadowBlurSize READ shadowBlurSize WRITE setShadowBlurSize NOTIFY shadowBlurSizeChanged)
+    Q_PROPERTY(bool gradientEnabled READ gradientEnabled WRITE setGradientEnabled NOTIFY gradientEnabledChanged)
+    Q_PROPERTY(int gradientDirection READ gradientDirection WRITE setGradientDirection NOTIFY gradientDirectionChanged)
+    Q_PROPERTY(QColor gradientColorA READ gradientColorA WRITE setGradientColorA NOTIFY gradientColorAChanged)
+    Q_PROPERTY(QColor gradientColorB READ gradientColorB WRITE setGradientColorB NOTIFY gradientColorBChanged)
+    Q_PROPERTY(bool pathEnabled READ pathEnabled WRITE setPathEnabled NOTIFY pathEnabledChanged)
+    Q_PROPERTY(int pathMode READ pathMode WRITE setPathMode NOTIFY pathModeChanged)
+    Q_PROPERTY(QVariantList pathPoints READ pathPoints WRITE setPathPoints NOTIFY pathPointsChanged)
     Q_PROPERTY(qreal renderScale READ renderScale WRITE setRenderScale NOTIFY renderScaleChanged)
     Q_PROPERTY(int horizontalAlignment READ horizontalAlignment WRITE setHorizontalAlignment NOTIFY horizontalAlignmentChanged)
 
@@ -64,6 +72,20 @@ public:
     void setShadowOffsetY(qreal value);
     int shadowBlurSize() const { return shadowBlurSize_; }
     void setShadowBlurSize(int value);
+    bool gradientEnabled() const { return gradientEnabled_; }
+    void setGradientEnabled(bool value);
+    int gradientDirection() const { return gradientDirection_; }
+    void setGradientDirection(int value);
+    QColor gradientColorA() const { return gradientColorA_; }
+    void setGradientColorA(const QColor& value);
+    QColor gradientColorB() const { return gradientColorB_; }
+    void setGradientColorB(const QColor& value);
+    bool pathEnabled() const { return pathEnabled_; }
+    void setPathEnabled(bool value);
+    int pathMode() const { return pathMode_; }
+    void setPathMode(int value);
+    QVariantList pathPoints() const { return pathPoints_; }
+    void setPathPoints(const QVariantList& value);
     qreal renderScale() const { return renderScale_; }
     void setRenderScale(qreal value);
     int horizontalAlignment() const { return horizontalAlignment_; }
@@ -92,12 +114,20 @@ signals:
     void shadowOffsetXChanged();
     void shadowOffsetYChanged();
     void shadowBlurSizeChanged();
+    void gradientEnabledChanged();
+    void gradientDirectionChanged();
+    void gradientColorAChanged();
+    void gradientColorBChanged();
+    void pathEnabledChanged();
+    void pathModeChanged();
+    void pathPointsChanged();
     void renderScaleChanged();
     void horizontalAlignmentChanged();
 
 private:
     QFont layoutFont() const;
     QPainterPath textPath(const QFont& font, qreal layoutWidth, qreal inset, QStringList* lineTexts = nullptr) const;
+    QPainterPath pathText(const QFont& font, qreal layoutWidth, qreal layoutHeight) const;
     QString blurCacheKey(int radius, const QRect& sourceRect) const;
     QString text_;
     QString fontFamily_;
@@ -115,6 +145,13 @@ private:
     qreal shadowOffsetX_ = 0.0;
     qreal shadowOffsetY_ = 0.0;
     int shadowBlurSize_ = 0;
+    bool gradientEnabled_ = false;
+    int gradientDirection_ = 0;
+    QColor gradientColorA_ = Qt::white;
+    QColor gradientColorB_ = Qt::black;
+    bool pathEnabled_ = false;
+    int pathMode_ = 0;
+    QVariantList pathPoints_;
     qreal renderScale_ = 1.0;
     int horizontalAlignment_ = Qt::AlignLeft;
     QString blurCacheKey_;
