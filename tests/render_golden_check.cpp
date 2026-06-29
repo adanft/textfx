@@ -134,6 +134,87 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    DocumentModel unblurred;
+    TextBox blurBox;
+    blurBox.text = "Blur";
+    blurBox.bounds = {45.0, 45.0, 140.0, 70.0};
+    blurBox.style.fontSize = 42;
+    blurBox.style.textColor = "000000ff";
+    unblurred.addTextBox(blurBox);
+
+    DocumentModel blurred;
+    blurBox.effects.blurEnabled = true;
+    blurBox.effects.blurSize = 6;
+    blurred.addTextBox(blurBox);
+
+    const auto unblurredImage = exportedImage(graph, unblurred, pagePath, std::filesystem::temp_directory_path() / "textfx-export-blur-off.png");
+    const auto blurredImage = exportedImage(graph, blurred, pagePath, std::filesystem::temp_directory_path() / "textfx-export-blur-on.png");
+    const auto unblurredBounds = nonBackgroundBounds(unblurredImage, background);
+    const auto blurredBounds = nonBackgroundBounds(blurredImage, background);
+    const int hardUnblurredPixels = countPixels(unblurredImage, background, [](const QColor& color) { return color.red() < 40 && color.green() < 40 && color.blue() < 40; });
+    const int hardBlurredPixels = countPixels(blurredImage, background, [](const QColor& color) { return color.red() < 40 && color.green() < 40 && color.blue() < 40; });
+    const int softBlurredPixels = countPixels(blurredImage, background, [](const QColor& color) { return color.red() > 40 && color.red() < 220 && color.green() > 40 && color.green() < 220 && color.blue() > 40 && color.blue() < 220; });
+    if (blurredImage.isNull() || !imagesDiffer(unblurredImage, blurredImage) || blurredBounds.width() <= unblurredBounds.width() || blurredBounds.height() <= unblurredBounds.height() || hardBlurredPixels >= hardUnblurredPixels || softBlurredPixels < 200) {
+        std::cerr << "Blur is not a soft post-process filter: hard=" << hardBlurredPixels << '/' << hardUnblurredPixels
+                  << " soft=" << softBlurredPixels << " bounds=" << blurredBounds.width() << 'x' << blurredBounds.height()
+                  << " vs " << unblurredBounds.width() << 'x' << unblurredBounds.height() << '\n';
+        return 1;
+    }
+
+    DocumentModel edgeBlur;
+    TextBox edgeBox;
+    edgeBox.text = "W";
+    edgeBox.bounds = {80.0, 60.0, 48.0, 48.0};
+    edgeBox.style.fontSize = 60;
+    edgeBox.style.textColor = "000000ff";
+    edgeBox.effects.blurEnabled = true;
+    edgeBox.effects.blurSize = 8;
+    edgeBlur.addTextBox(edgeBox);
+    const auto edgeBlurImage = exportedImage(graph, edgeBlur, pagePath, std::filesystem::temp_directory_path() / "textfx-export-blur-clipped.png");
+    const QRect edgeRect(static_cast<int>(edgeBox.bounds.x), static_cast<int>(edgeBox.bounds.y), static_cast<int>(edgeBox.bounds.w), static_cast<int>(edgeBox.bounds.h));
+    int edgeBleedPixels = 0;
+    for (int y = 0; y < edgeBlurImage.height(); ++y) {
+        for (int x = 0; x < edgeBlurImage.width(); ++x) {
+            if (!edgeRect.contains(x, y) && edgeBlurImage.pixelColor(x, y) != background) ++edgeBleedPixels;
+        }
+    }
+    if (edgeBlurImage.isNull() || edgeBleedPixels != 0) {
+        std::cerr << "Blur export bled outside the box: pixels=" << edgeBleedPixels << '\n';
+        return 1;
+    }
+
+    DocumentModel rotatedBlur;
+    TextBox rotatedFx;
+    rotatedFx.text = "Risky Blur";
+    rotatedFx.bounds = {35.0, 45.0, 150.0, 55.0};
+    rotatedFx.rotationDegrees = 12.0;
+    rotatedFx.style.fontSize = 28;
+    rotatedFx.style.textColor = "101010ff";
+    rotatedFx.effects.outlineEnabled = true;
+    rotatedFx.effects.outlineColor = "ffffffff";
+    rotatedFx.effects.outlineSize = 2;
+    rotatedFx.effects.blurEnabled = true;
+    rotatedFx.effects.blurSize = 5;
+    rotatedFx.effects.shadowEnabled = true;
+    rotatedFx.effects.shadowColor = "000000aa";
+    rotatedFx.effects.shadowOffsetX = 6;
+    rotatedFx.effects.shadowOffsetY = 5;
+    rotatedFx.effects.shadowBlurSize = 3;
+    rotatedBlur.addTextBox(rotatedFx);
+
+    const auto rotatedBlurImage = exportedImage(graph, rotatedBlur, pagePath, std::filesystem::temp_directory_path() / "textfx-export-rotated-blur.png");
+    const auto rotatedBlurBounds = nonBackgroundBounds(rotatedBlurImage, background);
+    const int rotatedSoftPixels = countPixels(rotatedBlurImage, background, [](const QColor& color) {
+        return color.red() > 40 && color.red() < 220 && color.green() > 40 && color.green() < 220 && color.blue() > 40 && color.blue() < 220;
+    });
+    if (rotatedBlurImage.isNull() || !imagesDiffer(page, rotatedBlurImage) || rotatedBlurBounds.isEmpty()
+        || rotatedBlurBounds.left() < 20 || rotatedBlurBounds.top() < 25 || rotatedBlurBounds.right() > 205 || rotatedBlurBounds.bottom() > 130
+        || rotatedBlurBounds.width() < 85 || rotatedBlurBounds.height() < 35 || rotatedSoftPixels < 150) {
+        std::cerr << "Rotated combined blur export looks cropped or over-bleeding: bounds=" << rotatedBlurBounds.x() << ',' << rotatedBlurBounds.y() << ' '
+                  << rotatedBlurBounds.width() << 'x' << rotatedBlurBounds.height() << " soft=" << rotatedSoftPixels << '\n';
+        return 1;
+    }
+
     DocumentModel allEffects;
     TextBox fx;
     fx.text = "AllEffects";

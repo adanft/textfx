@@ -2,6 +2,7 @@
 
 #include <QColor>
 #include <QFont>
+#include <QImage>
 #include <QQuickPaintedItem>
 #include <QStringList>
 
@@ -19,6 +20,7 @@ class OutlinedTextItem : public QQuickPaintedItem {
     Q_PROPERTY(QColor color READ color WRITE setColor NOTIFY colorChanged)
     Q_PROPERTY(QColor outlineColor READ outlineColor WRITE setOutlineColor NOTIFY outlineColorChanged)
     Q_PROPERTY(qreal outlineSize READ outlineSize WRITE setOutlineSize NOTIFY outlineSizeChanged)
+    Q_PROPERTY(int blurSize READ blurSize WRITE setBlurSize NOTIFY blurSizeChanged)
     Q_PROPERTY(qreal renderScale READ renderScale WRITE setRenderScale NOTIFY renderScaleChanged)
     Q_PROPERTY(int horizontalAlignment READ horizontalAlignment WRITE setHorizontalAlignment NOTIFY horizontalAlignmentChanged)
 
@@ -45,6 +47,8 @@ public:
     void setOutlineColor(const QColor& value);
     qreal outlineSize() const { return outlineSize_; }
     void setOutlineSize(qreal value);
+    int blurSize() const { return blurSize_; }
+    void setBlurSize(int value);
     qreal renderScale() const { return renderScale_; }
     void setRenderScale(qreal value);
     int horizontalAlignment() const { return horizontalAlignment_; }
@@ -67,12 +71,14 @@ signals:
     void colorChanged();
     void outlineColorChanged();
     void outlineSizeChanged();
+    void blurSizeChanged();
     void renderScaleChanged();
     void horizontalAlignmentChanged();
 
 private:
     QFont layoutFont() const;
     QPainterPath textPath(const QFont& font, qreal layoutWidth, qreal inset, QStringList* lineTexts = nullptr) const;
+    QString blurCacheKey(int radius, const QRect& sourceRect) const;
     QString text_;
     QString fontFamily_;
     qreal pixelSize_ = 12.0;
@@ -83,8 +89,11 @@ private:
     QColor color_ = Qt::black;
     QColor outlineColor_ = Qt::white;
     qreal outlineSize_ = 0.0;
+    int blurSize_ = 0;
     qreal renderScale_ = 1.0;
     int horizontalAlignment_ = Qt::AlignLeft;
+    QString blurCacheKey_;
+    QImage blurCacheImage_;
 };
 
 } // namespace textfx

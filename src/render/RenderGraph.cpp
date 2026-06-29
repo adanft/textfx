@@ -1,5 +1,7 @@
 #include "render/RenderGraph.h"
 
+#include "core/EffectLimits.h"
+#include "core/GaussianBlur.h"
 #include "fonts/FontResolver.h"
 
 #include <QColor>
@@ -133,7 +135,16 @@ void drawTextBox(QPainter& painter, const TextBox& box)
     else if (paintedBounds.width() <= box.bounds.w && paintedBounds.right() > box.bounds.w) dx = box.bounds.w - paintedBounds.right();
     if (paintedBounds.top() < 0.0) dy = -paintedBounds.top();
     else if (paintedBounds.height() <= box.bounds.h && paintedBounds.bottom() > box.bounds.h) dy = box.bounds.h - paintedBounds.bottom();
-    if (!qFuzzyIsNull(dx) || !qFuzzyIsNull(dy)) path.translate(dx, dy);
+    if (!qFuzzyIsNull(dx) || !qFuzzyIsNull(dy)) {
+        path.translate(dx, dy);
+        paintedBounds.translate(dx, dy);
+    }
+    QRectF effectBounds = paintedBounds;
+    if (box.effects.shadowEnabled) {
+        effectBounds = effectBounds.united(path.boundingRect()
+                                               .translated(box.effects.shadowOffsetX, box.effects.shadowOffsetY)
+                                               .adjusted(-box.effects.shadowBlurSize, -box.effects.shadowBlurSize, box.effects.shadowBlurSize, box.effects.shadowBlurSize));
+    }
 
     painter.save();
     painter.setRenderHint(QPainter::Antialiasing, true);
@@ -149,16 +160,44 @@ void drawTextBox(QPainter& painter, const TextBox& box)
         QTransform transform;
         if (QTransform::quadToQuad(source, target, transform)) painter.setTransform(transform, true);
     }
-    if (box.effects.shadowEnabled) fillPath(painter, path.translated(box.effects.shadowOffsetX, box.effects.shadowOffsetY), QBrush(toQColor(box.effects.shadowColor)), box.effects.shadowBlurSize);
-    if (outline > 0) {
+    auto paintText = [&](QPainter& target) {
+        if (box.effects.shadowEnabled) fillPath(target, path.translated(box.effects.shadowOffsetX, box.effects.shadowOffsetY), QBrush(toQColor(box.effects.shadowColor)), box.effects.shadowBlurSize);
+        if (outline <= 0) return;
         QPainterPathStroker stroker;
         stroker.setWidth(outline);
         stroker.setJoinStyle(Qt::RoundJoin);
         QPainterPath stroke = stroker.createStroke(path);
         stroke.setFillRule(Qt::WindingFill);
-        painter.fillPath(stroke, toQColor(box.effects.outlineColor));
+        target.fillPath(stroke, toQColor(box.effects.outlineColor));
+    };
+    auto paintFill = [&](QPainter& target) {
+        target.fillPath(path, fillBrushFor(box));
+    };
+    if (box.effects.blurEnabled && box.effects.blurSize > 0) {
+        const int pad = std::max(1, cappedBlurKernelRadius(box.effects.blurSize));
+        const QRect sourceRect = effectBounds.adjusted(-pad, -pad, pad, pad)
+                                     .toAlignedRect()
+                                     .intersected(QRectF(0, 0, box.bounds.w, box.bounds.h).adjusted(-pad, -pad, pad, pad).toAlignedRect());
+        if (sourceRect.isEmpty()) {
+            painter.restore();
+            return;
+        }
+        QImage layer(sourceRect.size(), QImage::Format_ARGB32_Premultiplied);
+        layer.fill(Qt::transparent);
+        QPainter layerPainter(&layer);
+        layerPainter.setRenderHint(QPainter::Antialiasing, true);
+        layerPainter.translate(-sourceRect.topLeft());
+        paintText(layerPainter);
+        paintFill(layerPainter);
+        layerPainter.end();
+        painter.save();
+        painter.setClipRect(QRectF(0, 0, box.bounds.w, box.bounds.h));
+        painter.drawImage(sourceRect.topLeft(), gaussianBlurred(layer, pad));
+        painter.restore();
+    } else {
+        paintText(painter);
+        paintFill(painter);
     }
-    fillPath(painter, path, fillBrushFor(box), box.effects.blurEnabled ? box.effects.blurSize : 0);
     painter.restore();
 }
 

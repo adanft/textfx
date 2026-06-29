@@ -417,7 +417,7 @@ ApplicationWindow {
     }
 
     function boxNeedsPreviewArtifact(box) {
-        return box && (box.blur || box.shadow || box.gradient || box.path)
+        return box && (box.shadow || box.gradient || box.path)
     }
 
     function anyBoxNeedsPreviewArtifact() {
@@ -1117,6 +1117,7 @@ ApplicationWindow {
 
                                 OutlinedTextItem {
                                     id: boxOutlinedText
+                                    objectName: "boxOutlinedText"
 
                                     property var boxRef: boxTextPerspective.boxRef
                                     property var rootWindow: boxTextPerspective.rootWindow
@@ -1134,6 +1135,7 @@ ApplicationWindow {
                                     horizontalAlignment: modelData.alignment === 1 ? Text.AlignHCenter : modelData.alignment === 2 ? Text.AlignRight : Text.AlignLeft
                                     outlineColor: rootWindow.qmlColor(modelData.outlineColor)
                                     outlineSize: modelData.outline && modelData.outlineSize > 0 ? modelData.outlineSize : 0
+                                    blurSize: modelData.blur && modelData.blurSize > 0 ? modelData.blurSize : 0
                                     renderScale: rootWindow.viewDocScale()
                                 }
                             }

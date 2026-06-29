@@ -1,12 +1,13 @@
 #include "ui/OutlinedTextItem.h"
 
+#include "core/EffectLimits.h"
+#include "core/GaussianBlur.h"
 #include "fonts/FontResolver.h"
 
 #include <QFont>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPainterPathStroker>
-#include <QStringList>
 #include <QTextLayout>
 
 #include <algorithm>
@@ -102,6 +103,15 @@ void OutlinedTextItem::setOutlineSize(qreal value)
     emit outlineSizeChanged();
 }
 
+void OutlinedTextItem::setBlurSize(int value)
+{
+    value = std::max(0, value);
+    if (blurSize_ == value) return;
+    blurSize_ = value;
+    update();
+    emit blurSizeChanged();
+}
+
 void OutlinedTextItem::setRenderScale(qreal value)
 {
     value = std::max<qreal>(0.0001, value);
@@ -145,20 +155,66 @@ void OutlinedTextItem::paint(QPainter* painter)
     else if (paintedBounds.width() <= layoutWidth && paintedBounds.right() > layoutWidth) dx = layoutWidth - paintedBounds.right();
     if (paintedBounds.top() < 0.0) dy = -paintedBounds.top();
     else if (paintedBounds.height() <= layoutHeight && paintedBounds.bottom() > layoutHeight) dy = layoutHeight - paintedBounds.bottom();
-    if (!qFuzzyIsNull(dx) || !qFuzzyIsNull(dy)) path.translate(dx, dy);
-
-    painter->save();
-    painter->scale(scale, scale);
-    if (outlineSize_ > 0) {
-        QPainterPathStroker stroker;
-        stroker.setWidth(outlineSize_);
-        stroker.setJoinStyle(Qt::RoundJoin);
-        QPainterPath stroke = stroker.createStroke(path);
-        stroke.setFillRule(Qt::WindingFill);
-        painter->fillPath(stroke, outlineColor_);
+    if (!qFuzzyIsNull(dx) || !qFuzzyIsNull(dy)) {
+        path.translate(dx, dy);
+        paintedBounds.translate(dx, dy);
     }
-    painter->fillPath(path, color_);
+
+    auto paintText = [&](QPainter& target) {
+        target.scale(scale, scale);
+        if (outlineSize_ > 0) {
+            QPainterPathStroker stroker;
+            stroker.setWidth(outlineSize_);
+            stroker.setJoinStyle(Qt::RoundJoin);
+            QPainterPath stroke = stroker.createStroke(path);
+            stroke.setFillRule(Qt::WindingFill);
+            target.fillPath(stroke, outlineColor_);
+        }
+        target.fillPath(path, color_);
+    };
+    painter->save();
+    const int radius = cappedBlurKernelRadius(blurSize_ * scale);
+    if (radius > 0) {
+        const QRect itemRect(0, 0, static_cast<int>(std::ceil(width())), static_cast<int>(std::ceil(height())));
+        const QRect sourceRect = QRectF(paintedBounds.left() * scale - radius,
+                                        paintedBounds.top() * scale - radius,
+                                        paintedBounds.width() * scale + radius * 2,
+                                        paintedBounds.height() * scale + radius * 2)
+                                     .toAlignedRect()
+                                     .intersected(itemRect.adjusted(-radius, -radius, radius, radius));
+        if (sourceRect.isEmpty()) {
+            painter->restore();
+            return;
+        }
+        const QString key = blurCacheKey(radius, sourceRect);
+        if (blurCacheKey_ != key || blurCacheImage_.isNull()) {
+            QImage layer(sourceRect.size(), QImage::Format_ARGB32_Premultiplied);
+            layer.fill(Qt::transparent);
+            QPainter layerPainter(&layer);
+            layerPainter.setRenderHint(QPainter::Antialiasing, true);
+            layerPainter.translate(-sourceRect.topLeft());
+            paintText(layerPainter);
+            layerPainter.end();
+            blurCacheImage_ = gaussianBlurred(layer, radius);
+            blurCacheKey_ = key;
+        }
+        painter->setClipRect(QRectF(0, 0, width(), height()));
+        painter->drawImage(sourceRect.topLeft(), blurCacheImage_);
+    } else {
+        paintText(*painter);
+    }
     painter->restore();
+}
+
+QString OutlinedTextItem::blurCacheKey(int radius, const QRect& sourceRect) const
+{
+    return QStringList{
+               text_, fontFamily_, QString::number(pixelSize_, 'g', 17), bold_ ? QStringLiteral("1") : QStringLiteral("0"), italic_ ? QStringLiteral("1") : QStringLiteral("0"),
+               QString::number(letterSpacing_, 'g', 17), QString::number(lineSpacing_, 'g', 17), QString::number(color_.rgba()), QString::number(outlineColor_.rgba()),
+               QString::number(outlineSize_, 'g', 17), QString::number(renderScale_, 'g', 17), QString::number(width(), 'g', 17), QString::number(height(), 'g', 17),
+                QString::number(horizontalAlignment_), QString::number(radius), QString::number(sourceRect.x()), QString::number(sourceRect.y()), QString::number(sourceRect.width()),
+                QString::number(sourceRect.height())}
+        .join(u'\n');
 }
 
 QFont OutlinedTextItem::layoutFont() const

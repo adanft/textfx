@@ -1,4 +1,5 @@
 #include "app/EditorController.h"
+#include "core/EffectLimits.h"
 #include "fonts/FontResolver.h"
 #include "fonts/SfntNames.h"
 #include "ui/OutlinedTextItem.h"
@@ -87,6 +88,26 @@ bool imageDiffers(const QString& a, const QString& b)
     return false;
 }
 
+bool imagesDiffer(const QImage& first, const QImage& second)
+{
+    if (first.size() != second.size()) return true;
+    for (int y = 0; y < first.height(); ++y) {
+        if (std::memcmp(first.constScanLine(y), second.constScanLine(y), static_cast<std::size_t>(first.bytesPerLine())) != 0) return true;
+    }
+    return false;
+}
+
+int countPixels(const QImage& image, const auto& predicate)
+{
+    int count = 0;
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+            if (predicate(image.pixelColor(x, y))) ++count;
+        }
+    }
+    return count;
+}
+
 QByteArray utf16be(const QString& text)
 {
     QByteArray bytes;
@@ -161,6 +182,14 @@ class QtSmokeTests final : public QObject {
     Q_OBJECT
 
 private slots:
+    void blurKernelRadiusIsCapped()
+    {
+        QCOMPARE(cappedBlurKernelRadius(0), 0);
+        QCOMPARE(cappedBlurKernelRadius(1), 1);
+        QCOMPARE(cappedBlurKernelRadius(MaxBlurKernelRadius), MaxBlurKernelRadius);
+        QCOMPARE(cappedBlurKernelRadius(MaxBlurKernelRadius + 100), MaxBlurKernelRadius);
+    }
+
     void noProjectDisablesProjectActions()
     {
         EditorController editor;
@@ -644,7 +673,8 @@ private slots:
         QVERIFY(previewStart >= 0);
         QVERIFY(previewEnd > previewStart);
         const QString previewSource = source.mid(previewStart, previewEnd - previewStart);
-        QVERIFY(previewSource.contains(QStringLiteral("box.blur || box.shadow || box.gradient || box.path")));
+        QVERIFY(previewSource.contains(QStringLiteral("box.shadow || box.gradient || box.path")));
+        QVERIFY(!previewSource.contains(QStringLiteral("box.blur")));
         QVERIFY(!previewSource.contains(QStringLiteral("box.perspective")));
 
         const qsizetype delegateStart = source.indexOf(QStringLiteral("delegate: Rectangle {\n                            id: boxDelegate"));
@@ -662,6 +692,65 @@ private slots:
         QVERIFY(delegateSource.contains(QStringLiteral("property bool perspectiveActive: boxModel.perspective && !editingSelected")));
         QVERIFY(textPerspectiveSource.contains(QStringLiteral("clip: true")));
         QVERIFY(textAreaSource.contains(QStringLiteral("clip: true")));
+    }
+
+    void blurUsesLiveRendererWithoutPreviewArtifact()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        touch(dir.filePath(QStringLiteral("page1.png")), {160, 80});
+
+        EditorController editor;
+        editor.openProject(dir.path());
+        editor.createTextBox(4, 4, 120, 40);
+        editor.updateSelectedText(QStringLiteral("Blur"));
+        editor.setSelectedBlurEnabled(true);
+        editor.setSelectedBlurSize(6);
+
+        QVERIFY(editor.previewImageUrl().isEmpty());
+        QVERIFY(!editor.effectsPreviewActive());
+
+        QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+        QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString source = QString::fromUtf8(qml.readAll());
+        QVERIFY(!source.contains(QStringLiteral("import QtQuick.Effects")));
+        QVERIFY(!source.contains(QStringLiteral("MultiEffect {")));
+        QVERIFY(!source.contains(QStringLiteral("liveGpuBlurActive")));
+        QVERIFY(source.contains(QStringLiteral("blurSize: modelData.blur && modelData.blurSize > 0 ? modelData.blurSize : 0")));
+    }
+
+    void qmlBlurEnabledBoxKeepsOutlinedRendererVisibleUntilEditing()
+    {
+        registerQmlTypes();
+
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        touch(dir.filePath(QStringLiteral("page1.png")), {160, 80});
+
+        EditorController editor;
+        editor.openProject(dir.path());
+        editor.createTextBox(4, 4, 120, 40);
+        editor.updateSelectedText(QStringLiteral("Blur"));
+        editor.setSelectedBlurEnabled(true);
+        editor.setSelectedBlurSize(6);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QObject* outlinedText = nullptr;
+        QTRY_VERIFY(outlinedText = findVisualChildByName(window->contentItem(), QStringLiteral("boxOutlinedText")));
+        QTRY_VERIFY(outlinedText->property("visible").toBool());
+        QCOMPARE(outlinedText->property("blurSize").toInt(), 6);
+
+        QObject* textArea = nullptr;
+        QTRY_VERIFY(textArea = findVisualChildByName(window->contentItem(), QStringLiteral("boxTextArea")));
+        editor.beginTextEdit();
+        QTRY_VERIFY(textArea->property("visible").toBool());
+        QTRY_VERIFY(outlinedText->property("visible").toBool());
     }
 
     void liveInteractionDefersPreviewButRefreshesModel()
@@ -1947,7 +2036,7 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("function boxHasRenderEffects(box)")));
         QVERIFY(source.contains(QStringLiteral("function boxNeedsPreviewArtifact(box)")));
         QVERIFY(source.contains(QStringLiteral("function anyBoxNeedsPreviewArtifact()")));
-        QVERIFY(source.contains(QStringLiteral("return box && (box.blur || box.shadow || box.gradient || box.path)")));
+        QVERIFY(source.contains(QStringLiteral("return box && (box.shadow || box.gradient || box.path)")));
         QVERIFY(source.contains(QStringLiteral("return box && (box.outline || boxNeedsPreviewArtifact(box))")));
         QVERIFY(source.contains(QStringLiteral("visible: boxRef.selected && editorRef.editingText")));
         QVERIFY(source.contains(QStringLiteral("OutlinedTextItem {")));
@@ -1955,7 +2044,11 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("id: boxOutlinedText")));
         QVERIFY(source.contains(QStringLiteral("anchors.fill: parent")));
         QVERIFY(source.contains(QStringLiteral("renderScale: rootWindow.viewDocScale()")));
+        QVERIFY(!source.contains(QStringLiteral("liveGpuBlurActive")));
+        QVERIFY(!source.contains(QStringLiteral("MultiEffect {")));
+        QVERIFY(!source.contains(QStringLiteral("source: boxOutlinedText")));
         QVERIFY(source.contains(QStringLiteral("outlineSize: modelData.outline && modelData.outlineSize > 0 ? modelData.outlineSize : 0")));
+        QVERIFY(source.contains(QStringLiteral("blurSize: modelData.blur && modelData.blurSize > 0 ? modelData.blurSize : 0")));
         QVERIFY(source.contains(QStringLiteral("lineSpacing: modelData.lineSpacing")));
         QVERIFY(source.contains(QStringLiteral("outlineColor: rootWindow.qmlColor(modelData.outlineColor)")));
         QVERIFY(source.indexOf(QStringLiteral("id: boxOutlinedText")) < source.indexOf(QStringLiteral("TextArea {")));
@@ -1979,6 +2072,7 @@ private slots:
         QVERIFY(rendererBlock.contains(QStringLiteral("text: boxRef.selected && editorRef.editingText ? boxTextArea.text : (modelData.uppercase ? String(modelData.text).toUpperCase() : modelData.text)")));
         QVERIFY(rendererBlock.contains(QStringLiteral("renderScale: rootWindow.viewDocScale()")));
         QVERIFY(rendererBlock.contains(QStringLiteral("outlineSize: modelData.outline && modelData.outlineSize > 0 ? modelData.outlineSize : 0")));
+        QVERIFY(rendererBlock.contains(QStringLiteral("blurSize: modelData.blur && modelData.blurSize > 0 ? modelData.blurSize : 0")));
         QVERIFY(rendererBlock.contains(QStringLiteral("lineSpacing: modelData.lineSpacing")));
 
         const QString editorBlock = source.mid(editor, source.indexOf(QStringLiteral("MouseArea {"), editor) - editor);
@@ -2241,19 +2335,101 @@ private slots:
         QVERIFY(redPixels(render(8)) > redPixels(render(1)));
     }
 
+    void outlinedTextItemBlurSoftensRenderedText()
+    {
+        auto render = [](int blurSize) {
+            OutlinedTextItem item;
+            item.setWidth(180);
+            item.setHeight(80);
+            item.setText(QStringLiteral("Blur"));
+            item.setPixelSize(46);
+            item.setColor(Qt::black);
+            item.setBlurSize(blurSize);
+
+            QImage image(180, 80, QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::transparent);
+            QPainter painter(&image);
+            item.paint(&painter);
+            return image;
+        };
+        const QImage sharp = render(0);
+        const QImage blurred = render(6);
+        const int hardSharpPixels = countPixels(sharp, [](const QColor& color) { return color.alpha() > 220; });
+        const int hardBlurredPixels = countPixels(blurred, [](const QColor& color) { return color.alpha() > 220; });
+        const int softBlurredPixels = countPixels(blurred, [](const QColor& color) { return color.alpha() > 20 && color.alpha() < 220; });
+
+        QVERIFY(imagesDiffer(sharp, blurred));
+        QVERIFY(hardBlurredPixels < hardSharpPixels);
+        QVERIFY(softBlurredPixels > 200);
+    }
+
     void outlinedTextItemWrapsWithinOutlineInset()
     {
         QFile source(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../src/ui/OutlinedTextItem.cpp"));
         QVERIFY(source.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString code = QString::fromUtf8(source.readAll());
 
+        QVERIFY(code.contains(QStringLiteral("gaussianBlurred")));
+        QVERIFY(code.contains(QStringLiteral("blurCacheKey")));
+        QVERIFY(code.contains(QStringLiteral("blurSize_")));
         QVERIFY(code.contains(QStringLiteral("const qreal layoutWidth = std::max<qreal>(1.0, width() / scale);")));
-        QVERIFY(code.contains(QStringLiteral("painter->scale(scale, scale);")));
+        QVERIFY(code.contains(QStringLiteral("target.scale(scale, scale);")));
         QVERIFY(code.contains(QStringLiteral("const qreal paintWidth = std::max<qreal>(1.0, layoutWidth - inset * 2.0);")));
         QVERIFY(code.contains(QStringLiteral("line.setLineWidth(paintWidth);")));
         QVERIFY(code.contains(QStringLiteral("qreal y = inset;")));
         QVERIFY(code.contains(QStringLiteral("qreal x = inset;")));
         QVERIFY(!code.contains(QStringLiteral("line.setLineWidth(layoutWidth);")));
+    }
+
+    void outlinedTextItemBlurCacheInvalidatesOnFractionalResize()
+    {
+        auto configure = [](OutlinedTextItem& item, qreal width) {
+            item.setWidth(width);
+            item.setHeight(90.1);
+            item.setText(QStringLiteral("MMMMMMMMMMMMMMMMMMMMMMMM"));
+            item.setPixelSize(24);
+            item.setLetterSpacing(0.37);
+            item.setColor(Qt::black);
+            item.setBlurSize(5);
+        };
+        auto render = [&](OutlinedTextItem& item, qreal width) {
+            configure(item, width);
+            QImage image(180, 120, QImage::Format_ARGB32_Premultiplied);
+            image.fill(Qt::transparent);
+            QPainter painter(&image);
+            item.paint(&painter);
+            return image;
+        };
+        auto freshRender = [&](qreal width) {
+            OutlinedTextItem item;
+            return render(item, width);
+        };
+
+        qreal firstWidth = 0.0;
+        qreal secondWidth = 0.0;
+        QImage firstFresh;
+        QImage secondFresh;
+        for (int width = 48; width < 160 && firstWidth == 0.0; ++width) {
+            const qreal a = width + 0.1;
+            const qreal b = width + 0.9;
+            QImage aImage = freshRender(a);
+            QImage bImage = freshRender(b);
+            if (imagesDiffer(aImage, bImage)) {
+                firstWidth = a;
+                secondWidth = b;
+                firstFresh = aImage;
+                secondFresh = bImage;
+            }
+        }
+        QVERIFY2(firstWidth > 0.0, "test setup did not find a same-ceil fractional width that changes rendered text");
+
+        OutlinedTextItem reusedItem;
+        const QImage firstReused = render(reusedItem, firstWidth);
+        const QImage secondReused = render(reusedItem, secondWidth);
+
+        QVERIFY(!imagesDiffer(firstReused, firstFresh));
+        QVERIFY(!imagesDiffer(secondReused, secondFresh));
+        QVERIFY(imagesDiffer(firstReused, secondReused));
     }
 
     void outlinedTextItemFitsStrokeBoundsBeforePainting()
