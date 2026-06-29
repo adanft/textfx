@@ -416,8 +416,20 @@ ApplicationWindow {
                             g / width, h / height, 0, 1)
     }
 
+    function boxNeedsPreviewArtifact(box) {
+        return box && (box.blur || box.shadow || box.gradient || box.perspective || box.path)
+    }
+
+    function anyBoxNeedsPreviewArtifact() {
+        for (let i = 0; i < Editor.boxes.length; ++i) {
+            if (boxNeedsPreviewArtifact(Editor.boxes[i]))
+                return true
+        }
+        return false
+    }
+
     function boxHasRenderEffects(box) {
-        return box && (box.outline || box.blur || box.shadow || box.gradient || box.perspective || box.path)
+        return box && (box.outline || boxNeedsPreviewArtifact(box))
     }
 
     function selectedBoxHasRenderEffects() {
@@ -916,7 +928,7 @@ ApplicationWindow {
                         color: window.palette.base
                         clip: true
                         focus: true
-                        property bool effectsPreviewDisplayable: Editor.effectsPreviewActive && effectsPreviewImage.readySource === Editor.previewImageUrl.toString() && effectsPreviewImage.readySource.length > 0
+                        property bool effectsPreviewDisplayable: window.dragMode === 0 && window.anyBoxNeedsPreviewArtifact() && Editor.effectsPreviewActive && effectsPreviewImage.readySource === Editor.previewImageUrl.toString() && effectsPreviewImage.readySource.length > 0
                         Keys.onPressed: event => {
                             if (event.key === Qt.Key_Escape) { window.handleEscape(); event.accepted = true; return }
                             if (Editor.editingText) return

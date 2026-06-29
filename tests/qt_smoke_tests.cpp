@@ -1896,7 +1896,7 @@ private slots:
 
         QVERIFY(source.contains(QStringLiteral("id: effectsPreviewImage")));
         QVERIFY(source.contains(QStringLiteral("source: Editor.previewImageUrl")));
-        QVERIFY(source.contains(QStringLiteral("property bool effectsPreviewDisplayable: Editor.effectsPreviewActive && effectsPreviewImage.readySource === Editor.previewImageUrl.toString() && effectsPreviewImage.readySource.length > 0")));
+        QVERIFY(source.contains(QStringLiteral("property bool effectsPreviewDisplayable: window.dragMode === 0 && window.anyBoxNeedsPreviewArtifact() && Editor.effectsPreviewActive && effectsPreviewImage.readySource === Editor.previewImageUrl.toString() && effectsPreviewImage.readySource.length > 0")));
         QVERIFY(source.contains(QStringLiteral("cache: false")));
         QVERIFY(source.contains(QStringLiteral("property string readySource: \"\"")));
         QVERIFY(source.contains(QStringLiteral("onSourceChanged: readySource = \"\"")));
@@ -1904,6 +1904,10 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("visible: canvas.effectsPreviewDisplayable")));
         QVERIFY(source.contains(QStringLiteral("visible: source.toString().length > 0")));
         QVERIFY(source.contains(QStringLiteral("function boxHasRenderEffects(box)")));
+        QVERIFY(source.contains(QStringLiteral("function boxNeedsPreviewArtifact(box)")));
+        QVERIFY(source.contains(QStringLiteral("function anyBoxNeedsPreviewArtifact()")));
+        QVERIFY(source.contains(QStringLiteral("return box && (box.blur || box.shadow || box.gradient || box.perspective || box.path)")));
+        QVERIFY(source.contains(QStringLiteral("return box && (box.outline || boxNeedsPreviewArtifact(box))")));
         QVERIFY(source.contains(QStringLiteral("visible: boxRef.selected && editorRef.editingText")));
         QVERIFY(source.contains(QStringLiteral("OutlinedTextItem {")));
         QCOMPARE(source.count(QStringLiteral("OutlinedTextItem {")), 1);
