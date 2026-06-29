@@ -312,7 +312,6 @@ void EditorController::newDocument()
     pageTextPositions_.clear();
     document_.clear();
     projectPresets_.clear();
-    previewImageUrl_ = QUrl();
     reloadPresets();
     selectedIndex_ = -1;
     selectedPresetIndex_ = document_.presets().empty() ? -1 : 0;
@@ -949,7 +948,6 @@ void EditorController::endInteraction()
     --interactionDepth_;
     if (interactionDepth_ == 0 && pendingDocumentChanged_) {
         pendingDocumentChanged_ = false;
-        updatePreviewImage();
         emit documentChanged();
         emit stateChanged();
     }
@@ -1027,32 +1025,8 @@ void EditorController::markDocumentChanged()
         emit stateChanged();
         return;
     }
-    updatePreviewImage();
     emit documentChanged();
     emit stateChanged();
-}
-
-void EditorController::updatePreviewImage()
-{
-    if (!store_ || currentPage_.empty() || !documentHasRenderEffects()) {
-        previewImageUrl_ = QUrl();
-        return;
-    }
-
-    const auto previewPath = store_->folder() / ProjectStore::SaveFolder / ("preview-" + currentPage_.stem().string() + "-" + std::to_string(++previewRevision_) + ".png");
-    std::string error;
-    const RenderGraph graph;
-    if (!graph.exportPagePng(document_, currentPage_, previewPath, &error)) {
-        previewImageUrl_ = QUrl();
-        if (!error.empty()) setNotification(QStringLiteral("Preview unavailable: %1").arg(toQString(error)));
-        return;
-    }
-    previewImageUrl_ = QUrl::fromLocalFile(QString::fromStdString(previewPath.string()));
-}
-
-bool EditorController::documentHasRenderEffects() const
-{
-    return false;
 }
 
 void EditorController::setNotification(QString message)
@@ -1086,14 +1060,12 @@ bool EditorController::loadPageAt(int index)
     selectedIndex_ = -1;
     editingText_ = false;
     pendingDocumentChanged_ = false;
-    previewImageUrl_ = QUrl();
     std::string error;
     if (!store_->loadPage(currentPage_, document_, &error)) {
         setNotification(toQString(error));
         return false;
     }
     reloadPresets();
-    updatePreviewImage();
     emit selectionChanged();
     emit pageTextsChanged();
     emit documentChanged();

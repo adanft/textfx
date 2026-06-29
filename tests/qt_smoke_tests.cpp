@@ -607,25 +607,6 @@ private slots:
         QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("exported/page2.png"))), qPrintable(editor.notification()));
     }
 
-    void liveChangesDoNotGeneratePreviewArtifact()
-    {
-        QTemporaryDir dir;
-        QVERIFY(dir.isValid());
-        touch(dir.filePath(QStringLiteral("page1.png")));
-
-        EditorController editor;
-        editor.openProject(dir.path());
-        QVERIFY(editor.currentPageUrl().isLocalFile());
-        QVERIFY(editor.previewImageUrl().isEmpty());
-
-        editor.createTextBox(1, 2, 80, 40);
-        editor.setSelectedAlignment(1);
-        editor.updateSelectedText(QStringLiteral("Live overlay"));
-
-        QVERIFY(editor.previewImageUrl().isEmpty());
-        QVERIFY(!editor.effectsPreviewActive());
-    }
-
     void gradientAndPathUseLiveRendererWithoutPreviewArtifact()
     {
         QTemporaryDir dir;
@@ -639,9 +620,6 @@ private slots:
         editor.setSelectedGradientEnabled(true);
         editor.setSelectedPathEnabled(true);
 
-        QVERIFY(editor.previewImageUrl().isEmpty());
-        QVERIFY(!editor.effectsPreviewActive());
-
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString source = QString::fromUtf8(qml.readAll());
@@ -652,27 +630,6 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("pathEnabled: modelData.path")));
         QVERIFY(source.contains(QStringLiteral("pathMode: modelData.pathMode")));
         QVERIFY(source.contains(QStringLiteral("pathPoints: modelData.pathPoints")));
-    }
-
-    void outlineEffectDoesNotGeneratePreviewArtifact()
-    {
-        QTemporaryDir dir;
-        QVERIFY(dir.isValid());
-        touch(dir.filePath(QStringLiteral("page1.png")), {160, 80});
-
-        EditorController editor;
-        editor.openProject(dir.path());
-        editor.createTextBox(4, 4, 120, 40);
-        editor.setSelectedTextColor(QStringLiteral("#ff0000"));
-        editor.updateSelectedText(QStringLiteral("Outline"));
-        editor.setSelectedOutlineEnabled(true);
-        QVERIFY(editor.previewImageUrl().isEmpty());
-        QVERIFY(!editor.effectsPreviewActive());
-
-        editor.setSelectedOutlineSize(7);
-
-        QVERIFY(editor.previewImageUrl().isEmpty());
-        QVERIFY(!editor.effectsPreviewActive());
     }
 
     void perspectiveUsesLiveClippedRendererWithoutPreviewArtifact()
@@ -686,24 +643,10 @@ private slots:
         editor.createTextBox(4, 4, 120, 40);
         editor.updateSelectedText(QStringLiteral("Perspective"));
         editor.setSelectedPerspectiveEnabled(true);
-        QVERIFY(editor.previewImageUrl().isEmpty());
-        QVERIFY(!editor.effectsPreviewActive());
 
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString source = QString::fromUtf8(qml.readAll());
-
-        const qsizetype previewStart = source.indexOf(QStringLiteral("function boxNeedsPreviewArtifact(box)"));
-        const qsizetype previewEnd = source.indexOf(QStringLiteral("function anyBoxNeedsPreviewArtifact()"), previewStart);
-        QVERIFY(previewStart >= 0);
-        QVERIFY(previewEnd > previewStart);
-        const QString previewSource = source.mid(previewStart, previewEnd - previewStart);
-        QVERIFY(previewSource.contains(QStringLiteral("return false")));
-        QVERIFY(!previewSource.contains(QStringLiteral("box.gradient")));
-        QVERIFY(!previewSource.contains(QStringLiteral("box.path")));
-        QVERIFY(!previewSource.contains(QStringLiteral("box.shadow")));
-        QVERIFY(!previewSource.contains(QStringLiteral("box.blur")));
-        QVERIFY(!previewSource.contains(QStringLiteral("box.perspective")));
 
         const qsizetype delegateStart = source.indexOf(QStringLiteral("delegate: Rectangle {\n                            id: boxDelegate"));
         const qsizetype textPerspectiveStart = source.indexOf(QStringLiteral("id: boxTextPerspective"), delegateStart);
@@ -735,9 +678,6 @@ private slots:
         editor.setSelectedBlurEnabled(true);
         editor.setSelectedBlurSize(6);
 
-        QVERIFY(editor.previewImageUrl().isEmpty());
-        QVERIFY(!editor.effectsPreviewActive());
-
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString source = QString::fromUtf8(qml.readAll());
@@ -759,9 +699,6 @@ private slots:
         editor.updateSelectedText(QStringLiteral("Shadow"));
         editor.setSelectedShadowEnabled(true);
         editor.setSelectedShadowBlurSize(6);
-
-        QVERIFY(editor.previewImageUrl().isEmpty());
-        QVERIFY(!editor.effectsPreviewActive());
 
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
@@ -855,18 +792,15 @@ private slots:
         EditorController editor;
         editor.openProject(dir.path());
         editor.createTextBox(1, 2, 80, 40);
-        const auto before = editor.previewImageUrl();
         QSignalSpy changed(&editor, &EditorController::documentChanged);
 
         editor.beginInteraction();
         editor.moveSelected(5, 7);
 
-        QCOMPARE(editor.previewImageUrl(), before);
         QCOMPARE(changed.count(), 1);
         editor.endInteraction();
 
         QCOMPARE(changed.count(), 2);
-        QCOMPARE(editor.previewImageUrl(), before);
     }
 
     void gradientPathInteractionDoesNotGeneratePreviewArtifact()
@@ -881,20 +815,15 @@ private slots:
         editor.updateSelectedText(QStringLiteral("FX"));
         editor.setSelectedGradientEnabled(true);
         editor.setSelectedPathEnabled(true);
-        const auto before = editor.previewImageUrl();
-        QVERIFY(before.isEmpty());
         QSignalSpy changed(&editor, &EditorController::documentChanged);
 
         editor.beginInteraction();
         editor.moveSelected(5, 7);
 
-        QCOMPARE(editor.previewImageUrl(), before);
         QCOMPARE(changed.count(), 1);
         editor.endInteraction();
 
         QCOMPARE(changed.count(), 2);
-        QVERIFY(!editor.effectsPreviewActive());
-        QCOMPARE(editor.previewImageUrl(), before);
     }
 
     void transformChangesPersistOnSave()
@@ -2118,20 +2047,13 @@ private slots:
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString source = QString::fromUtf8(qml.readAll());
 
-        QVERIFY(source.contains(QStringLiteral("id: effectsPreviewImage")));
-        QVERIFY(source.contains(QStringLiteral("source: Editor.previewImageUrl")));
-        QVERIFY(source.contains(QStringLiteral("property bool effectsPreviewDisplayable: window.dragMode === 0 && window.anyBoxNeedsPreviewArtifact() && Editor.effectsPreviewActive && effectsPreviewImage.readySource === Editor.previewImageUrl.toString() && effectsPreviewImage.readySource.length > 0")));
-        QVERIFY(source.contains(QStringLiteral("cache: false")));
-        QVERIFY(source.contains(QStringLiteral("property string readySource: \"\"")));
-        QVERIFY(source.contains(QStringLiteral("onSourceChanged: readySource = \"\"")));
-        QVERIFY(source.contains(QStringLiteral("onStatusChanged: readySource = status === Image.Ready ? source.toString() : \"\"")));
-        QVERIFY(source.contains(QStringLiteral("visible: canvas.effectsPreviewDisplayable")));
+        QVERIFY(!source.contains(QStringLiteral("id: effectsPreviewImage")));
+        QVERIFY(!source.contains(QStringLiteral("source: Editor.previewImageUrl")));
+        QVERIFY(!source.contains(QStringLiteral("effectsPreviewDisplayable")));
         QVERIFY(source.contains(QStringLiteral("visible: source.toString().length > 0")));
         QVERIFY(source.contains(QStringLiteral("function boxHasRenderEffects(box)")));
-        QVERIFY(source.contains(QStringLiteral("function boxNeedsPreviewArtifact(box)")));
-        QVERIFY(source.contains(QStringLiteral("function anyBoxNeedsPreviewArtifact()")));
-        QVERIFY(source.contains(QStringLiteral("function boxNeedsPreviewArtifact(box)")));
-        QVERIFY(source.contains(QStringLiteral("return false")));
+        QVERIFY(!source.contains(QStringLiteral("function boxNeedsPreviewArtifact(box)")));
+        QVERIFY(!source.contains(QStringLiteral("function anyBoxNeedsPreviewArtifact()")));
         QVERIFY(source.contains(QStringLiteral("return box && (box.outline || box.blur || box.shadow || box.gradient || box.path)")));
         QVERIFY(source.contains(QStringLiteral("visible: boxRef.selected && editorRef.editingText")));
         QVERIFY(source.contains(QStringLiteral("OutlinedTextItem {")));
@@ -2170,7 +2092,7 @@ private slots:
         QVERIFY(editor > renderer);
 
         const QString rendererBlock = source.mid(renderer, editor - renderer);
-        QVERIFY(rendererBlock.contains(QStringLiteral("visible: !canvas.effectsPreviewDisplayable || (boxRef.selected && editorRef.editingText)")));
+        QVERIFY(!rendererBlock.contains(QStringLiteral("effectsPreviewDisplayable")));
         QVERIFY(rendererBlock.contains(QStringLiteral("text: boxRef.selected && editorRef.editingText ? boxTextArea.text : (modelData.uppercase ? String(modelData.text).toUpperCase() : modelData.text)")));
         QVERIFY(rendererBlock.contains(QStringLiteral("renderScale: rootWindow.livePreviewScale()")));
         QVERIFY(rendererBlock.contains(QStringLiteral("outlineSize: modelData.outline && modelData.outlineSize > 0 ? modelData.outlineSize : 0")));

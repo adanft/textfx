@@ -30,8 +30,6 @@ class EditorController final : public QObject {
     Q_PROPERTY(int pageCount READ pageCount NOTIFY stateChanged)
     Q_PROPERTY(QUrl currentPageUrl READ currentPageUrl NOTIFY stateChanged)
     Q_PROPERTY(QUrl rawPageUrl READ rawPageUrl NOTIFY stateChanged)
-    Q_PROPERTY(QUrl previewImageUrl READ previewImageUrl NOTIFY documentChanged)
-    Q_PROPERTY(bool effectsPreviewActive READ effectsPreviewActive NOTIFY documentChanged)
     Q_PROPERTY(bool canGoPrevious READ canGoPrevious NOTIFY stateChanged)
     Q_PROPERTY(bool canGoNext READ canGoNext NOTIFY stateChanged)
     Q_PROPERTY(QVariantList boxes READ boxes NOTIFY documentChanged)
@@ -56,8 +54,6 @@ public:
     int pageCount() const { return static_cast<int>(pagePaths_.size()); }
     QUrl currentPageUrl() const;
     QUrl rawPageUrl() const;
-    QUrl previewImageUrl() const { return previewImageUrl_; }
-    bool effectsPreviewActive() const { return !previewImageUrl_.isEmpty(); }
     bool canGoPrevious() const { return currentPageIndex_ > 0; }
     bool canGoNext() const { return currentPageIndex_ >= 0 && currentPageIndex_ + 1 < pageCount(); }
     QVariantList boxes() const;
@@ -147,8 +143,6 @@ private:
     TextBox* selectedBox();
     const TextBox* selectedBox() const;
     void markDocumentChanged();
-    void updatePreviewImage();
-    bool documentHasRenderEffects() const;
     void setNotification(QString message);
     void refreshPages();
     bool loadPageAt(int index);
@@ -169,8 +163,6 @@ private:
     bool rawVisible_ = false;
     bool editingText_ = false;
     QString notification_;
-    QUrl previewImageUrl_;
-    int previewRevision_ = 0;
     std::unordered_map<std::string, std::vector<std::string>> pageTexts_;
     std::unordered_map<std::string, int> pageTextPositions_;
     int interactionDepth_ = 0;

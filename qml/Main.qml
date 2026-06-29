@@ -417,18 +417,6 @@ ApplicationWindow {
                             g / width, h / height, 0, 1)
     }
 
-    function boxNeedsPreviewArtifact(box) {
-        return false
-    }
-
-    function anyBoxNeedsPreviewArtifact() {
-        for (let i = 0; i < Editor.boxes.length; ++i) {
-            if (boxNeedsPreviewArtifact(Editor.boxes[i]))
-                return true
-        }
-        return false
-    }
-
     function boxHasRenderEffects(box) {
         return box && (box.outline || box.blur || box.shadow || box.gradient || box.path)
     }
@@ -929,7 +917,6 @@ ApplicationWindow {
                         color: window.palette.base
                         clip: true
                         focus: true
-                        property bool effectsPreviewDisplayable: window.dragMode === 0 && window.anyBoxNeedsPreviewArtifact() && Editor.effectsPreviewActive && effectsPreviewImage.readySource === Editor.previewImageUrl.toString() && effectsPreviewImage.readySource.length > 0
                         Keys.onPressed: event => {
                             if (event.key === Qt.Key_Escape) { window.handleEscape(); event.accepted = true; return }
                             if (Editor.editingText) return
@@ -947,22 +934,6 @@ ApplicationWindow {
                         asynchronous: true
                         visible: source.toString().length > 0
                         onStatusChanged: if (status === Image.Ready) window.pageBaseScale = window.fitPageScale()
-                    }
-
-                    Image {
-                        id: effectsPreviewImage
-                        x: pageImage.x
-                        y: pageImage.y
-                        width: pageImage.width
-                        height: pageImage.height
-                        source: Editor.previewImageUrl
-                        fillMode: Image.Stretch
-                        asynchronous: true
-                        cache: false
-                        property string readySource: ""
-                        onSourceChanged: readySource = ""
-                        onStatusChanged: readySource = status === Image.Ready ? source.toString() : ""
-                        visible: canvas.effectsPreviewDisplayable
                     }
 
                     Image {
@@ -1127,7 +1098,6 @@ ApplicationWindow {
                                     height: boxRef.visualDocH * rootWindow.livePreviewScale()
                                     transformOrigin: Item.TopLeft
                                     scale: rootWindow.viewDocScale() / rootWindow.livePreviewScale()
-                                    visible: !canvas.effectsPreviewDisplayable || (boxRef.selected && editorRef.editingText)
                                     text: boxRef.selected && editorRef.editingText ? boxTextArea.text : (modelData.uppercase ? String(modelData.text).toUpperCase() : modelData.text)
                                     color: rootWindow.qmlColor(modelData.color)
                                     fontFamily: modelData.fontFamily
