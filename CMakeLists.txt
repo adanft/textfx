@@ -76,6 +76,7 @@ qt_add_qml_module(textfx
     QML_FILES
         qml/Main.qml
         qml/ColorButton.qml
+        qml/CentralCanvasShell.qml
         qml/EditorChrome.qml
         qml/LeftInspectorPanel.qml
         qml/RightInspectorPanel.qml

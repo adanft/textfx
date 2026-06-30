@@ -12,6 +12,7 @@ ApplicationWindow {
     title: qsTr("TextFX")
 
     readonly property var editor: Editor
+    property alias canvas: canvasShell.canvasItem
     property real zoom: 1.0
     property real pageBaseScale: 1.0
     property real panX: 0
@@ -659,27 +660,52 @@ ApplicationWindow {
                     onTextInputFocusChanged: active => window.noteSidePanelTextInputFocus(active)
                 }
 
-                Item {
-                    id: canvasSlot
-                    z: 0
-                    SplitView.minimumWidth: 240
-                    SplitView.fillWidth: true
-                    SplitView.fillHeight: true
-
-                    Rectangle {
-                        id: canvas
-                        z: 0
-                        x: -canvasSlot.x
-                        width: mainSplit.width
-                        height: canvasSlot.height
-                        color: window.palette.base
-                        clip: true
-                        focus: true
-                        Keys.onPressed: event => {
-                            if (event.key === Qt.Key_Escape) { window.handleEscape(); event.accepted = true; return }
-                            if (Editor.editingText) return
-                            if (event.key === Qt.Key_Delete) { Editor.deleteSelected(); event.accepted = true }
+                CentralCanvasShell {
+                    id: canvasShell
+                    objectName: "centralCanvasShell"
+                    hostPalette: window.palette
+                    editingText: Editor.editingText
+                    onEscapePressed: window.handleEscape()
+                    onDeletePressed: Editor.deleteSelected()
+                    onCanvasPressed: (x, y, button, modifiers) => {
+                        if (button === Qt.LeftButton)
+                            Editor.endTextEdit()
+                        window.pressX = x
+                        window.pressY = y
+                        if (button === Qt.LeftButton && (modifiers & Qt.ControlModifier)) {
+                            window.dragMode = editorInteraction.dragModeCreate
+                            window.createStartX = x
+                            window.createStartY = y
+                            window.createCurrentX = x
+                            window.createCurrentY = y
+                        } else {
+                            window.dragMode = button === Qt.LeftButton || button === Qt.MiddleButton || button === Qt.RightButton ? editorInteraction.dragModePan : editorInteraction.dragModeIdle
                         }
+                    }
+                    onCanvasPositionChanged: (x, y, pressed) => {
+                        window.pointerX = x
+                        window.pointerY = y
+                        if (!pressed) return
+                        const dx = x - window.pressX
+                        const dy = y - window.pressY
+                        if (window.dragMode === editorInteraction.dragModePan) { window.panX += dx; window.panY += dy }
+                        else if (window.dragMode === editorInteraction.dragModeCreate) { window.createCurrentX = x; window.createCurrentY = y }
+                        window.pressX = x
+                        window.pressY = y
+                    }
+                    onCanvasReleased: (x, y, button, modifiers) => {
+                        if (window.dragMode === editorInteraction.dragModeCreate) {
+                            const left = Math.min(window.createStartX, window.createCurrentX)
+                            const top = Math.min(window.createStartY, window.createCurrentY)
+                            const right = Math.max(window.createStartX, window.createCurrentX)
+                            const bottom = Math.max(window.createStartY, window.createCurrentY)
+                            const w = (right - left) / window.viewDocScale()
+                            const h = (bottom - top) / window.viewDocScale()
+                            if (w >= editorLimits.minimumBoxSize && h >= editorLimits.minimumBoxSize) Editor.createTextBox(window.viewToDocumentX(left), window.viewToDocumentY(top), w, h)
+                        }
+                        window.dragMode = editorInteraction.dragModeIdle
+                    }
+                    onCanvasWheel: (x, y, angleDeltaY) => window.zoomAt(x, y, angleDeltaY > 0 ? 1.1 : 1 / 1.1)
 
                     Image {
                         id: pageImage
@@ -705,55 +731,6 @@ ApplicationWindow {
                         asynchronous: true
                         opacity: 0.45
                         visible: Editor.rawVisible && source.toString().length > 0
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-                        onPressed: mouse => {
-                            canvas.forceActiveFocus()
-                            if (mouse.button === Qt.LeftButton)
-                                Editor.endTextEdit()
-                            window.pressX = mouse.x
-                            window.pressY = mouse.y
-                            if (mouse.button === Qt.LeftButton && (mouse.modifiers & Qt.ControlModifier)) {
-                                window.dragMode = editorInteraction.dragModeCreate
-                                window.createStartX = mouse.x
-                                window.createStartY = mouse.y
-                                window.createCurrentX = mouse.x
-                                window.createCurrentY = mouse.y
-                            } else {
-                                window.dragMode = mouse.button === Qt.LeftButton || mouse.button === Qt.MiddleButton || mouse.button === Qt.RightButton ? editorInteraction.dragModePan : editorInteraction.dragModeIdle
-                            }
-                        }
-                        onPositionChanged: mouse => {
-                            window.pointerX = mouse.x
-                            window.pointerY = mouse.y
-                            if (!pressed) return
-                            const dx = mouse.x - window.pressX
-                            const dy = mouse.y - window.pressY
-                            if (window.dragMode === editorInteraction.dragModePan) { window.panX += dx; window.panY += dy }
-                            else if (window.dragMode === editorInteraction.dragModeCreate) { window.createCurrentX = mouse.x; window.createCurrentY = mouse.y }
-                            window.pressX = mouse.x
-                            window.pressY = mouse.y
-                        }
-                        onReleased: mouse => {
-                            if (window.dragMode === editorInteraction.dragModeCreate) {
-                                const left = Math.min(window.createStartX, window.createCurrentX)
-                                const top = Math.min(window.createStartY, window.createCurrentY)
-                                const right = Math.max(window.createStartX, window.createCurrentX)
-                                const bottom = Math.max(window.createStartY, window.createCurrentY)
-                                const w = (right - left) / window.viewDocScale()
-                                const h = (bottom - top) / window.viewDocScale()
-                                if (w >= editorLimits.minimumBoxSize && h >= editorLimits.minimumBoxSize) Editor.createTextBox(window.viewToDocumentX(left), window.viewToDocumentY(top), w, h)
-                            }
-                            window.dragMode = editorInteraction.dragModeIdle
-                        }
-                        onWheel: wheel => {
-                            window.zoomAt(wheel.x, wheel.y, wheel.angleDelta.y > 0 ? 1.1 : 1 / 1.1)
-                            wheel.accepted = true
-                        }
                     }
 
                     Rectangle {
@@ -788,8 +765,6 @@ ApplicationWindow {
                             canvasItem: canvas
                             interaction: editorInteraction
                         }
-                    }
-
                     }
                 }
 

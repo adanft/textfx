@@ -31,6 +31,7 @@
 #include <QTextDocument>
 #include <QTest>
 #include <QUrl>
+#include <QWheelEvent>
 
 #include <cmath>
 #include <limits>
@@ -206,6 +207,80 @@ private slots:
 
         editor.setSelectedLineSpacing(9);
         QTRY_COMPARE(lineSpacing(), 18.0);
+    }
+
+    void qmlCentralCanvasShellForwardsViewportInteractions()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        QObject* shellObject = nullptr;
+        QTRY_VERIFY(shellObject = findVisualChildByName(window->contentItem(), QStringLiteral("centralCanvasShell")));
+        auto* shell = qobject_cast<QQuickItem*>(shellObject);
+        QVERIFY(shell);
+        QObject* canvasObject = nullptr;
+        QTRY_VERIFY(canvasObject = findVisualChildByName(window->contentItem(), QStringLiteral("centralCanvas")));
+        auto* canvas = qobject_cast<QQuickItem*>(canvasObject);
+        QVERIFY(canvas);
+        QTRY_VERIFY(canvas->width() > shell->width());
+        QCOMPARE(canvas->height(), shell->height());
+
+        const QPoint panStart = shell->mapToScene(QPointF(80, 80)).toPoint();
+        const QPoint panEnd = panStart + QPoint(32, 18);
+        QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, panStart);
+        QTest::mouseMove(window, panEnd);
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, panEnd);
+        QTRY_VERIFY(window->property("panX").toReal() > 20.0);
+        QTRY_VERIFY(window->property("panY").toReal() > 10.0);
+
+        const QPoint createStart = shell->mapToScene(QPointF(160, 140)).toPoint();
+        const QPoint createEnd = createStart + QPoint(80, 48);
+        QTest::mousePress(window, Qt::LeftButton, Qt::ControlModifier, createStart);
+        QTest::mouseMove(window, createEnd);
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::ControlModifier, createEnd);
+
+        QTRY_COMPARE(editor.boxes().size(), 1);
+        const auto box = editor.boxes().at(0).toMap();
+        QVERIFY(box.value(QStringLiteral("w")).toDouble() >= 79.0);
+        QVERIFY(box.value(QStringLiteral("h")).toDouble() >= 47.0);
+
+        canvas->forceActiveFocus();
+        QTRY_VERIFY(canvas->hasActiveFocus());
+        QTest::keyClick(window, Qt::Key_Escape);
+        QTRY_COMPARE(editor.selectedIndex(), -1);
+
+        editor.selectBox(0);
+        QTRY_COMPARE(editor.selectedIndex(), 0);
+        canvas->forceActiveFocus();
+        QTRY_VERIFY(canvas->hasActiveFocus());
+        QTest::keyClick(window, Qt::Key_Delete);
+        QTRY_COMPARE(editor.boxes().size(), 0);
+
+        const qreal zoomBeforeWheel = window->property("zoom").toReal();
+        const QPointF wheelPosition = shell->mapToScene(QPointF(220, 180));
+        QWheelEvent wheelEvent(
+            wheelPosition,
+            window->mapToGlobal(wheelPosition.toPoint()),
+            QPoint(),
+            QPoint(0, 120),
+            Qt::NoButton,
+            Qt::NoModifier,
+            Qt::NoScrollPhase,
+            false);
+        QCoreApplication::sendEvent(window, &wheelEvent);
+        QVERIFY(wheelEvent.isAccepted());
+        QTRY_VERIFY(window->property("zoom").toReal() > zoomBeforeWheel);
     }
 
     void copyPastePreservesCopiedBox()
@@ -1859,7 +1934,6 @@ private slots:
         QVERIFY(handler.contains(QStringLiteral("Editor.selectBox(-1)")));
         QVERIFY(source.contains(QStringLiteral("Shortcut { sequence: \"Esc\"; context: Qt.ApplicationShortcut; onActivated: editorChrome.escapeRequested() }")));
         QVERIFY(source.contains(QStringLiteral("onEscapeRequested: window.handleEscape()")));
-        QVERIFY(source.contains(QStringLiteral("if (event.key === Qt.Key_Escape) { window.handleEscape(); event.accepted = true; return }")));
         QVERIFY(source.contains(QStringLiteral("if (event.key === Qt.Key_Escape) { rootWindow.handleEscape(); event.accepted = true }")));
         QVERIFY(!handler.contains(QStringLiteral("Editor.deleteSelected")));
     }
@@ -1899,6 +1973,7 @@ private slots:
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
+        const QString canvasShellSource = readQmlFile(QStringLiteral("CentralCanvasShell.qml"));
         const QString leftPanelSource = readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
         const QString rightPanelSource = readQmlFile(QStringLiteral("RightInspectorPanel.qml"));
         const QString source = qmlSource();
@@ -1911,7 +1986,7 @@ private slots:
         }
 
         QVERIFY(source.contains(QStringLiteral("color: window.palette.window")));
-        QVERIFY(source.contains(QStringLiteral("color: window.palette.base")));
+        QVERIFY(source.contains(QStringLiteral("color: canvasShell.hostPalette.base")));
         QVERIFY(source.contains(QStringLiteral("window.palette.highlight")));
         QVERIFY(source.contains(QStringLiteral("hostPalette: window.palette")));
         QVERIFY(source.contains(QStringLiteral("editorChrome.hostPalette.highlight")));
@@ -1924,27 +1999,29 @@ private slots:
         QVERIFY(mainSource.contains(QStringLiteral("LeftInspectorPanel {")));
         QVERIFY(mainSource.contains(QStringLiteral("objectName: \"leftInspectorPanel\"")));
         QVERIFY(source.contains(QStringLiteral("id: sidePanel")));
-        QVERIFY(source.contains(QStringLiteral("id: canvasSlot")));
+        QVERIFY(mainSource.contains(QStringLiteral("CentralCanvasShell {")));
+        QVERIFY(mainSource.contains(QStringLiteral("objectName: \"centralCanvasShell\"")));
         QVERIFY(source.contains(QStringLiteral("id: canvas")));
+        QVERIFY(canvasShellSource.contains(QStringLiteral("objectName: \"centralCanvas\"")));
         QVERIFY(source.contains(QStringLiteral("id: rightPanel")));
         QVERIFY(mainSource.contains(QStringLiteral("RightInspectorPanel {")));
         QVERIFY(mainSource.contains(QStringLiteral("objectName: \"rightInspectorPanel\"")));
-        QVERIFY(source.contains(QStringLiteral("x: -canvasSlot.x")));
-        QVERIFY(source.contains(QStringLiteral("width: mainSplit.width")));
+        QVERIFY(canvasShellSource.contains(QStringLiteral("x: -canvasShell.x")));
+        QVERIFY(canvasShellSource.contains(QStringLiteral("width: canvasShell.SplitView.view ? canvasShell.SplitView.view.width : canvasShell.width")));
 
-        const qsizetype sidePanelStart = source.indexOf(QStringLiteral("id: sidePanel"));
-        const qsizetype canvasStart = source.indexOf(QStringLiteral("id: canvas\n"), sidePanelStart);
+        const qsizetype sidePanelStart = mainSource.indexOf(QStringLiteral("id: sidePanel"));
+        const qsizetype canvasShellStart = mainSource.indexOf(QStringLiteral("id: canvasShell"), sidePanelStart);
+        const qsizetype canvasStart = canvasShellSource.indexOf(QStringLiteral("id: canvas\n"));
         QVERIFY(sidePanelStart >= 0);
-        QVERIFY(canvasStart > sidePanelStart);
-        const qsizetype canvasSlotStart = source.indexOf(QStringLiteral("id: canvasSlot"), sidePanelStart);
-        const qsizetype rightPanelStart = source.indexOf(QStringLiteral("id: rightPanel"), canvasStart);
-        QVERIFY(canvasSlotStart > sidePanelStart);
-        QVERIFY(canvasStart > canvasSlotStart);
-        QVERIFY(rightPanelStart > canvasStart);
+        QVERIFY(canvasShellStart > sidePanelStart);
+        QVERIFY(canvasStart >= 0);
+        const qsizetype rightPanelStart = mainSource.indexOf(QStringLiteral("id: rightPanel"), canvasShellStart);
+        QVERIFY(rightPanelStart > canvasShellStart);
         QVERIFY(leftPanelSource.contains(QStringLiteral("z: 1")));
-        QVERIFY(source.mid(canvasSlotStart, canvasStart - canvasSlotStart).contains(QStringLiteral("z: 0")));
-        QVERIFY(source.mid(canvasStart, source.indexOf(QStringLiteral("x: -canvasSlot.x"), canvasStart) - canvasStart).contains(QStringLiteral("z: 0")));
-        QVERIFY(source.mid(rightPanelStart, source.indexOf(QStringLiteral("SplitView.minimumWidth: 180"), rightPanelStart) - rightPanelStart).contains(QStringLiteral("z: 1")));
+        QVERIFY(mainSource.mid(canvasShellStart, rightPanelStart - canvasShellStart).contains(QStringLiteral("id: canvasShell")));
+        QVERIFY(canvasShellSource.mid(0, canvasStart).contains(QStringLiteral("z: 0")));
+        QVERIFY(canvasShellSource.mid(canvasStart, canvasShellSource.indexOf(QStringLiteral("x: -canvasShell.x"), canvasStart) - canvasStart).contains(QStringLiteral("z: 0")));
+        QVERIFY(rightPanelSource.contains(QStringLiteral("z: 1")));
         const QString sidePanelSource = leftPanelSource;
         QVERIFY(leftPanelSource.contains(QStringLiteral("Pane {")));
         QVERIFY(sidePanelSource.contains(QStringLiteral("GroupBox")));

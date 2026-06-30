@@ -66,6 +66,7 @@ QString qmlSource()
 {
     return readQmlFile(QStringLiteral("Main.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("ColorButton.qml")) + QLatin1Char('\n')
+        + readQmlFile(QStringLiteral("CentralCanvasShell.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("EditorChrome.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("LeftInspectorPanel.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("RightInspectorPanel.qml")) + QLatin1Char('\n')
