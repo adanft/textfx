@@ -36,7 +36,6 @@
       "path_enabled": true,
       "path_mode": 0,
       "path_points": [[0, 0.5], [0.5, 0.2], [1, 0.5]],
-      "path_inactive_points": [1],
       "perspective_enabled": true,
       "perspective_offsets": {
         "nw": [0, 0],

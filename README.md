@@ -1,6 +1,6 @@
 # TextFX
 
-TextFX is the C++/Qt successor MVP for TypeX. The app opens image folders, shows the active page image, navigates pages, autosaves TypeX-compatible `.typex` data, and uses the same Qt-rendered PNG path for preview and export.
+TextFX is the C++/Qt successor MVP for TypeX. The app opens image folders, shows the active page image, navigates pages, autosaves `.typex` project data, and uses the same Qt-rendered PNG path for preview and export.
 
 ## Dependencies
 
@@ -55,6 +55,6 @@ Expected local limits:
 
 ## MVP Parity Notes
 
-Implemented seams cover real folder opening, project/page discovery, page image display, previous/next/direct page navigation with dirty JSON autosave, Save/Save All for the active project document, TypeX-compatible JSON, document commands, copy/paste, canvas actions, QML shell wiring, text layout fallback, deterministic preview/export render comparison, and a shared preview/export PNG path for the current page image plus text boxes with fill/outline/shadow/shadow blur/blur/gradient handling.
+Implemented seams cover real folder opening, project/page discovery, page image display, previous/next/direct page navigation with dirty JSON autosave, Save/Save All for the active project document, TextFX JSON, document commands, copy/paste, canvas actions, QML shell wiring, text layout fallback, deterministic preview/export render comparison, and a shared preview/export PNG path for the current page image plus text boxes with fill/outline/shadow/shadow blur/blur/gradient handling.
 
 Not complete yet: full text shaping/bidi behavior, production perspective warp, exact TypeX smooth path geometry, and target-platform installer policy. Perspective is currently an affine approximation and path text follows the configured handles as a polyline approximation; both are reported as warnings.

@@ -71,20 +71,6 @@ std::vector<Point> pathPointsFromJson(const QJsonValue& value)
     return result;
 }
 
-QJsonArray inactivePointsToJson(const std::vector<int>& points)
-{
-    QJsonArray result;
-    for (const auto point : points) result.append(point);
-    return result;
-}
-
-std::vector<int> inactivePointsFromJson(const QJsonValue& value)
-{
-    std::vector<int> result;
-    for (const auto& item : value.toArray()) result.push_back(item.toInt());
-    return result;
-}
-
 TextStyle styleFromJson(const QJsonObject& object)
 {
     TextStyle style;
@@ -143,7 +129,6 @@ TextBox boxFromJson(const QJsonObject& object)
     effects.pathMode = std::clamp(object.value("path_mode").toInt(effects.pathMode), 0, 1);
     effects.pathPoints = pathPointsFromJson(object.value("path_points"));
     while (effects.pathPoints.size() > 0 && effects.pathPoints.size() < 3) effects.pathPoints.push_back({effects.pathPoints.size() == 1 ? 0.5 : 1.0, 0.5});
-    effects.pathInactivePoints = inactivePointsFromJson(object.value("path_inactive_points"));
     effects.perspectiveEnabled = object.value("perspective_enabled").toBool(effects.perspectiveEnabled);
     const auto perspective = object.value("perspective_offsets").toObject();
     effects.perspectiveNw = pointFromJson(perspective.value("nw"));
@@ -179,7 +164,6 @@ QJsonObject boxToJson(const TextBox& box)
     object.insert("path_enabled", box.effects.pathEnabled);
     object.insert("path_mode", std::clamp(box.effects.pathMode, 0, 1));
     object.insert("path_points", pathPointsToJson(box.effects.pathPoints));
-    object.insert("path_inactive_points", inactivePointsToJson(box.effects.pathInactivePoints));
     object.insert("perspective_enabled", box.effects.perspectiveEnabled);
     object.insert("perspective_offsets", perspectiveToJson(box.effects));
     return object;

@@ -39,11 +39,6 @@ int main()
         std::cerr << "Page fixture did not preserve expected text boxes\n";
         return 1;
     }
-    if (document.textBoxes().front().effects.pathInactivePoints != std::vector<int>{1}) {
-        std::cerr << "Page fixture did not preserve TypeX path inactive points\n";
-        return 1;
-    }
-
     std::vector<TextPreset> presets;
     if (!JsonSerializer::loadPresets(presetFixture, presets, &error) || presets.empty()) {
         std::cerr << "Preset fixture failed to load: " << error << '\n';
@@ -66,8 +61,8 @@ int main()
         std::cerr << "Unsupported fields leaked into saved page JSON\n";
         return 1;
     }
-    if (saved.find("path_inactive_points") == std::string::npos) {
-        std::cerr << "TypeX path inactive points were not preserved in saved page JSON\n";
+    if (saved.find("path_inactive_points") != std::string::npos) {
+        std::cerr << "Obsolete TypeX path inactive points leaked into saved page JSON\n";
         return 1;
     }
 
