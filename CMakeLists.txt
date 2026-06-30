@@ -78,6 +78,7 @@ qt_add_qml_module(textfx
         qml/ColorButton.qml
         qml/EditorChrome.qml
         qml/LeftInspectorPanel.qml
+        qml/RightInspectorPanel.qml
         qml/ShortcutMenuItem.qml
         qml/TextBoxDelegate.qml
         qml/TextStyleButton.qml

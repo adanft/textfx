@@ -1900,6 +1900,7 @@ private slots:
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
         const QString leftPanelSource = readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
+        const QString rightPanelSource = readQmlFile(QStringLiteral("RightInspectorPanel.qml"));
         const QString source = qmlSource();
 
         for (const QString& removedChromeColor : {
@@ -1926,6 +1927,8 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("id: canvasSlot")));
         QVERIFY(source.contains(QStringLiteral("id: canvas")));
         QVERIFY(source.contains(QStringLiteral("id: rightPanel")));
+        QVERIFY(mainSource.contains(QStringLiteral("RightInspectorPanel {")));
+        QVERIFY(mainSource.contains(QStringLiteral("objectName: \"rightInspectorPanel\"")));
         QVERIFY(source.contains(QStringLiteral("x: -canvasSlot.x")));
         QVERIFY(source.contains(QStringLiteral("width: mainSplit.width")));
 
@@ -1962,6 +1965,11 @@ private slots:
         QVERIFY(sidePanelSource.contains(QStringLiteral("SpinBox { objectName: \"leftInspectorFontSizeSpinBox\"; Layout.fillWidth: true; Layout.minimumWidth: 0; from: leftInspectorPanel.editorLimits.minimumFontSize; to: leftInspectorPanel.editorLimits.maximumFontSize")));
         QVERIFY(sidePanelSource.contains(QStringLiteral("SpinBox { objectName: \"leftInspectorLineSpacingSpinBox\"; Layout.fillWidth: true; Layout.minimumWidth: 0; from: leftInspectorPanel.editorLimits.minimumTextSpacing; to: leftInspectorPanel.editorLimits.maximumTextSpacing")));
         QVERIFY(sidePanelSource.count(QStringLiteral("Flow {\n                            Layout.fillWidth: true\n                            Layout.minimumWidth: 0")) >= 3);
+        QVERIFY(rightPanelSource.contains(QStringLiteral("Pane {")));
+        QVERIFY(rightPanelSource.contains(QStringLiteral("z: 1")));
+        QVERIFY(rightPanelSource.contains(QStringLiteral("SplitView.minimumWidth: 180")));
+        QVERIFY(rightPanelSource.contains(QStringLiteral("id: rightPanelScroll")));
+        QVERIFY(rightPanelSource.contains(QStringLiteral("width: rightPanelScroll.availableWidth")));
         const qsizetype propertiesStart = sidePanelSource.indexOf(QStringLiteral("Label { text: qsTr(\"Text Properties\"); font.bold: true; enabled: textPropertiesSection.sectionReady }"));
         const qsizetype presetsStart = sidePanelSource.indexOf(QStringLiteral("Label { text: qsTr(\"Text Presets\"); font.bold: true; enabled: textPresetsSection.sectionReady }"));
         const qsizetype pageTextsStart = sidePanelSource.indexOf(QStringLiteral("Label { text: qsTr(\"Page Texts\"); font.bold: true; enabled: pageTextsSection.sectionReady }"));
@@ -2007,12 +2015,17 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
         const QString source = qmlSource();
+        const QString rightPanelSource = readQmlFile(QStringLiteral("RightInspectorPanel.qml"));
         const qsizetype rightPanelStart = source.indexOf(QStringLiteral("id: rightPanel"));
-        const qsizetype popupStart = source.indexOf(QStringLiteral("Popup {"), rightPanelStart);
         QVERIFY(rightPanelStart >= 0);
-        QVERIFY(popupStart > rightPanelStart);
-        const QString rightPanelSource = source.mid(rightPanelStart, popupStart - rightPanelStart);
+        QVERIFY(mainSource.contains(QStringLiteral("RightInspectorPanel {")));
+        QVERIFY(mainSource.contains(QStringLiteral("selectedBoxProvider: () => window.selectedBox()")));
+        QVERIFY(mainSource.contains(QStringLiteral("qmlColorProvider: hex => window.qmlColor(hex)")));
+        QVERIFY(mainSource.contains(QStringLiteral("onColorDialogRequested: (hex, setter) => window.openColorDialog(hex, setter)")));
+        QVERIFY(!mainSource.contains(QStringLiteral("Label { text: qsTr(\"Navigation\")")));
+        QVERIFY(!mainSource.contains(QStringLiteral("Label { text: qsTr(\"Text Effects\")")));
 
         QVERIFY(rightPanelSource.contains(QStringLiteral("id: rightPanelScroll")));
         QVERIFY(rightPanelSource.contains(QStringLiteral("contentWidth: availableWidth")));
@@ -2044,9 +2057,9 @@ private slots:
         QVERIFY(!boxEffectsSource.contains(QStringLiteral("parent.width")));
         QVERIFY(boxEffectsSource.contains(QStringLiteral("TabButton { text: qsTr(\"Rotation\") }")));
         QVERIFY(boxEffectsSource.contains(QStringLiteral("TabButton { text: qsTr(\"Perspective\") }")));
-        QVERIFY(boxEffectsSource.contains(QStringLiteral("Editor.setSelectedRotation(value)")));
-        QVERIFY(boxEffectsSource.contains(QStringLiteral("Editor.setSelectedPerspectiveEnabled(checked)")));
-        QVERIFY(boxEffectsSource.contains(QStringLiteral("Editor.resetSelectedPerspective()")));
+        QVERIFY(boxEffectsSource.contains(QStringLiteral("rightInspectorPanel.editor.setSelectedRotation(value)")));
+        QVERIFY(boxEffectsSource.contains(QStringLiteral("rightInspectorPanel.editor.setSelectedPerspectiveEnabled(checked)")));
+        QVERIFY(boxEffectsSource.contains(QStringLiteral("rightInspectorPanel.editor.resetSelectedPerspective()")));
 
         const qsizetype layersStart = rightPanelSource.indexOf(QStringLiteral("id: layersSection"), textStart);
         QVERIFY(layersStart > textStart);
@@ -2059,11 +2072,11 @@ private slots:
         for (const QString& feature : {QStringLiteral("Outline"), QStringLiteral("Blur"), QStringLiteral("Shadow"), QStringLiteral("Gradient"), QStringLiteral("Path")}) {
             QVERIFY2(textEffectsSource.contains(QStringLiteral("TabButton { text: qsTr(\"") + feature + QStringLiteral("\") }")), qPrintable(feature));
         }
-        QVERIFY(textEffectsSource.contains(QStringLiteral("Editor.setSelectedOutlineEnabled(checked)")));
-        QVERIFY(textEffectsSource.contains(QStringLiteral("Editor.setSelectedBlurEnabled(checked)")));
-        QVERIFY(textEffectsSource.contains(QStringLiteral("Editor.setSelectedShadowEnabled(checked)")));
-        QVERIFY(textEffectsSource.contains(QStringLiteral("Editor.setSelectedGradientEnabled(checked)")));
-        QVERIFY(textEffectsSource.contains(QStringLiteral("Editor.setSelectedPathEnabled(checked)")));
+        QVERIFY(textEffectsSource.contains(QStringLiteral("rightInspectorPanel.editor.setSelectedOutlineEnabled(checked)")));
+        QVERIFY(textEffectsSource.contains(QStringLiteral("rightInspectorPanel.editor.setSelectedBlurEnabled(checked)")));
+        QVERIFY(textEffectsSource.contains(QStringLiteral("rightInspectorPanel.editor.setSelectedShadowEnabled(checked)")));
+        QVERIFY(textEffectsSource.contains(QStringLiteral("rightInspectorPanel.editor.setSelectedGradientEnabled(checked)")));
+        QVERIFY(textEffectsSource.contains(QStringLiteral("rightInspectorPanel.editor.setSelectedPathEnabled(checked)")));
     }
 
     void qmlMenusOwnPrimaryControlsAndToolbarIsRemoved()
@@ -2324,17 +2337,243 @@ private slots:
         QTRY_COMPARE(chrome->property("colorDialogSetter").toString(), QStringLiteral("text"));
     }
 
+    void qmlMainWiresRightInspectorPanelApi()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(10, 20, 100, 50);
+        editor.setSelectedOutlineColor(QStringLiteral("#112233"));
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+
+        auto* rightInspector = window->findChild<QObject*>(QStringLiteral("rightInspectorPanel"));
+        QVERIFY(rightInspector);
+        QCOMPARE(rightInspector->property("editor").value<QObject*>(), &editor);
+        QVERIFY(rightInspector->property("editorLimits").value<QObject*>());
+
+        QVariant selected;
+        QVERIFY(QMetaObject::invokeMethod(rightInspector, "selectedBox", Q_RETURN_ARG(QVariant, selected)));
+        QCOMPARE(selected.toMap().value(QStringLiteral("outlineColor")).toString(), QStringLiteral("112233ff"));
+    }
+
+    void qmlRightInspectorNavigationAndEffectsRouteThroughEditor()
+    {
+        registerQmlTypes();
+
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        touch(dir.filePath(QStringLiteral("page1.png")));
+        touch(dir.filePath(QStringLiteral("page2.png")));
+
+        EditorController editor;
+        editor.openProject(dir.path());
+        editor.createTextBox(10, 20, 100, 50);
+        editor.setSelectedOutlineEnabled(false);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        QObject* object = nullptr;
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("rightInspectorNextPageButton")));
+        auto* nextButton = qobject_cast<QQuickItem*>(object);
+        QVERIFY(nextButton);
+        QTRY_VERIFY(nextButton->isVisible());
+        QVERIFY(nextButton->isEnabled());
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, nextButton->mapToScene(QPointF(nextButton->width() / 2, nextButton->height() / 2)).toPoint());
+        QTRY_COMPARE(editor.currentPageIndex(), 1);
+
+        editor.previousPage();
+        QTRY_COMPARE(editor.currentPageIndex(), 0);
+        editor.selectBox(0);
+        QTRY_COMPARE(editor.selectedIndex(), 0);
+
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("rightInspectorRawVisibleCheckBox")));
+        auto* rawCheckBox = qobject_cast<QQuickItem*>(object);
+        QVERIFY(rawCheckBox);
+        QTRY_VERIFY(rawCheckBox->isVisible());
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, rawCheckBox->mapToScene(QPointF(rawCheckBox->width() / 2, rawCheckBox->height() / 2)).toPoint());
+        QTRY_VERIFY(editor.rawVisible());
+
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("rightInspectorOutlineEnabledCheckBox")));
+        auto* outlineCheckBox = qobject_cast<QQuickItem*>(object);
+        QVERIFY(outlineCheckBox);
+        QTRY_VERIFY(outlineCheckBox->isVisible());
+        QVERIFY(outlineCheckBox->isEnabled());
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, outlineCheckBox->mapToScene(QPointF(outlineCheckBox->width() / 2, outlineCheckBox->height() / 2)).toPoint());
+        QTRY_VERIFY(editor.boxes().at(0).toMap().value(QStringLiteral("outline")).toBool());
+    }
+
+    void qmlRightInspectorColorButtonRoutesThroughEditorChrome()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(10, 20, 100, 50);
+        editor.setSelectedOutlineColor(QStringLiteral("#112233"));
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        auto* chrome = window->findChild<QObject*>(QStringLiteral("editorChrome"));
+        QVERIFY(chrome);
+        QCOMPARE(chrome->property("colorDialogSetter").toString(), QString());
+
+        QObject* object = nullptr;
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("rightInspectorOutlineColorButton")));
+        auto* button = qobject_cast<QQuickItem*>(object);
+        QVERIFY(button);
+        QTRY_VERIFY(button->isVisible());
+        QVERIFY(button->isEnabled());
+
+        const QPoint center = button->mapToScene(QPointF(button->width() / 2, button->height() / 2)).toPoint();
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, center);
+
+        QTRY_COMPARE(chrome->property("colorDialogSetter").toString(), QStringLiteral("outline"));
+    }
+
+    void qmlRightInspectorPathAndPerspectiveControlsRouteThroughEditor()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(10, 20, 100, 50);
+        editor.setPerspectiveHandle(QStringLiteral("nw"), 12.0, 8.0);
+        editor.setSelectedPathEnabled(false);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        window->resize(1400, 1000);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        const auto click = [&](const QString& objectName) {
+            QObject* object = nullptr;
+            QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), objectName));
+            auto* item = qobject_cast<QQuickItem*>(object);
+            QVERIFY(item);
+            QTRY_VERIFY(item->isVisible());
+            QVERIFY(item->isEnabled());
+            QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, item->mapToScene(QPointF(item->width() / 2, item->height() / 2)).toPoint());
+        };
+
+        QObject* tabsObject = nullptr;
+        QTRY_VERIFY(tabsObject = findVisualChildByName(window->contentItem(), QStringLiteral("rightInspectorTextEffectsTabs")));
+        QVERIFY(tabsObject->setProperty("currentIndex", 4));
+        QCoreApplication::processEvents();
+
+        click(QStringLiteral("rightInspectorPathEnabledCheckBox"));
+        QTRY_VERIFY(editor.boxes().at(0).toMap().value(QStringLiteral("path")).toBool());
+        const int pathPointCount = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList().size();
+
+        click(QStringLiteral("rightInspectorAddPathPointButton"));
+        QTRY_VERIFY(editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList().size() > pathPointCount);
+
+        QTRY_VERIFY(tabsObject = findVisualChildByName(window->contentItem(), QStringLiteral("rightInspectorBoxEffectsTabs")));
+        QVERIFY(tabsObject->setProperty("currentIndex", 1));
+        QCoreApplication::processEvents();
+
+        click(QStringLiteral("rightInspectorResetPerspectiveButton"));
+        const QVariantList resetNw = editor.boxes().at(0).toMap().value(QStringLiteral("perspectiveNw")).toList();
+        QCOMPARE(resetNw.at(0).toDouble(), 0.0);
+        QCOMPARE(resetNw.at(1).toDouble(), 0.0);
+    }
+
+    void qmlRightInspectorLayersListSelectsAndMovesThroughEditor()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(10, 20, 100, 50);
+        editor.updateSelectedText(QStringLiteral("Bottom"));
+        editor.createTextBox(30, 40, 100, 50);
+        editor.updateSelectedText(QStringLiteral("Middle"));
+        editor.createTextBox(50, 60, 100, 50);
+        editor.updateSelectedText(QStringLiteral("Top"));
+        editor.selectBox(0);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        window->resize(1400, 1000);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        QObject* object = nullptr;
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("rightInspectorLayersListView")));
+        auto* listView = qobject_cast<QQuickItem*>(object);
+        QVERIFY(listView);
+        QTRY_VERIFY(listView->isVisible());
+        QVERIFY(listView->isEnabled());
+
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("rightInspectorLayerDelegate")));
+        auto* delegate = qobject_cast<QQuickItem*>(object);
+        QVERIFY(delegate);
+        QTRY_VERIFY(delegate->isVisible());
+        QVERIFY(delegate->isEnabled());
+
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, delegate->mapToScene(QPointF(delegate->width() / 2, delegate->height() / 2)).toPoint());
+        QTRY_COMPARE(editor.selectedIndex(), 2);
+
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("rightInspectorLayerDownButton")));
+        auto* downButton = qobject_cast<QQuickItem*>(object);
+        QVERIFY(downButton);
+        QTRY_VERIFY(downButton->isVisible());
+        QVERIFY(downButton->isEnabled());
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, downButton->mapToScene(QPointF(downButton->width() / 2, downButton->height() / 2)).toPoint());
+        QTRY_COMPARE(editor.selectedIndex(), 1);
+        QCOMPARE(editor.boxes().at(1).toMap().value(QStringLiteral("text")).toString(), QStringLiteral("Top"));
+
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("rightInspectorLayerUpButton")));
+        auto* upButton = qobject_cast<QQuickItem*>(object);
+        QVERIFY(upButton);
+        QTRY_VERIFY(upButton->isVisible());
+        QVERIFY(upButton->isEnabled());
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, upButton->mapToScene(QPointF(upButton->width() / 2, upButton->height() / 2)).toPoint());
+        QTRY_COMPARE(editor.selectedIndex(), 2);
+        QCOMPARE(editor.boxes().at(2).toMap().value(QStringLiteral("text")).toString(), QStringLiteral("Top"));
+    }
+
     void qmlHasPageSelectorAndTextFXEffectControls()
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString source = qmlSource();
 
-        QVERIFY(source.contains(QStringLiteral("model: Editor.pageLabels")));
-        QVERIFY(source.contains(QStringLiteral("Editor.goToPage(index)")));
+        QVERIFY(source.contains(QStringLiteral("model: rightInspectorPanel.editor.pageLabels")));
+        QVERIFY(source.contains(QStringLiteral("rightInspectorPanel.editor.goToPage(index)")));
         QVERIFY(source.contains(QStringLiteral("model: [qsTr(\"Vertical\"), qsTr(\"Horizontal\")]")));
         QVERIFY(source.contains(QStringLiteral("model: [qsTr(\"Straight\"), qsTr(\"Smooth\")]")));
-        QVERIFY(source.contains(QStringLiteral("Editor.addSelectedPathPoint()")));
+        QVERIFY(source.contains(QStringLiteral("rightInspectorPanel.editor.addSelectedPathPoint()")));
         QVERIFY(source.contains(QStringLiteral("model: pathHandlePlane.boxRef.boxModel.pathPoints")));
         QVERIFY(!source.contains(QStringLiteral("Double-click canvas to create text")));
         QVERIFY(!source.contains(QStringLiteral("Live editing uses QML layout; rendered effects apply on export.")));
@@ -3121,9 +3360,9 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("id: rawOverlayImage")));
         QVERIFY(source.contains(QStringLiteral("opacity: 0.45")));
         QVERIFY(!source.contains(QStringLiteral("Editor.rawVisible && Editor.rawPageUrl.toString().length > 0 ? Editor.rawPageUrl : Editor.currentPageUrl")));
-        QVERIFY(source.contains(QStringLiteral("model: Editor.layers")));
-        QVERIFY(source.contains(QStringLiteral("text: qsTr(\"Up\"); enabled: Editor.selectedIndex >= 0 && Editor.selectedIndex < Editor.boxes.length - 1; onClicked: Editor.moveLayer(Editor.selectedIndex + 1)")));
-        QVERIFY(source.contains(QStringLiteral("text: qsTr(\"Down\"); enabled: Editor.selectedIndex > 0; onClicked: Editor.moveLayer(Editor.selectedIndex - 1)")));
+        QVERIFY(source.contains(QStringLiteral("model: rightInspectorPanel.editor.layers")));
+        QVERIFY(source.contains(QStringLiteral("text: qsTr(\"Up\"); enabled: rightInspectorPanel.editor.selectedIndex >= 0 && rightInspectorPanel.editor.selectedIndex < rightInspectorPanel.editor.boxes.length - 1; onClicked: rightInspectorPanel.editor.moveLayer(rightInspectorPanel.editor.selectedIndex + 1)")));
+        QVERIFY(source.contains(QStringLiteral("text: qsTr(\"Down\"); enabled: rightInspectorPanel.editor.selectedIndex > 0; onClicked: rightInspectorPanel.editor.moveLayer(rightInspectorPanel.editor.selectedIndex - 1)")));
     }
 };
 
