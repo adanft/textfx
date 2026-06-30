@@ -85,6 +85,33 @@ ApplicationWindow {
         property real pathHandleStartX: 0
         property real pathHandleStartY: 0
 
+    QtObject {
+        id: editorInteraction
+
+        readonly property int dragModeIdle: 0
+        readonly property int dragModePan: 2
+        readonly property int dragModeCreate: 3
+        readonly property int dragModeResize: 4
+        readonly property int dragModePerspective: 5
+        readonly property int dragModeRotate: 6
+        readonly property int dragModeMove: 7
+        readonly property int dragModePathHandle: 8
+    }
+
+    QtObject {
+        id: editorLimits
+
+        readonly property real minimumBoxSize: 12
+        readonly property int minimumFontSize: 1
+        readonly property int maximumFontSize: 512
+        readonly property int minimumTextSpacing: -100
+        readonly property int maximumTextSpacing: 300
+        readonly property int minimumEffectSize: 0
+        readonly property int maximumEffectSize: 128
+        readonly property int minimumShadowOffset: -512
+        readonly property int maximumShadowOffset: 512
+    }
+
     component ColorButton: Button {
         id: colorButton
         property color swatchColor: "#000000"
@@ -165,7 +192,7 @@ ApplicationWindow {
     function livePreviewScale() { return Math.min(1.0, viewDocScale()) }
     function documentToViewLength(value) { return value * viewDocScale() }
     function selectionLineWidth() { return Math.max(1, documentToViewLength(2)) }
-    function handleSize() { return Math.max(1, documentToViewLength(12)) }
+    function handleSize() { return Math.max(1, documentToViewLength(editorLimits.minimumBoxSize)) }
     function rotateHandleDistance() { return documentToViewLength(28) }
     function documentToViewX(x) { return window.panX + (pageLeft() + x * pageScale()) * window.zoom }
     function documentToViewY(y) { return window.panY + (pageTop() + y * pageScale()) * window.zoom }
@@ -270,7 +297,7 @@ ApplicationWindow {
     }
 
     function usesLivePerspectiveOffset(box, name, axis) {
-        if (dragMode !== 5 || !box || box.index !== Editor.selectedIndex)
+        if (dragMode !== editorInteraction.dragModePerspective || !box || box.index !== Editor.selectedIndex)
             return false
         const handle = activePerspectiveHandle
         if (name === handle && (handle === "nw" || handle === "ne" || handle === "se" || handle === "sw"))
@@ -460,7 +487,7 @@ ApplicationWindow {
     function beginResizeDrag(delegate, handle, canvasX, canvasY) {
         activeResizeDelegate = delegate
         activeResizeHandle = handle
-        dragMode = 4
+        dragMode = editorInteraction.dragModeResize
         resizeStartX = delegate.boxModel.x
         resizeStartY = delegate.boxModel.y
         resizeStartW = delegate.boxModel.w
@@ -475,7 +502,7 @@ ApplicationWindow {
     }
 
     function updateResizeDrag(canvasX, canvasY) {
-        if (dragMode !== 4 || !activeResizeDelegate)
+        if (dragMode !== editorInteraction.dragModeResize || !activeResizeDelegate)
             return
         const delta = rotatePoint((canvasX - resizeStartCanvasX) / viewDocScale(),
                                   (canvasY - resizeStartCanvasY) / viewDocScale(),
@@ -486,10 +513,10 @@ ApplicationWindow {
         let top = 0
         let right = resizeStartW
         let bottom = resizeStartH
-        if (activeResizeHandle.indexOf("w") >= 0) left = Math.min(delta.x, right - 12)
-        else if (activeResizeHandle.indexOf("e") >= 0) right = Math.max(resizeStartW + delta.x, left + 12)
-        if (activeResizeHandle.indexOf("n") >= 0) top = Math.min(delta.y, bottom - 12)
-        else if (activeResizeHandle.indexOf("s") >= 0) bottom = Math.max(resizeStartH + delta.y, top + 12)
+        if (activeResizeHandle.indexOf("w") >= 0) left = Math.min(delta.x, right - editorLimits.minimumBoxSize)
+        else if (activeResizeHandle.indexOf("e") >= 0) right = Math.max(resizeStartW + delta.x, left + editorLimits.minimumBoxSize)
+        if (activeResizeHandle.indexOf("n") >= 0) top = Math.min(delta.y, bottom - editorLimits.minimumBoxSize)
+        else if (activeResizeHandle.indexOf("s") >= 0) bottom = Math.max(resizeStartH + delta.y, top + editorLimits.minimumBoxSize)
         resizeW = right - left
         resizeH = bottom - top
         const newPivotX = resizeW / 2
@@ -500,17 +527,17 @@ ApplicationWindow {
     }
 
     function endResizeDrag(commit) {
-        if (dragMode === 4 && commit)
+        if (dragMode === editorInteraction.dragModeResize && commit)
             window.editor.setSelectedBounds(resizeX, resizeY, resizeW, resizeH)
         activeResizeDelegate = null
         activeResizeHandle = ""
-        dragMode = 0
+        dragMode = editorInteraction.dragModeIdle
     }
 
     function beginPerspectiveDrag(delegate, handle, canvasX, canvasY) {
         activePerspectiveDelegate = delegate
         activePerspectiveHandle = handle
-        dragMode = 5
+        dragMode = editorInteraction.dragModePerspective
         perspectiveStartCanvasX = canvasX
         perspectiveStartCanvasY = canvasY
         perspectiveStartNwX = modelPerspectiveOffset(delegate.boxModel, "nw", 0)
@@ -528,7 +555,7 @@ ApplicationWindow {
     }
 
     function updatePerspectiveDrag(canvasX, canvasY) {
-        if (dragMode !== 5 || !activePerspectiveDelegate)
+        if (dragMode !== editorInteraction.dragModePerspective || !activePerspectiveDelegate)
             return
         const startLocal = activePerspectiveDelegate.mapFromItem(canvas, perspectiveStartCanvasX, perspectiveStartCanvasY)
         const local = activePerspectiveDelegate.mapFromItem(canvas, canvasX, canvasY)
@@ -544,7 +571,7 @@ ApplicationWindow {
     }
 
     function endPerspectiveDrag(commit) {
-        if (dragMode === 5 && commit) {
+        if (dragMode === editorInteraction.dragModePerspective && commit) {
             const dx = perspectiveX - perspectiveStartX
             const dy = perspectiveY - perspectiveStartY
             if (activePerspectiveHandle === "n") { commitPerspectiveCorner("nw", perspectiveStartNwX, perspectiveStartNwY + dy); commitPerspectiveCorner("ne", perspectiveStartNeX, perspectiveStartNeY + dy) }
@@ -555,12 +582,12 @@ ApplicationWindow {
         }
         activePerspectiveDelegate = null
         activePerspectiveHandle = ""
-        dragMode = 0
+        dragMode = editorInteraction.dragModeIdle
     }
 
     function beginRotateDrag(delegate, canvasX, canvasY) {
         activeRotateDelegate = delegate
-        dragMode = 6
+        dragMode = editorInteraction.dragModeRotate
         const cx = delegate.boxModel.x + delegate.boxModel.w / 2
         const cy = delegate.boxModel.y + delegate.boxModel.h / 2
         rotateStartRotation = delegate.boxModel.rotation
@@ -569,7 +596,7 @@ ApplicationWindow {
     }
 
     function updateRotateDrag(canvasX, canvasY) {
-        if (dragMode !== 6 || !activeRotateDelegate)
+        if (dragMode !== editorInteraction.dragModeRotate || !activeRotateDelegate)
             return
         const box = activeRotateDelegate.boxModel
         const cx = box.x + box.w / 2
@@ -580,18 +607,18 @@ ApplicationWindow {
     }
 
     function endRotateDrag(commit) {
-        if (dragMode === 6 && commit)
+        if (dragMode === editorInteraction.dragModeRotate && commit)
             window.editor.setSelectedRotation(rotateDegrees)
-        else if (dragMode === 6 && activeRotateDelegate)
+        else if (dragMode === editorInteraction.dragModeRotate && activeRotateDelegate)
             activeRotateDelegate.rotation = rotateStartRotation
         activeRotateDelegate = null
-        dragMode = 0
+        dragMode = editorInteraction.dragModeIdle
     }
 
     function beginMoveDrag(delegate, index, canvasX, canvasY) {
         activeMoveDelegate = delegate
         activeMoveIndex = index
-        dragMode = 7
+        dragMode = editorInteraction.dragModeMove
         moveStartX = delegate.boxModel.x
         moveStartY = delegate.boxModel.y
         moveStartCanvasX = canvasX
@@ -601,18 +628,18 @@ ApplicationWindow {
     }
 
     function updateMoveDrag(canvasX, canvasY) {
-        if (dragMode !== 7 || !activeMoveDelegate)
+        if (dragMode !== editorInteraction.dragModeMove || !activeMoveDelegate)
             return
         moveX = moveStartX + (canvasX - moveStartCanvasX) / viewDocScale()
         moveY = moveStartY + (canvasY - moveStartCanvasY) / viewDocScale()
     }
 
     function endMoveDrag(commit) {
-        if (dragMode === 7 && commit)
+        if (dragMode === editorInteraction.dragModeMove && commit)
             window.editor.moveSelected(moveX - moveStartX, moveY - moveStartY)
         activeMoveDelegate = null
         activeMoveIndex = -1
-        dragMode = 0
+        dragMode = editorInteraction.dragModeIdle
     }
 
     function beginPathHandleDrag(pathPlane, index, startX, startY, pressCanvasX, pressCanvasY) {
@@ -629,14 +656,14 @@ ApplicationWindow {
         pathHandlePressLocalY = pressLocal.y
         pathHandleStartX = startX
         pathHandleStartY = startY
-        dragMode = 8
+        dragMode = editorInteraction.dragModePathHandle
         pathHandleDragPressed = true
         pathHandleInteractionActive = true
         window.editor.beginInteraction()
     }
 
     function updatePathHandleDragFromCanvas(canvasX, canvasY) {
-        if (!pathHandleInteractionActive || !pathHandleDragPressed || dragMode !== 8 || activePathHandleIndex < 0)
+        if (!pathHandleInteractionActive || !pathHandleDragPressed || dragMode !== editorInteraction.dragModePathHandle || activePathHandleIndex < 0)
             return
         if (!window.editor.leftMouseButtonDown()) {
             endPathHandleDrag()
@@ -659,7 +686,7 @@ ApplicationWindow {
     }
 
     function endPathHandleDrag() {
-        if (dragMode !== 8)
+        if (dragMode !== editorInteraction.dragModePathHandle)
             return false
         if (pathHandleInteractionActive)
             window.editor.endInteraction()
@@ -668,7 +695,7 @@ ApplicationWindow {
         activePathHandlePlane = null
         activePathHandlePerspective = false
         activePathHandleIndex = -1
-        dragMode = 0
+        dragMode = editorInteraction.dragModeIdle
         return true
     }
 
@@ -676,18 +703,18 @@ ApplicationWindow {
         if (Editor.editingText) {
             Editor.endTextEdit()
             canvas.forceActiveFocus()
-        } else if (dragMode !== 0) {
-            if (dragMode === 4)
+        } else if (dragMode !== editorInteraction.dragModeIdle) {
+            if (dragMode === editorInteraction.dragModeResize)
                 endResizeDrag(false)
-            else if (dragMode === 5)
+            else if (dragMode === editorInteraction.dragModePerspective)
                 endPerspectiveDrag(false)
-            else if (dragMode === 6)
+            else if (dragMode === editorInteraction.dragModeRotate)
                 endRotateDrag(false)
-            else if (dragMode === 7)
+            else if (dragMode === editorInteraction.dragModeMove)
                 endMoveDrag(false)
-            else if (dragMode === 8)
+            else if (dragMode === editorInteraction.dragModePathHandle)
                 endPathHandleDrag()
-            dragMode = 0
+            dragMode = editorInteraction.dragModeIdle
         } else if (Editor.selectedIndex >= 0) {
             Editor.selectBox(-1)
         }
@@ -821,18 +848,18 @@ ApplicationWindow {
                                                 Layout.fillWidth: true
                                                 Layout.minimumWidth: 0
                                                 Label { text: qsTr("Size") }
-                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: 1; to: 512; value: window.selectedBox() ? window.selectedBox().fontSize : 16; onValueModified: Editor.setSelectedFontSize(value) }
+                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: editorLimits.minimumFontSize; to: editorLimits.maximumFontSize; value: window.selectedBox() ? window.selectedBox().fontSize : 16; onValueModified: Editor.setSelectedFontSize(value) }
                                             }
                                             ColumnLayout {
                                                 Layout.fillWidth: true
                                                 Layout.minimumWidth: 0
                                                 Label { text: qsTr("Leading") }
-                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: -100; to: 300; value: window.selectedBox() ? window.selectedBox().lineSpacing : 0; onValueModified: Editor.setSelectedLineSpacing(value) }
+                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: editorLimits.minimumTextSpacing; to: editorLimits.maximumTextSpacing; value: window.selectedBox() ? window.selectedBox().lineSpacing : 0; onValueModified: Editor.setSelectedLineSpacing(value) }
                                             }
                                         }
 
                                         Label { text: qsTr("Tracking") }
-                                        SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: -100; to: 300; value: window.selectedBox() ? window.selectedBox().letterSpacing : 0; onValueModified: Editor.setSelectedLetterSpacing(value) }
+                                        SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: editorLimits.minimumTextSpacing; to: editorLimits.maximumTextSpacing; value: window.selectedBox() ? window.selectedBox().letterSpacing : 0; onValueModified: Editor.setSelectedLetterSpacing(value) }
 
                                         Label { text: qsTr("Text Color") }
                                         ColorButton { swatchText: window.selectedBox() ? window.qmlColor(window.selectedBox().color) : "#000000"; swatchColor: swatchText; onClicked: window.openColorDialog(swatchText, "text") }
@@ -1033,13 +1060,13 @@ ApplicationWindow {
                             window.pressX = mouse.x
                             window.pressY = mouse.y
                             if (mouse.button === Qt.LeftButton && (mouse.modifiers & Qt.ControlModifier)) {
-                                window.dragMode = 3
+                                window.dragMode = editorInteraction.dragModeCreate
                                 window.createStartX = mouse.x
                                 window.createStartY = mouse.y
                                 window.createCurrentX = mouse.x
                                 window.createCurrentY = mouse.y
                             } else {
-                                window.dragMode = mouse.button === Qt.LeftButton || mouse.button === Qt.MiddleButton || mouse.button === Qt.RightButton ? 2 : 0
+                                window.dragMode = mouse.button === Qt.LeftButton || mouse.button === Qt.MiddleButton || mouse.button === Qt.RightButton ? editorInteraction.dragModePan : editorInteraction.dragModeIdle
                             }
                         }
                         onPositionChanged: mouse => {
@@ -1048,22 +1075,22 @@ ApplicationWindow {
                             if (!pressed) return
                             const dx = mouse.x - window.pressX
                             const dy = mouse.y - window.pressY
-                            if (window.dragMode === 2) { window.panX += dx; window.panY += dy }
-                            else if (window.dragMode === 3) { window.createCurrentX = mouse.x; window.createCurrentY = mouse.y }
+                            if (window.dragMode === editorInteraction.dragModePan) { window.panX += dx; window.panY += dy }
+                            else if (window.dragMode === editorInteraction.dragModeCreate) { window.createCurrentX = mouse.x; window.createCurrentY = mouse.y }
                             window.pressX = mouse.x
                             window.pressY = mouse.y
                         }
                         onReleased: mouse => {
-                            if (window.dragMode === 3) {
+                            if (window.dragMode === editorInteraction.dragModeCreate) {
                                 const left = Math.min(window.createStartX, window.createCurrentX)
                                 const top = Math.min(window.createStartY, window.createCurrentY)
                                 const right = Math.max(window.createStartX, window.createCurrentX)
                                 const bottom = Math.max(window.createStartY, window.createCurrentY)
                                 const w = (right - left) / window.viewDocScale()
                                 const h = (bottom - top) / window.viewDocScale()
-                                if (w >= 12 && h >= 12) Editor.createTextBox(window.viewToDocumentX(left), window.viewToDocumentY(top), w, h)
+                                if (w >= editorLimits.minimumBoxSize && h >= editorLimits.minimumBoxSize) Editor.createTextBox(window.viewToDocumentX(left), window.viewToDocumentY(top), w, h)
                             }
-                            window.dragMode = 0
+                            window.dragMode = editorInteraction.dragModeIdle
                         }
                         onWheel: wheel => {
                             window.zoomAt(wheel.x, wheel.y, wheel.angleDelta.y > 0 ? 1.1 : 1 / 1.1)
@@ -1072,7 +1099,7 @@ ApplicationWindow {
                     }
 
                     Rectangle {
-                        visible: window.dragMode === 3
+                        visible: window.dragMode === editorInteraction.dragModeCreate
                         x: Math.min(window.createStartX, window.createCurrentX)
                         y: Math.min(window.createStartY, window.createCurrentY)
                         width: Math.abs(window.createCurrentX - window.createStartX)
@@ -1084,7 +1111,7 @@ ApplicationWindow {
 
                     MouseArea {
                         anchors.fill: parent
-                        visible: window.dragMode === 8 && window.pathHandleInteractionActive
+                        visible: window.dragMode === editorInteraction.dragModePathHandle && window.pathHandleInteractionActive
                         enabled: visible
                         z: 100
                         hoverEnabled: true
@@ -1101,6 +1128,7 @@ ApplicationWindow {
                         model: Editor.boxes
                         delegate: TextBoxDelegate {
                             canvasItem: canvas
+                            interaction: editorInteraction
                         }
                     }
 
@@ -1261,7 +1289,7 @@ ApplicationWindow {
                                                 Label { text: qsTr("Color") }
                                                 ColorButton { swatchText: window.selectedBox() ? window.qmlColor(window.selectedBox().outlineColor) : "#ffffff"; swatchColor: swatchText; onClicked: window.openColorDialog(swatchText, "outline") }
                                                 Label { text: qsTr("Size") }
-                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: 0; to: 128; value: window.selectedBox() ? window.selectedBox().outlineSize : 2; onValueModified: Editor.setSelectedOutlineSize(value) }
+                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: editorLimits.minimumEffectSize; to: editorLimits.maximumEffectSize; value: window.selectedBox() ? window.selectedBox().outlineSize : 2; onValueModified: Editor.setSelectedOutlineSize(value) }
                                             }
 
                                             ColumnLayout {
@@ -1269,7 +1297,7 @@ ApplicationWindow {
                                                 Layout.minimumWidth: 0
                                                 CheckBox { text: qsTr("Enabled"); checked: window.selectedBox() ? window.selectedBox().blur : false; onClicked: Editor.setSelectedBlurEnabled(checked) }
                                                 Label { text: qsTr("Size") }
-                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: 0; to: 128; value: window.selectedBox() ? window.selectedBox().blurSize : 0; onValueModified: Editor.setSelectedBlurSize(value) }
+                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: editorLimits.minimumEffectSize; to: editorLimits.maximumEffectSize; value: window.selectedBox() ? window.selectedBox().blurSize : 0; onValueModified: Editor.setSelectedBlurSize(value) }
                                             }
 
                                             ColumnLayout {
@@ -1279,11 +1307,11 @@ ApplicationWindow {
                                                 Label { text: qsTr("Color") }
                                                 ColorButton { swatchText: window.selectedBox() ? window.qmlColor(window.selectedBox().shadowColor) : "#000000"; swatchColor: swatchText; onClicked: window.openColorDialog(swatchText, "shadow") }
                                                 Label { text: qsTr("Offset X") }
-                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: -512; to: 512; value: window.selectedBox() ? window.selectedBox().shadowOffsetX : 4; onValueModified: Editor.setSelectedShadowOffsetX(value) }
+                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: editorLimits.minimumShadowOffset; to: editorLimits.maximumShadowOffset; value: window.selectedBox() ? window.selectedBox().shadowOffsetX : 4; onValueModified: Editor.setSelectedShadowOffsetX(value) }
                                                 Label { text: qsTr("Offset Y") }
-                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: -512; to: 512; value: window.selectedBox() ? window.selectedBox().shadowOffsetY : 4; onValueModified: Editor.setSelectedShadowOffsetY(value) }
+                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: editorLimits.minimumShadowOffset; to: editorLimits.maximumShadowOffset; value: window.selectedBox() ? window.selectedBox().shadowOffsetY : 4; onValueModified: Editor.setSelectedShadowOffsetY(value) }
                                                 Label { text: qsTr("Blur") }
-                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: 0; to: 128; value: window.selectedBox() ? window.selectedBox().shadowBlurSize : 0; onValueModified: Editor.setSelectedShadowBlurSize(value) }
+                                                SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: editorLimits.minimumEffectSize; to: editorLimits.maximumEffectSize; value: window.selectedBox() ? window.selectedBox().shadowBlurSize : 0; onValueModified: Editor.setSelectedShadowBlurSize(value) }
                                             }
 
                                             ColumnLayout {

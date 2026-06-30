@@ -5,6 +5,16 @@
 
 namespace textfx {
 namespace {
+constexpr int MinFontSize = 1;
+constexpr int MaxFontSize = 512;
+constexpr int MinTextSpacing = -100;
+constexpr int MaxTextSpacing = 300;
+constexpr double MinBoxSize = 12.0;
+constexpr int MinEffectSize = 0;
+constexpr int MaxEffectSize = 128;
+constexpr int MinShadowOffset = -512;
+constexpr int MaxShadowOffset = 512;
+
 std::string toStdString(const QString& value) { return value.toStdString(); }
 
 std::string normalizeHexColor(QString color, const std::string& fallback)
@@ -59,14 +69,14 @@ void TextBoxEditingService::setFontFamily(TextBox& box, const QString& family)
     if (!value.isEmpty()) box.style.fontFamily = toStdString(value);
 }
 
-void TextBoxEditingService::setFontSize(TextBox& box, int size) { box.style.fontSize = std::clamp(size, 1, 512); }
+void TextBoxEditingService::setFontSize(TextBox& box, int size) { box.style.fontSize = std::clamp(size, MinFontSize, MaxFontSize); }
 void TextBoxEditingService::setTextColor(TextBox& box, const QString& color) { box.style.textColor = normalizeHexColor(color, box.style.textColor); }
 void TextBoxEditingService::setBold(TextBox& box, bool enabled) { box.style.bold = enabled; }
 void TextBoxEditingService::setItalic(TextBox& box, bool enabled) { box.style.italic = enabled; }
 void TextBoxEditingService::setUppercase(TextBox& box, bool enabled) { box.style.uppercase = enabled; }
 void TextBoxEditingService::setAlignment(TextBox& box, int alignment) { box.style.alignment = static_cast<TextAlignment>(std::clamp(alignment, 0, 2)); }
-void TextBoxEditingService::setLineSpacing(TextBox& box, int spacing) { box.style.lineSpacing = std::clamp(spacing, -100, 300); }
-void TextBoxEditingService::setLetterSpacing(TextBox& box, int spacing) { box.style.letterSpacing = std::clamp(spacing, -100, 300); }
+void TextBoxEditingService::setLineSpacing(TextBox& box, int spacing) { box.style.lineSpacing = std::clamp(spacing, MinTextSpacing, MaxTextSpacing); }
+void TextBoxEditingService::setLetterSpacing(TextBox& box, int spacing) { box.style.letterSpacing = std::clamp(spacing, MinTextSpacing, MaxTextSpacing); }
 
 void TextBoxEditingService::move(TextBox& box, double dx, double dy)
 {
@@ -76,16 +86,16 @@ void TextBoxEditingService::move(TextBox& box, double dx, double dy)
 
 void TextBoxEditingService::resize(TextBox& box, double dw, double dh)
 {
-    box.bounds.w = std::max(12.0, box.bounds.w + dw);
-    box.bounds.h = std::max(12.0, box.bounds.h + dh);
+    box.bounds.w = std::max(MinBoxSize, box.bounds.w + dw);
+    box.bounds.h = std::max(MinBoxSize, box.bounds.h + dh);
 }
 
 void TextBoxEditingService::setBounds(TextBox& box, double x, double y, double w, double h)
 {
     box.bounds.x = x;
     box.bounds.y = y;
-    box.bounds.w = std::max(12.0, w);
-    box.bounds.h = std::max(12.0, h);
+    box.bounds.w = std::max(MinBoxSize, w);
+    box.bounds.h = std::max(MinBoxSize, h);
 }
 
 void TextBoxEditingService::rotate(TextBox& box, double degrees) { box.rotationDegrees += degrees; }
@@ -93,14 +103,14 @@ void TextBoxEditingService::setRotation(TextBox& box, double degrees) { box.rota
 
 void TextBoxEditingService::setOutlineEnabled(TextBox& box, bool enabled) { box.effects.outlineEnabled = enabled; }
 void TextBoxEditingService::setOutlineColor(TextBox& box, const QString& color) { box.effects.outlineColor = normalizeHexColor(color, box.effects.outlineColor); }
-void TextBoxEditingService::setOutlineSize(TextBox& box, int size) { box.effects.outlineSize = std::clamp(size, 0, 128); }
+void TextBoxEditingService::setOutlineSize(TextBox& box, int size) { box.effects.outlineSize = std::clamp(size, MinEffectSize, MaxEffectSize); }
 void TextBoxEditingService::setBlurEnabled(TextBox& box, bool enabled) { box.effects.blurEnabled = enabled; }
-void TextBoxEditingService::setBlurSize(TextBox& box, int size) { box.effects.blurSize = std::clamp(size, 0, 128); }
+void TextBoxEditingService::setBlurSize(TextBox& box, int size) { box.effects.blurSize = std::clamp(size, MinEffectSize, MaxEffectSize); }
 void TextBoxEditingService::setShadowEnabled(TextBox& box, bool enabled) { box.effects.shadowEnabled = enabled; }
 void TextBoxEditingService::setShadowColor(TextBox& box, const QString& color) { box.effects.shadowColor = normalizeHexColor(color, box.effects.shadowColor); }
-void TextBoxEditingService::setShadowOffsetX(TextBox& box, int offset) { box.effects.shadowOffsetX = std::clamp(offset, -512, 512); }
-void TextBoxEditingService::setShadowOffsetY(TextBox& box, int offset) { box.effects.shadowOffsetY = std::clamp(offset, -512, 512); }
-void TextBoxEditingService::setShadowBlurSize(TextBox& box, int size) { box.effects.shadowBlurSize = std::clamp(size, 0, 128); }
+void TextBoxEditingService::setShadowOffsetX(TextBox& box, int offset) { box.effects.shadowOffsetX = std::clamp(offset, MinShadowOffset, MaxShadowOffset); }
+void TextBoxEditingService::setShadowOffsetY(TextBox& box, int offset) { box.effects.shadowOffsetY = std::clamp(offset, MinShadowOffset, MaxShadowOffset); }
+void TextBoxEditingService::setShadowBlurSize(TextBox& box, int size) { box.effects.shadowBlurSize = std::clamp(size, MinEffectSize, MaxEffectSize); }
 void TextBoxEditingService::setGradientEnabled(TextBox& box, bool enabled) { box.effects.gradientEnabled = enabled; }
 void TextBoxEditingService::setGradientDirection(TextBox& box, int direction) { box.effects.gradientDirection = std::clamp(direction, 0, 1); }
 void TextBoxEditingService::setGradientColorA(TextBox& box, const QString& color) { box.effects.gradientColorA = normalizeHexColor(color, box.effects.gradientColorA); }

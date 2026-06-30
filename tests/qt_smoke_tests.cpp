@@ -999,6 +999,29 @@ private slots:
         QCOMPARE(box.value(QStringLiteral("h")).toDouble(), 12.0);
     }
 
+    void qmlEditorNamedConstantsKeepLegacyValues()
+    {
+        const QString source = readQmlFile(QStringLiteral("Main.qml"));
+
+        QVERIFY(source.contains(QStringLiteral("readonly property int dragModeIdle: 0")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int dragModePan: 2")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int dragModeCreate: 3")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int dragModeResize: 4")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int dragModePerspective: 5")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int dragModeRotate: 6")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int dragModeMove: 7")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int dragModePathHandle: 8")));
+        QVERIFY(source.contains(QStringLiteral("readonly property real minimumBoxSize: 12")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int minimumFontSize: 1")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int maximumFontSize: 512")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int minimumTextSpacing: -100")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int maximumTextSpacing: 300")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int minimumEffectSize: 0")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int maximumEffectSize: 128")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int minimumShadowOffset: -512")));
+        QVERIFY(source.contains(QStringLiteral("readonly property int maximumShadowOffset: 512")));
+    }
+
     void qmlNormalResizeUsesPressSnapshotSeparateFromPerspective()
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
@@ -1014,10 +1037,10 @@ private slots:
         QVERIFY(!resizeSource.contains(QStringLiteral("property real startX")));
         QVERIFY(!resizeSource.contains(QStringLiteral("property real startCanvasX")));
         QVERIFY(source.contains(QStringLiteral("const delta = rotatePoint((canvasX - resizeStartCanvasX) / viewDocScale()")));
-        QVERIFY(source.contains(QStringLiteral("right = Math.max(resizeStartW + delta.x, left + 12)")));
-        QVERIFY(source.contains(QStringLiteral("bottom = Math.max(resizeStartH + delta.y, top + 12)")));
-        QVERIFY(source.contains(QStringLiteral("left = Math.min(delta.x, right - 12)")));
-        QVERIFY(source.contains(QStringLiteral("top = Math.min(delta.y, bottom - 12)")));
+        QVERIFY(source.contains(QStringLiteral("right = Math.max(resizeStartW + delta.x, left + editorLimits.minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("bottom = Math.max(resizeStartH + delta.y, top + editorLimits.minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("left = Math.min(delta.x, right - editorLimits.minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("top = Math.min(delta.y, bottom - editorLimits.minimumBoxSize)")));
         const qsizetype perspectiveBranch = resizeSource.indexOf(QStringLiteral("if (resizeHandle.boxRef.perspectiveActive)"));
         const qsizetype normalUpdate = resizeSource.indexOf(QStringLiteral("resizeHandle.rootWindow.updateResizeDrag(point.x, point.y)"));
         QVERIFY(perspectiveBranch >= 0);
@@ -1204,12 +1227,12 @@ private slots:
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString source = qmlSource();
 
-        QVERIFY(source.contains(QStringLiteral("property bool moveActive: rootWindow.dragMode === 7 && rootWindow.activeMoveIndex === modelData.index")));
-        QVERIFY(source.contains(QStringLiteral("property bool resizeActive: rootWindow.dragMode === 4 && rootWindow.activeResizeDelegate === boxDelegate")));
+        QVERIFY(source.contains(QStringLiteral("property bool moveActive: rootWindow.dragMode === interaction.dragModeMove && rootWindow.activeMoveIndex === modelData.index")));
+        QVERIFY(source.contains(QStringLiteral("property bool resizeActive: rootWindow.dragMode === interaction.dragModeResize && rootWindow.activeResizeDelegate === boxDelegate")));
         QVERIFY(source.contains(QStringLiteral("property real visualDocW: resizeActive ? rootWindow.resizeW : modelData.w")));
         QVERIFY(source.contains(QStringLiteral("width: visualDocW * rootWindow.viewDocScale()")));
         QVERIFY(source.contains(QStringLiteral("function documentToViewLength(value) { return value * viewDocScale() }")));
-        QVERIFY(source.contains(QStringLiteral("function handleSize() { return Math.max(1, documentToViewLength(12)) }")));
+        QVERIFY(source.contains(QStringLiteral("function handleSize() { return Math.max(1, documentToViewLength(editorLimits.minimumBoxSize)) }")));
         QVERIFY(source.contains(QStringLiteral("border.width: perspectiveActive ? 0 : selected ? rootWindow.selectionLineWidth() : Math.max(1, rootWindow.documentToViewLength(1))")));
         QVERIFY(!source.contains(QStringLiteral("activeResizeDelegate.x = documentToViewX(resizeX)")));
         QVERIFY(!source.contains(QStringLiteral("activeMoveDelegate.x = documentToViewX(moveX)")));
@@ -1264,11 +1287,11 @@ private slots:
         QVERIFY(perspectiveUpdate.contains(QStringLiteral("perspectiveX = perspectiveStartX")));
         QVERIFY(perspectiveUpdate.contains(QStringLiteral("++perspectiveRevision")));
         QVERIFY(!perspectiveUpdate.contains(QStringLiteral("Editor.setPerspectiveHandle")));
-        QVERIFY(perspectiveEnd.contains(QStringLiteral("if (dragMode === 5 && commit)")));
+        QVERIFY(perspectiveEnd.contains(QStringLiteral("if (dragMode === editorInteraction.dragModePerspective && commit)")));
         QVERIFY(perspectiveEnd.contains(QStringLiteral("window.editor.setPerspectiveHandle(activePerspectiveHandle, perspectiveX, perspectiveY)")));
         QVERIFY(rotateUpdate.contains(QStringLiteral("activeRotateDelegate.rotation = rotateDegrees")));
         QVERIFY(!rotateUpdate.contains(QStringLiteral("Editor.setSelectedRotation")));
-        QVERIFY(rotateEnd.contains(QStringLiteral("if (dragMode === 6 && commit)")));
+        QVERIFY(rotateEnd.contains(QStringLiteral("if (dragMode === editorInteraction.dragModeRotate && commit)")));
         QVERIFY(rotateEnd.contains(QStringLiteral("window.editor.setSelectedRotation(rotateDegrees)")));
     }
 
@@ -1929,7 +1952,7 @@ private slots:
         const QString handler = source.mid(handlerStart, handlerEnd - handlerStart);
 
         const qsizetype edit = handler.indexOf(QStringLiteral("if (Editor.editingText)"));
-        const qsizetype transient = handler.indexOf(QStringLiteral("else if (dragMode !== 0)"));
+        const qsizetype transient = handler.indexOf(QStringLiteral("else if (dragMode !== editorInteraction.dragModeIdle)"));
         const qsizetype deselect = handler.indexOf(QStringLiteral("else if (Editor.selectedIndex >= 0)"));
         QVERIFY(edit >= 0);
         QVERIFY(transient > edit);
@@ -1937,7 +1960,7 @@ private slots:
         QVERIFY(handler.contains(QStringLiteral("Editor.endTextEdit()")));
         QVERIFY(handler.contains(QStringLiteral("canvas.forceActiveFocus()")));
         QVERIFY(handler.contains(QStringLiteral("endResizeDrag(false)")));
-        QVERIFY(handler.contains(QStringLiteral("dragMode = 0")));
+        QVERIFY(handler.contains(QStringLiteral("dragMode = editorInteraction.dragModeIdle")));
         QVERIFY(handler.contains(QStringLiteral("Editor.selectBox(-1)")));
         QVERIFY(source.contains(QStringLiteral("Shortcut { sequence: \"Esc\"; context: Qt.ApplicationShortcut; onActivated: window.handleEscape() }")));
         QVERIFY(source.contains(QStringLiteral("if (event.key === Qt.Key_Escape) { window.handleEscape(); event.accepted = true; return }")));
@@ -2029,8 +2052,8 @@ private slots:
         QVERIFY(!sidePanelSource.contains(QStringLiteral("height: Math.max(implicitHeight, sidePanel.availableHeight)")));
         QVERIFY(sidePanelSource.contains(QStringLiteral("TextField { id: presetNameField; Layout.fillWidth: true; Layout.minimumWidth: 0")));
         QVERIFY(sidePanelSource.contains(QStringLiteral("RowLayout {\n                                            Layout.fillWidth: true\n                                            Layout.minimumWidth: 0\n                                            spacing: 8")));
-        QVERIFY(sidePanelSource.contains(QStringLiteral("SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: 1; to: 512")));
-        QVERIFY(sidePanelSource.contains(QStringLiteral("SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: -100; to: 300")));
+        QVERIFY(sidePanelSource.contains(QStringLiteral("SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: editorLimits.minimumFontSize; to: editorLimits.maximumFontSize")));
+        QVERIFY(sidePanelSource.contains(QStringLiteral("SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: editorLimits.minimumTextSpacing; to: editorLimits.maximumTextSpacing")));
         QVERIFY(sidePanelSource.count(QStringLiteral("Flow {\n                                            Layout.fillWidth: true\n                                            Layout.minimumWidth: 0")) >= 3);
         const qsizetype propertiesStart = sidePanelSource.indexOf(QStringLiteral("Label { text: qsTr(\"Text Properties\"); font.bold: true; enabled: textPropertiesSection.sectionReady }"));
         const qsizetype presetsStart = sidePanelSource.indexOf(QStringLiteral("Label { text: qsTr(\"Text Presets\"); font.bold: true; enabled: textPresetsSection.sectionReady }"));
@@ -2322,10 +2345,10 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("const dx = (local.x - startLocal.x) / viewDocScale()")));
         QVERIFY(source.contains(QStringLiteral("perspectiveX = perspectiveStartX + (activePerspectiveHandle === \"n\" || activePerspectiveHandle === \"s\" ? 0 : dx)")));
         QVERIFY(source.contains(QStringLiteral("const delta = rotatePoint((canvasX - resizeStartCanvasX) / viewDocScale()")));
-        QVERIFY(source.contains(QStringLiteral("right = Math.max(resizeStartW + delta.x, left + 12)")));
-        QVERIFY(source.contains(QStringLiteral("bottom = Math.max(resizeStartH + delta.y, top + 12)")));
-        QVERIFY(source.contains(QStringLiteral("left = Math.min(delta.x, right - 12)")));
-        QVERIFY(source.contains(QStringLiteral("top = Math.min(delta.y, bottom - 12)")));
+        QVERIFY(source.contains(QStringLiteral("right = Math.max(resizeStartW + delta.x, left + editorLimits.minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("bottom = Math.max(resizeStartH + delta.y, top + editorLimits.minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("left = Math.min(delta.x, right - editorLimits.minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("top = Math.min(delta.y, bottom - editorLimits.minimumBoxSize)")));
         QVERIFY(source.contains(QStringLiteral("const startLocal = activePerspectiveDelegate.mapFromItem(canvas, perspectiveStartCanvasX, perspectiveStartCanvasY)")));
         QVERIFY(!source.contains(QStringLiteral("offsetFromCenter")));
         QVERIFY(!source.contains(QStringLiteral("dx / length * 16")));

@@ -7,6 +7,7 @@ Rectangle {
 
     required property var modelData
     required property var canvasItem
+    required property var interaction
 
     readonly property var rootWindow: ApplicationWindow.window
     readonly property var editorRef: rootWindow ? rootWindow.editor : null
@@ -14,8 +15,8 @@ Rectangle {
     property bool editingSelected: selected && editorRef.editingText
     property var boxModel: modelData
     property bool perspectiveActive: boxModel.perspective && !editingSelected
-    property bool moveActive: rootWindow.dragMode === 7 && rootWindow.activeMoveIndex === modelData.index
-    property bool resizeActive: rootWindow.dragMode === 4 && rootWindow.activeResizeDelegate === boxDelegate
+    property bool moveActive: rootWindow.dragMode === interaction.dragModeMove && rootWindow.activeMoveIndex === modelData.index
+    property bool resizeActive: rootWindow.dragMode === interaction.dragModeResize && rootWindow.activeResizeDelegate === boxDelegate
     property real visualDocX: moveActive ? rootWindow.moveX : resizeActive ? rootWindow.resizeX : modelData.x
     property real visualDocY: moveActive ? rootWindow.moveY : resizeActive ? rootWindow.resizeY : modelData.y
     property real visualDocW: resizeActive ? rootWindow.resizeW : modelData.w
