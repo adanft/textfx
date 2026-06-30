@@ -89,7 +89,11 @@ QString readQmlFile(const QString& name)
 
 QString qmlSource()
 {
-    return readQmlFile(QStringLiteral("Main.qml")) + QLatin1Char('\n') + readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+    return readQmlFile(QStringLiteral("Main.qml")) + QLatin1Char('\n')
+        + readQmlFile(QStringLiteral("ColorButton.qml")) + QLatin1Char('\n')
+        + readQmlFile(QStringLiteral("ShortcutMenuItem.qml")) + QLatin1Char('\n')
+        + readQmlFile(QStringLiteral("TextBoxDelegate.qml")) + QLatin1Char('\n')
+        + readQmlFile(QStringLiteral("TextStyleButton.qml"));
 }
 
 bool imageDiffers(const QString& a, const QString& b)
@@ -1532,13 +1536,14 @@ private slots:
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString source = qmlSource();
-        const qsizetype buttonStart = source.indexOf(QStringLiteral("component TextStyleButton: Button"));
-        const qsizetype buttonEnd = source.indexOf(QStringLiteral("component ShortcutMenuItem: MenuItem"));
+        const QString buttonSource = readQmlFile(QStringLiteral("TextStyleButton.qml"));
+        const qsizetype buttonStart = buttonSource.indexOf(QStringLiteral("Button {"));
+        const qsizetype buttonEnd = buttonSource.size();
         QVERIFY(buttonStart >= 0);
         QVERIFY(buttonEnd > buttonStart);
-        const QString buttonSource = source.mid(buttonStart, buttonEnd - buttonStart);
 
-        QVERIFY(source.contains(QStringLiteral("component TextStyleButton: Button")));
+        QVERIFY(!readQmlFile(QStringLiteral("Main.qml")).contains(QStringLiteral("component TextStyleButton: Button")));
+        QVERIFY(buttonSource.contains(QStringLiteral("Button {")));
         QVERIFY(buttonSource.contains(QStringLiteral("checkable: true")));
         QVERIFY(buttonSource.contains(QStringLiteral("property int buttonSize: 24")));
         QVERIFY(buttonSource.contains(QStringLiteral("width: buttonSize")));
@@ -2191,16 +2196,19 @@ private slots:
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString source = qmlSource();
-        const qsizetype menuItemStart = source.indexOf(QStringLiteral("component ShortcutMenuItem: MenuItem"));
-        const qsizetype menuItemEnd = source.indexOf(QStringLiteral("function pageScale()"));
+        const QString menuItemSource = readQmlFile(QStringLiteral("ShortcutMenuItem.qml"));
+        const qsizetype menuItemStart = menuItemSource.indexOf(QStringLiteral("MenuItem {"));
+        const qsizetype menuItemEnd = menuItemSource.size();
         QVERIFY(menuItemStart >= 0);
         QVERIFY(menuItemEnd > menuItemStart);
-        const QString menuItemSource = source.mid(menuItemStart, menuItemEnd - menuItemStart);
+        const QString menuItemDefinition = menuItemSource.mid(menuItemStart, menuItemEnd - menuItemStart);
 
-        QVERIFY(source.contains(QStringLiteral("component ShortcutMenuItem: MenuItem")));
-        QVERIFY(source.contains(QStringLiteral("contentItem: RowLayout")));
-        QVERIFY(source.contains(QStringLiteral("Layout.fillWidth: true")));
-        QVERIFY(source.contains(QStringLiteral("shortcutMenuItem.shortcutLabel")));
+        QVERIFY(!readQmlFile(QStringLiteral("Main.qml")).contains(QStringLiteral("component ShortcutMenuItem: MenuItem")));
+        QVERIFY(menuItemDefinition.contains(QStringLiteral("MenuItem {")));
+        QVERIFY(menuItemDefinition.contains(QStringLiteral("contentItem: Item")));
+        QVERIFY(menuItemDefinition.contains(QStringLiteral("RowLayout {")));
+        QVERIFY(menuItemDefinition.contains(QStringLiteral("Layout.fillWidth: true")));
+        QVERIFY(menuItemDefinition.contains(QStringLiteral("shortcutMenuItem.shortcutLabel")));
         QVERIFY(!menuItemSource.contains(QStringLiteral("indicator:")));
         QVERIFY(!menuItemSource.contains(QStringLiteral("shortcutMenuItem.checked")));
         QVERIFY(!menuItemSource.contains(QStringLiteral("✓")));

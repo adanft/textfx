@@ -112,69 +112,6 @@ ApplicationWindow {
         readonly property int maximumShadowOffset: 512
     }
 
-    component ColorButton: Button {
-        id: colorButton
-        property color swatchColor: "#000000"
-        property string swatchText: "#000000"
-        Layout.fillWidth: true
-        contentItem: RowLayout {
-            spacing: 8
-            Rectangle { width: 22; height: 16; radius: 3; color: colorButton.enabled ? colorButton.swatchColor : colorButton.palette.mid; border.color: colorButton.palette.mid }
-            Label { text: colorButton.swatchText; enabled: colorButton.enabled; Layout.fillWidth: true }
-        }
-    }
-
-    component TextStyleButton: Button {
-        id: textStyleButton
-        property string accessibleLabel: ""
-        property int buttonSize: 24
-        checkable: true
-        width: buttonSize
-        height: buttonSize
-        implicitWidth: buttonSize
-        implicitHeight: buttonSize
-        Layout.preferredWidth: buttonSize
-        Layout.preferredHeight: buttonSize
-        font.family: "Symbols Nerd Font"
-        font.pixelSize: 18
-        ToolTip.text: accessibleLabel
-        ToolTip.visible: hovered
-        Accessible.name: accessibleLabel
-    }
-
-    component ShortcutMenuItem: MenuItem {
-        id: shortcutMenuItem
-
-        property string shortcutLabel: ""
-
-        contentItem: Item {
-            implicitWidth: shortcutRow.implicitWidth
-            implicitHeight: shortcutRow.implicitHeight
-
-            RowLayout {
-                id: shortcutRow
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.leftMargin: shortcutMenuItem.checkable ? (Math.max(shortcutMenuItem.indicator ? shortcutMenuItem.indicator.width : 0, shortcutMenuItem.indicator ? shortcutMenuItem.indicator.implicitWidth : 0, 20) + shortcutMenuItem.spacing) : 0
-                spacing: 24
-
-                Label {
-                    text: shortcutMenuItem.text
-                    enabled: shortcutMenuItem.enabled
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                }
-                Label {
-                    text: shortcutMenuItem.shortcutLabel
-                    visible: shortcutMenuItem.shortcutLabel.length > 0
-                    enabled: shortcutMenuItem.enabled
-                    color: shortcutMenuItem.palette.mid
-                }
-            }
-        }
-    }
-
     function fitPageScale() {
         const sourceWidth = pageImage.sourceSize.width
         const sourceHeight = pageImage.sourceSize.height

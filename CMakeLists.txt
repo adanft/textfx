@@ -63,7 +63,10 @@ qt_add_qml_module(textfx
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/ColorButton.qml
+        qml/ShortcutMenuItem.qml
         qml/TextBoxDelegate.qml
+        qml/TextStyleButton.qml
 )
 
 target_link_libraries(textfx
