@@ -164,6 +164,8 @@ if(BUILD_TESTING)
     if(Qt6Test_FOUND)
         qt_add_executable(textfx_qt_smoke_tests
             tests/qt_smoke_tests.cpp
+            tests/qt_test_helpers.cpp
+            tests/qt_test_helpers.h
             src/ui/OutlinedTextItem.cpp
             src/ui/OutlinedTextItem.h
         )
