@@ -21,7 +21,7 @@ case "${1:-run}" in
     cmake --build "$BUILD_DIR" --target check
     ;;
   package)
-    run_cmake_configure "$PACKAGE_BUILD_DIR" -DCMAKE_BUILD_TYPE=Release
+    cmake --preset release
     cmake --build "$PACKAGE_BUILD_DIR" --target package
     ;;
   clean)
