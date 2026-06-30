@@ -114,6 +114,52 @@ int main(int argc, char** argv)
     const auto outPath = tempPath / "export.png";
     if (!page.save(QString::fromStdString(pagePath.string()), "PNG")) return 1;
 
+    const auto parentConflict = tempPath / "parent-conflict";
+    {
+        std::ofstream conflict(parentConflict);
+        conflict << "not a directory";
+    }
+    const auto parentConflictOut = parentConflict / "export.png";
+    try {
+        const auto parentConflictResult = graph.exportPagePngResult(DocumentModel{}, pagePath, parentConflictOut);
+        if (parentConflictResult || parentConflictResult.error() != "Could not write PNG output: " + parentConflictOut.string()) {
+            std::cerr << "Expected parent path conflict export to return a write std::expected error\n";
+            return 1;
+        }
+    } catch (const std::exception& ex) {
+        std::cerr << "Parent path conflict export threw unexpectedly: " << ex.what() << '\n';
+        return 1;
+    }
+
+    std::string wrapperError;
+    try {
+        if (graph.exportPagePng(DocumentModel{}, pagePath, parentConflictOut, &wrapperError)
+            || wrapperError != "Could not write PNG output: " + parentConflictOut.string()) {
+            std::cerr << "Expected wrapper export to return false with the write error string\n";
+            return 1;
+        }
+    } catch (const std::exception& ex) {
+        std::cerr << "Wrapper parent path conflict export threw unexpectedly: " << ex.what() << '\n';
+        return 1;
+    }
+
+    const auto cleanupConflictOut = tempPath / "cleanup-conflict-export.png";
+    std::filesystem::create_directory(cleanupConflictOut);
+    {
+        std::ofstream conflict(cleanupConflictOut / "child.txt");
+        conflict << "keeps directory non-empty";
+    }
+    try {
+        const auto cleanupConflictResult = graph.exportPagePngResult(DocumentModel{}, pagePath, cleanupConflictOut);
+        if (cleanupConflictResult || cleanupConflictResult.error() != "Could not write PNG output: " + cleanupConflictOut.string()) {
+            std::cerr << "Expected existing output cleanup conflict export to return a write std::expected error\n";
+            return 1;
+        }
+    } catch (const std::exception& ex) {
+        std::cerr << "Existing output cleanup conflict export threw unexpectedly: " << ex.what() << '\n';
+        return 1;
+    }
+
     DocumentModel editorLayout;
     TextBox plain;
     plain.text = "Editor sized";
