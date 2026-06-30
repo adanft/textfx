@@ -10,6 +10,7 @@
 #include <QVariantList>
 
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <unordered_map>
 
@@ -144,6 +145,8 @@ signals:
 private:
     TextBox* selectedBox();
     const TextBox* selectedBox() const;
+    bool editSelectedBoxIf(const std::function<bool(TextBox&)>& mutation);
+    void editSelectedBox(const std::function<void(TextBox&)>& mutation);
     void markDocumentChanged();
     void setNotification(QString message);
     void refreshPages();

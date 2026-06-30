@@ -252,305 +252,196 @@ void EditorController::createTextBox(double x, double y, double w, double h)
 
 void EditorController::updateSelectedText(const QString& text)
 {
-    if (auto* box = selectedBox()) {
-        box->text = toStdString(text);
+    editSelectedBoxIf([&](TextBox& box) {
+        box.text = toStdString(text);
         if (editingText_) {
             document_.setDirty(true);
             pendingDocumentChanged_ = true;
             emit stateChanged();
-            return;
+            return false;
         }
-        markDocumentChanged();
-    }
+        return true;
+    });
 }
 
 void EditorController::setSelectedFontFamily(const QString& family)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setFontFamily(*box, family);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setFontFamily(box, family); });
 }
 
 void EditorController::setSelectedFontSize(int size)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setFontSize(*box, size);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setFontSize(box, size); });
 }
 
 void EditorController::setSelectedTextColor(const QString& color)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setTextColor(*box, color);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setTextColor(box, color); });
 }
 
 void EditorController::setSelectedBold(bool enabled)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setBold(*box, enabled);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setBold(box, enabled); });
 }
 
 void EditorController::setSelectedItalic(bool enabled)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setItalic(*box, enabled);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setItalic(box, enabled); });
 }
 
 void EditorController::setSelectedUppercase(bool enabled)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setUppercase(*box, enabled);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setUppercase(box, enabled); });
 }
 
 void EditorController::setSelectedAlignment(int alignment)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setAlignment(*box, alignment);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setAlignment(box, alignment); });
 }
 
 void EditorController::setSelectedLineSpacing(int spacing)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setLineSpacing(*box, spacing);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setLineSpacing(box, spacing); });
 }
 
 void EditorController::setSelectedLetterSpacing(int spacing)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setLetterSpacing(*box, spacing);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setLetterSpacing(box, spacing); });
 }
 
 void EditorController::moveSelected(double dx, double dy)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::move(*box, dx, dy);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::move(box, dx, dy); });
 }
 
 void EditorController::resizeSelected(double dw, double dh)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::resize(*box, dw, dh);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::resize(box, dw, dh); });
 }
 
 void EditorController::setSelectedBounds(double x, double y, double w, double h)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setBounds(*box, x, y, w, h);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setBounds(box, x, y, w, h); });
 }
 
 void EditorController::rotateSelected(double degrees)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::rotate(*box, degrees);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::rotate(box, degrees); });
 }
 
 void EditorController::setSelectedRotation(double degrees)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setRotation(*box, degrees);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setRotation(box, degrees); });
 }
 
 void EditorController::setSelectedOutlineEnabled(bool enabled)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setOutlineEnabled(*box, enabled);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setOutlineEnabled(box, enabled); });
 }
 
 void EditorController::setSelectedOutlineColor(const QString& color)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setOutlineColor(*box, color);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setOutlineColor(box, color); });
 }
 
 void EditorController::setSelectedOutlineSize(int size)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setOutlineSize(*box, size);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setOutlineSize(box, size); });
 }
 
 void EditorController::setSelectedBlurEnabled(bool enabled)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setBlurEnabled(*box, enabled);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setBlurEnabled(box, enabled); });
 }
 
 void EditorController::setSelectedBlurSize(int size)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setBlurSize(*box, size);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setBlurSize(box, size); });
 }
 
 void EditorController::setSelectedShadowEnabled(bool enabled)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setShadowEnabled(*box, enabled);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setShadowEnabled(box, enabled); });
 }
 
 void EditorController::setSelectedShadowColor(const QString& color)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setShadowColor(*box, color);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setShadowColor(box, color); });
 }
 
 void EditorController::setSelectedShadowOffsetX(int offset)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setShadowOffsetX(*box, offset);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setShadowOffsetX(box, offset); });
 }
 
 void EditorController::setSelectedShadowOffsetY(int offset)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setShadowOffsetY(*box, offset);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setShadowOffsetY(box, offset); });
 }
 
 void EditorController::setSelectedShadowBlurSize(int size)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setShadowBlurSize(*box, size);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setShadowBlurSize(box, size); });
 }
 
 void EditorController::setSelectedGradientEnabled(bool enabled)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setGradientEnabled(*box, enabled);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setGradientEnabled(box, enabled); });
 }
 
 void EditorController::setSelectedGradientDirection(int direction)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setGradientDirection(*box, direction);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setGradientDirection(box, direction); });
 }
 
 void EditorController::setSelectedGradientColorA(const QString& color)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setGradientColorA(*box, color);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setGradientColorA(box, color); });
 }
 
 void EditorController::setSelectedGradientColorB(const QString& color)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setGradientColorB(*box, color);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setGradientColorB(box, color); });
 }
 
 void EditorController::setSelectedPerspectiveEnabled(bool enabled)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setPerspectiveEnabled(*box, enabled);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setPerspectiveEnabled(box, enabled); });
 }
 
 void EditorController::setSelectedPathEnabled(bool enabled)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setPathEnabled(*box, enabled);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setPathEnabled(box, enabled); });
 }
 
 void EditorController::setSelectedPathMode(int mode)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setPathMode(*box, mode);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setPathMode(box, mode); });
 }
 
 void EditorController::resetSelectedPerspective()
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::resetPerspective(*box);
-        markDocumentChanged();
-    }
+    editSelectedBox([](TextBox& box) { TextBoxEditingService::resetPerspective(box); });
 }
 
 void EditorController::resetSelectedPath()
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::resetPath(*box);
-        markDocumentChanged();
-    }
+    editSelectedBox([](TextBox& box) { TextBoxEditingService::resetPath(box); });
 }
 
 void EditorController::addSelectedPathPoint()
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::addPathPoint(*box);
-        markDocumentChanged();
-    }
+    editSelectedBox([](TextBox& box) { TextBoxEditingService::addPathPoint(box); });
 }
 
 void EditorController::setPerspectiveHandle(const QString& corner, double x, double y)
 {
-    if (auto* box = selectedBox()) {
-        TextBoxEditingService::setPerspectiveHandle(*box, corner, x, y);
-        markDocumentChanged();
-    }
+    editSelectedBox([&](TextBox& box) { TextBoxEditingService::setPerspectiveHandle(box, corner, x, y); });
 }
 
 void EditorController::setPathHandle(int index, double x, double y)
 {
-    if (auto* box = selectedBox()) {
-        if (TextBoxEditingService::setPathHandle(*box, index, x, y)) {
-            markDocumentChanged();
-        }
-    }
+    editSelectedBoxIf([&](TextBox& box) { return TextBoxEditingService::setPathHandle(box, index, x, y); });
 }
 
 bool EditorController::leftMouseButtonDown() const
@@ -776,6 +667,22 @@ const TextBox* EditorController::selectedBox() const
         return nullptr;
     }
     return &document_.textBoxes()[static_cast<std::size_t>(selectedIndex_)];
+}
+
+bool EditorController::editSelectedBoxIf(const std::function<bool(TextBox&)>& mutation)
+{
+    auto* box = selectedBox();
+    if (!box || !mutation(*box)) return false;
+    markDocumentChanged();
+    return true;
+}
+
+void EditorController::editSelectedBox(const std::function<void(TextBox&)>& mutation)
+{
+    editSelectedBoxIf([&](TextBox& box) {
+        mutation(box);
+        return true;
+    });
 }
 
 void EditorController::markDocumentChanged()
