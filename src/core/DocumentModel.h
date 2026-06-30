@@ -49,6 +49,7 @@ struct TextEffects {
     bool pathEnabled = false;
     int pathMode = 0;
     std::vector<Point> pathPoints;
+    // TypeX compatibility metadata: preserved during JSON load/save, not used by TextFX rendering.
     std::vector<int> pathInactivePoints;
     bool perspectiveEnabled = false;
     Point perspectiveNw;

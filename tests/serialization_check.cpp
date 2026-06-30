@@ -39,6 +39,10 @@ int main()
         std::cerr << "Page fixture did not preserve expected text boxes\n";
         return 1;
     }
+    if (document.textBoxes().front().effects.pathInactivePoints != std::vector<int>{1}) {
+        std::cerr << "Page fixture did not preserve TypeX path inactive points\n";
+        return 1;
+    }
 
     std::vector<TextPreset> presets;
     if (!JsonSerializer::loadPresets(presetFixture, presets, &error) || presets.empty()) {
@@ -60,6 +64,10 @@ int main()
     const auto saved = readText(output);
     if (saved.find("typebubblex_only") != std::string::npos || saved.find("mask_brush") != std::string::npos) {
         std::cerr << "Unsupported fields leaked into saved page JSON\n";
+        return 1;
+    }
+    if (saved.find("path_inactive_points") == std::string::npos) {
+        std::cerr << "TypeX path inactive points were not preserved in saved page JSON\n";
         return 1;
     }
 

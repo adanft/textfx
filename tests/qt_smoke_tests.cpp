@@ -2285,10 +2285,10 @@ private slots:
         QVERIFY(!source.contains(QStringLiteral("source: Editor.previewImageUrl")));
         QVERIFY(!source.contains(QStringLiteral("effectsPreviewDisplayable")));
         QVERIFY(source.contains(QStringLiteral("visible: source.toString().length > 0")));
-        QVERIFY(source.contains(QStringLiteral("function boxHasRenderEffects(box)")));
+        QVERIFY(!source.contains(QStringLiteral("function boxHasRenderEffects(box)")));
+        QVERIFY(!source.contains(QStringLiteral("function selectedBoxHasRenderEffects()")));
         QVERIFY(!source.contains(QStringLiteral("function boxNeedsPreviewArtifact(box)")));
         QVERIFY(!source.contains(QStringLiteral("function anyBoxNeedsPreviewArtifact()")));
-        QVERIFY(source.contains(QStringLiteral("return box && (box.outline || box.blur || box.shadow || box.gradient || box.path)")));
         QVERIFY(source.contains(QStringLiteral("visible: boxRef.selected && editorRef.editingText")));
         QVERIFY(source.contains(QStringLiteral("OutlinedTextItem {")));
         QCOMPARE(source.count(QStringLiteral("OutlinedTextItem {")), 1);

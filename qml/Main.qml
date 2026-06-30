@@ -451,15 +451,6 @@ ApplicationWindow {
                             g / width, h / height, 0, 1)
     }
 
-    function boxHasRenderEffects(box) {
-        return box && (box.outline || box.blur || box.shadow || box.gradient || box.path)
-    }
-
-    function selectedBoxHasRenderEffects() {
-        const box = selectedBox()
-        return boxHasRenderEffects(box)
-    }
-
     function rotatePoint(x, y, radians) {
         const c = Math.cos(radians)
         const s = Math.sin(radians)
