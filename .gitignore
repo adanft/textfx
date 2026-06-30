@@ -11,6 +11,9 @@ compile_commands.json
 .typex/
 exported/
 
+# Local AI/tooling artifacts
+.atl/
+
 # Editor/OS noise
 .cache/
 .idea/

@@ -3,23 +3,19 @@
 #include "core/EffectLimits.h"
 #include "core/GaussianBlur.h"
 #include "fonts/FontResolver.h"
+#include "render/RenderTextLayout.h"
 
 #include <QColor>
 #include <QFont>
-#include <QFontMetricsF>
 #include <QImage>
 #include <QLinearGradient>
-#include <QLineF>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPainterPathStroker>
 #include <QString>
-#include <QStringList>
-#include <QTextLayout>
 #include <QVector>
 
 #include <algorithm>
-#include <cmath>
 #include <filesystem>
 
 namespace textfx {
@@ -41,115 +37,19 @@ QFont qFontFor(const TextBox& box)
     return resolveFont(font).font;
 }
 
-QPainterPath textPathFor(const TextBox& box, const QFont& font, double inset, QStringList* lineTexts = nullptr, QVector<qreal>* lineXs = nullptr, QVector<qreal>* lineBaselines = nullptr)
+int qtAlignmentFor(TextAlignment alignment)
 {
-    struct LaidOutLine {
-        QString text;
-        qreal x = 0.0;
-        qreal ascent = 0.0;
-        qreal height = 0.0;
-    };
-
-    QPainterPath path;
-    QVector<LaidOutLine> lines;
-    auto text = box.style.uppercase ? QString::fromStdString(box.text).toUpper() : QString::fromStdString(box.text);
-    text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
-    text.replace(u'\r', u'\n');
-    const QStringList paragraphs = text.split(u'\n');
-    const qreal paintWidth = std::max<qreal>(1.0, box.bounds.w - inset * 2.0);
-    for (const QString& paragraph : paragraphs) {
-        QTextLayout layout(paragraph.isEmpty() ? QStringLiteral(" ") : paragraph, font);
-        QTextOption option;
-        option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
-        layout.setTextOption(option);
-        layout.beginLayout();
-        while (true) {
-            QTextLine line = layout.createLine();
-            if (!line.isValid()) break;
-            line.setLineWidth(paintWidth);
-            qreal x = inset;
-            if (box.style.alignment == TextAlignment::Center) x = inset + (paintWidth - line.naturalTextWidth()) / 2.0;
-            if (box.style.alignment == TextAlignment::Right) x = inset + paintWidth - line.naturalTextWidth();
-            lines.append({paragraph.mid(line.textStart(), line.textLength()), x, line.ascent(), line.height()});
-        }
-        layout.endLayout();
-    }
-    qreal blockHeight = 0.0;
-    for (qsizetype i = 0; i < lines.size(); ++i) blockHeight += lines.at(i).height + (i + 1 < lines.size() ? box.style.lineSpacing : 0.0);
-    qreal y = inset + std::max<qreal>(0.0, (box.bounds.h - inset * 2.0 - blockHeight) / 2.0);
-    for (const LaidOutLine& line : lines) {
-        const qreal baseline = y + line.ascent;
-        if (lineTexts) lineTexts->append(line.text);
-        if (lineXs) lineXs->append(line.x);
-        if (lineBaselines) lineBaselines->append(baseline);
-        path.addText(line.x, baseline, font, line.text);
-        y += line.height + box.style.lineSpacing;
-    }
-    path.setFillRule(Qt::WindingFill);
-    return path;
+    if (alignment == TextAlignment::Center) return Qt::AlignHCenter;
+    if (alignment == TextAlignment::Right) return Qt::AlignRight;
+    return Qt::AlignLeft;
 }
 
-QVector<QPointF> layoutPathPoints(const std::vector<Point>& points, double width, double height, bool smooth)
+QVector<QPointF> normalizedPathPoints(const std::vector<Point>& points)
 {
     QVector<QPointF> result;
     result.reserve(static_cast<qsizetype>(points.size()));
-    for (const auto& point : points) result.append({width * point.x, height * point.y});
-
-    for (int pass = 0; smooth && pass < 3 && result.size() >= 3; ++pass) {
-        QVector<QPointF> next;
-        next.reserve(result.size() * 2);
-        next.append(result.first());
-        for (qsizetype i = 0; i + 1 < result.size(); ++i) {
-            const QPointF from = result.at(i);
-            const QPointF to = result.at(i + 1);
-            next.append(from + (to - from) * 0.25);
-            next.append(from + (to - from) * 0.75);
-        }
-        next.append(result.last());
-        result = next;
-    }
+    for (const auto& point : points) result.append({point.x, point.y});
     return result;
-}
-
-struct PathSample {
-    QPointF point;
-    QPointF tangent = {1.0, 0.0};
-};
-
-qreal pathLength(const QVector<QPointF>& points)
-{
-    qreal result = 0.0;
-    for (qsizetype i = 0; i + 1 < points.size(); ++i) result += QLineF(points.at(i), points.at(i + 1)).length();
-    return result;
-}
-
-PathSample pathSampleAtDistance(const QVector<QPointF>& points, qreal distance)
-{
-    if (points.isEmpty()) return {};
-    if (points.size() == 1) return {points.first(), {1.0, 0.0}};
-
-    qreal remaining = std::clamp(distance, 0.0, pathLength(points));
-    for (qsizetype i = 0; i + 1 < points.size(); ++i) {
-        const QPointF a = points.at(i);
-        const QPointF b = points.at(i + 1);
-        const qreal segment = QLineF(a, b).length();
-        if (segment <= 0.0) continue;
-        const QPointF tangent = (b - a) / segment;
-        if (remaining <= segment) return {a + tangent * remaining, tangent};
-        remaining -= segment;
-    }
-
-    const QPointF a = points.at(points.size() - 2);
-    const QPointF b = points.last();
-    const qreal segment = std::max<qreal>(1.0, QLineF(a, b).length());
-    return {b, (b - a) / segment};
-}
-
-bool isNeutralFlatPath(const std::vector<Point>& points)
-{
-    if (points.size() < 2) return false;
-    if (std::abs(points.front().x) > 0.0001 || std::abs(points.back().x - 1.0) > 0.0001) return false;
-    return std::ranges::all_of(points, [](const Point& point) { return std::abs(point.y - 0.5) <= 0.0001; });
 }
 
 QBrush fillBrushFor(const TextBox& box)
@@ -180,41 +80,14 @@ void fillShadow(QPainter& painter, const QPainterPath& path, const QColor& color
     painter.drawImage(sourceRect.topLeft(), gaussianBlurred(layer, radius));
 }
 
-QPainterPath pathTextFor(const TextBox& box, const QFont& font, double inset)
+TextLayoutOptions layoutOptionsFor(const TextBox& box, qreal inset)
 {
-    // Non-neutral paths still approximate shaped text per QChar; neutral flat paths bypass this path.
-    QPainterPath path;
-    QStringList lines;
-    const bool smooth = box.effects.pathMode == 1;
-    const QVector<QPointF> guidePoints = layoutPathPoints(box.effects.pathPoints, box.bounds.w, box.bounds.h, smooth);
-    const qreal guideLength = pathLength(guidePoints);
-    if (guideLength <= 0.0) return textPathFor(box, font, inset);
-    TextBox pathLayoutBox = box;
-    pathLayoutBox.bounds.w = guideLength;
-    textPathFor(pathLayoutBox, font, inset, &lines);
-    const QFontMetricsF metrics(font);
-    const qreal lineSpacing = box.style.fontSize + box.style.lineSpacing;
-    const qreal firstLineOffset = -(lines.size() - 1) * lineSpacing * 0.5;
-    for (qsizetype lineIndex = 0; lineIndex < lines.size(); ++lineIndex) {
-        const QString& line = lines.at(lineIndex);
-        double distance = std::max<qreal>(0.0, (guideLength - metrics.horizontalAdvance(line)) * 0.5);
-        const qreal lineOffset = firstLineOffset + lineIndex * lineSpacing;
-        for (const QChar ch : line) {
-            const qreal advance = metrics.horizontalAdvance(ch);
-            const PathSample sample = pathSampleAtDistance(guidePoints, distance + advance * 0.5);
-            distance += advance;
-            if (ch.isSpace()) continue;
-            QPainterPath glyph;
-            glyph.addText(-advance / 2.0, 0.0, font, QString(ch));
-            const QPointF normal(-sample.tangent.y(), sample.tangent.x());
-            QTransform transform;
-            transform.translate(sample.point.x() + normal.x() * lineOffset, sample.point.y() + normal.y() * lineOffset);
-            transform.rotate(std::atan2(sample.tangent.y(), sample.tangent.x()) * 180.0 / 3.14159265358979323846);
-            path.addPath(transform.map(glyph));
-        }
-    }
-    path.setFillRule(Qt::WindingFill);
-    return path;
+    return {box.style.uppercase ? QString::fromStdString(box.text).toUpper() : QString::fromStdString(box.text),
+            box.bounds.w,
+            box.bounds.h,
+            inset,
+            static_cast<qreal>(box.style.lineSpacing),
+            qtAlignmentFor(box.style.alignment)};
 }
 
 void drawTextBox(QPainter& painter, const TextBox& box)
@@ -223,8 +96,10 @@ void drawTextBox(QPainter& painter, const TextBox& box)
     const auto font = qFontFor(box);
     const qreal outline = box.effects.outlineEnabled && box.effects.outlineSize > 0 ? box.effects.outlineSize : 0;
     const qreal inset = outline > 0 ? outline / 2.0 : 0.0;
-    const bool usingPathText = box.effects.pathEnabled && box.effects.pathPoints.size() > 1 && !isNeutralFlatPath(box.effects.pathPoints);
-    auto path = usingPathText ? pathTextFor(box, font, inset) : textPathFor(box, font, inset);
+    const QVector<QPointF> normalizedPoints = normalizedPathPoints(box.effects.pathPoints);
+    const TextLayoutOptions layoutOptions = layoutOptionsFor(box, inset);
+    const bool usingPathText = box.effects.pathEnabled && normalizedPoints.size() > 1 && !isNeutralFlatPath(normalizedPoints);
+    auto path = usingPathText ? pathTextLayoutPath(layoutOptions, font, normalizedPoints, box.effects.pathMode == 1, box.style.fontSize + box.style.lineSpacing) : textLayoutPath(layoutOptions, font);
     QRectF paintedBounds = path.boundingRect();
     if (outline > 0) {
         QPainterPathStroker stroker;

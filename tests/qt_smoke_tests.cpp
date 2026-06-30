@@ -2883,17 +2883,20 @@ private slots:
         QFile source(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../src/ui/OutlinedTextItem.cpp"));
         QVERIFY(source.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString code = QString::fromUtf8(source.readAll());
+        QFile layoutSource(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../src/render/RenderTextLayout.cpp"));
+        QVERIFY(layoutSource.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString layoutCode = QString::fromUtf8(layoutSource.readAll());
 
         QVERIFY(code.contains(QStringLiteral("gaussianBlurred")));
         QVERIFY(code.contains(QStringLiteral("blurCacheKey")));
         QVERIFY(code.contains(QStringLiteral("blurSize_")));
         QVERIFY(code.contains(QStringLiteral("const qreal layoutWidth = std::max<qreal>(1.0, width() / scale);")));
         QVERIFY(code.contains(QStringLiteral("target.scale(scale, scale);")));
-        QVERIFY(code.contains(QStringLiteral("const qreal paintWidth = std::max<qreal>(1.0, layoutWidth - inset * 2.0);")));
-        QVERIFY(code.contains(QStringLiteral("line.setLineWidth(paintWidth);")));
-        QVERIFY(code.contains(QStringLiteral("layoutHeight - inset * 2.0 - blockHeight")));
-        QVERIFY(code.contains(QStringLiteral("qreal x = inset;")));
-        QVERIFY(!code.contains(QStringLiteral("line.setLineWidth(layoutWidth);")));
+        QVERIFY(layoutCode.contains(QStringLiteral("const qreal paintWidth = std::max<qreal>(1.0, options.width - options.inset * 2.0);")));
+        QVERIFY(layoutCode.contains(QStringLiteral("line.setLineWidth(paintWidth);")));
+        QVERIFY(layoutCode.contains(QStringLiteral("options.height - options.inset * 2.0 - blockHeight")));
+        QVERIFY(layoutCode.contains(QStringLiteral("qreal x = options.inset;")));
+        QVERIFY(!layoutCode.contains(QStringLiteral("line.setLineWidth(options.width);")));
     }
 
     void outlinedTextItemBlurCacheInvalidatesOnFractionalResize()

@@ -40,6 +40,8 @@ add_library(textfx_core
     src/io/JsonSerializer.h
     src/render/RenderGraph.cpp
     src/render/RenderGraph.h
+    src/render/RenderTextLayout.cpp
+    src/render/RenderTextLayout.h
 )
 
 target_include_directories(textfx_core PUBLIC src)
