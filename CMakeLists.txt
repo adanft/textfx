@@ -15,10 +15,11 @@ include(GNUInstallDirs)
 
 option(TEXTFX_ENABLE_QT_DEPLOY "Run Qt QML deployment during install/package" OFF)
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Quick Qml QuickControls2 QuickDialogs2)
-find_package(Qt6 6.5 QUIET COMPONENTS Test)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Quick Qml QuickControls2 QuickDialogs2)
+find_package(Qt6 6.8 QUIET COMPONENTS Test)
 
-qt_standard_project_setup(REQUIRES 6.5)
+qt_standard_project_setup(REQUIRES 6.8)
+qt_policy(SET QTP0004 NEW)
 
 qt_add_executable(textfx
     src/app/main.cpp

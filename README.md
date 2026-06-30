@@ -7,7 +7,7 @@ TextFX is the C++/Qt successor MVP for TypeX. The app opens image folders, shows
 - CMake 3.25+
 - Ninja
 - C++23 compiler
-- Qt 6.5+ (`Core`, `Gui`, `Qml`, `Quick`, `QuickControls2`, `QuickDialogs2`; `Test` for smoke tests)
+- Qt 6.8+ (`Core`, `Gui`, `Qml`, `Quick`, `QuickControls2`, `QuickDialogs2`; `Test` for smoke tests)
 - Optional: Catch2 3 for core/text/render test sources
 
 ## Build
