@@ -79,6 +79,18 @@ bool hasPngMagic(const QString& path)
     return file.open(QIODevice::ReadOnly) && file.read(8) == QByteArray::fromHex("89504e470d0a1a0a");
 }
 
+QString readQmlFile(const QString& name)
+{
+    QFile file(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/") + name);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return {};
+    return QString::fromUtf8(file.readAll());
+}
+
+QString qmlSource()
+{
+    return readQmlFile(QStringLiteral("Main.qml")) + QLatin1Char('\n') + readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+}
+
 bool imageDiffers(const QString& a, const QString& b)
 {
     const QImage first = QImage(a).convertToFormat(QImage::Format_RGBA8888);
@@ -623,7 +635,7 @@ private slots:
 
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
         QVERIFY(source.contains(QStringLiteral("gradientEnabled: modelData.gradient")));
         QVERIFY(source.contains(QStringLiteral("gradientDirection: modelData.gradientDirection")));
         QVERIFY(source.contains(QStringLiteral("gradientColorA: rootWindow.qmlColor(modelData.gradientColorA)")));
@@ -770,9 +782,9 @@ private slots:
 
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
-        const qsizetype delegateStart = source.indexOf(QStringLiteral("delegate: Rectangle {\n                            id: boxDelegate"));
+        const qsizetype delegateStart = source.indexOf(QStringLiteral("Rectangle {\n    id: boxDelegate"));
         const qsizetype textPerspectiveStart = source.indexOf(QStringLiteral("id: boxTextPerspective"), delegateStart);
         const qsizetype textAreaStart = source.indexOf(QStringLiteral("id: boxTextArea"), textPerspectiveStart);
         const qsizetype mouseAreaStart = source.indexOf(QStringLiteral("MouseArea {"), textAreaStart);
@@ -804,7 +816,7 @@ private slots:
 
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
         QVERIFY(!source.contains(QStringLiteral("import QtQuick.Effects")));
         QVERIFY(!source.contains(QStringLiteral("MultiEffect {")));
         QVERIFY(!source.contains(QStringLiteral("liveGpuBlurActive")));
@@ -826,7 +838,7 @@ private slots:
 
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
         QVERIFY(source.contains(QStringLiteral("shadowEnabled: modelData.shadow")));
         QVERIFY(source.contains(QStringLiteral("shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? modelData.shadowBlurSize : 0")));
     }
@@ -991,9 +1003,9 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
-        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n                                    {name: \"nw\"}"));
+        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"));
         const qsizetype rotateStart = source.indexOf(QStringLiteral("id: rotateHandle"), resizeStart);
         QVERIFY(resizeStart >= 0);
         QVERIFY(rotateStart > resizeStart);
@@ -1020,9 +1032,9 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
-        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n                                    {name: \"nw\"}"));
+        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"));
         const qsizetype rotateStart = source.indexOf(QStringLiteral("id: rotateHandle"), resizeStart);
         QVERIFY(resizeStart >= 0);
         QVERIFY(rotateStart > resizeStart);
@@ -1047,10 +1059,10 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         const qsizetype moveStart = source.indexOf(QStringLiteral("z: boxRef.selected && editorRef.editingText ? -1 : 10"));
-        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n                                    {name: \"nw\"}"), moveStart);
+        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"), moveStart);
         QVERIFY(moveStart >= 0);
         QVERIFY(resizeStart > moveStart);
         const QString moveSource = source.mid(moveStart, resizeStart - moveStart);
@@ -1096,7 +1108,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         const qsizetype boundsStart = source.indexOf(QStringLiteral("function perspectiveVisualBounds(box, width, height)"));
         const qsizetype marginStart = source.indexOf(QStringLiteral("function perspectiveMargin(box)"), boundsStart);
@@ -1111,7 +1123,7 @@ private slots:
         QVERIFY(hitHelpers.contains(QStringLiteral("pointOnSegment(point, a, b)")));
 
         const qsizetype moveStart = source.indexOf(QStringLiteral("readonly property var visualBounds: boxRef.perspectiveActive"));
-        const qsizetype handlesStart = source.indexOf(QStringLiteral("model: [\n                                    {name: \"nw\"}"), moveStart);
+        const qsizetype handlesStart = source.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"), moveStart);
         QVERIFY(moveStart >= 0);
         QVERIFY(handlesStart > moveStart);
         const QString moveSource = source.mid(moveStart, handlesStart - moveStart);
@@ -1132,11 +1144,11 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
-        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n                                    {name: \"nw\"}"));
+        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"));
         const qsizetype pathStart = source.indexOf(QStringLiteral("model: pathHandlePlane.boxRef.boxModel.pathPoints"), resizeStart);
-        const qsizetype pathEnd = source.indexOf(QStringLiteral("Label {"), pathStart);
+        const qsizetype pathEnd = source.size();
         const qsizetype rotateRectStart = source.indexOf(QStringLiteral("id: rotateHandle"), resizeStart);
         const qsizetype rotateStart = source.indexOf(QStringLiteral("rotateHandle.rootWindow.beginRotateDrag(rotateHandle.boxRef"), resizeStart);
         QVERIFY(resizeStart >= 0);
@@ -1148,8 +1160,8 @@ private slots:
         const QString resizeSource = source.mid(resizeStart, rotateStart - resizeStart);
         const QString rotateSource = source.mid(rotateRectStart, pathStart - rotateRectStart);
         const QString pathSource = source.mid(pathStart, pathEnd - pathStart);
-        const qsizetype boxDelegateStart = source.indexOf(QStringLiteral("delegate: Rectangle {\n                            id: boxDelegate"));
-        const qsizetype boxDelegateEnd = source.indexOf(QStringLiteral("Pane {\n                    id: rightPanel"), boxDelegateStart);
+        const qsizetype boxDelegateStart = source.indexOf(QStringLiteral("Rectangle {\n    id: boxDelegate"));
+        const qsizetype boxDelegateEnd = source.size();
         QVERIFY(boxDelegateStart >= 0);
         QVERIFY(boxDelegateEnd > boxDelegateStart);
         const QString boxDelegateSource = source.mid(boxDelegateStart, boxDelegateEnd - boxDelegateStart);
@@ -1190,7 +1202,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         QVERIFY(source.contains(QStringLiteral("property bool moveActive: rootWindow.dragMode === 7 && rootWindow.activeMoveIndex === modelData.index")));
         QVERIFY(source.contains(QStringLiteral("property bool resizeActive: rootWindow.dragMode === 4 && rootWindow.activeResizeDelegate === boxDelegate")));
@@ -1212,7 +1224,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         for (const QString& handle : {QStringLiteral("nw"), QStringLiteral("n"), QStringLiteral("ne"), QStringLiteral("e"), QStringLiteral("se"), QStringLiteral("s"), QStringLiteral("sw"), QStringLiteral("w")}) {
             QVERIFY2(source.contains(QStringLiteral("name: \"") + handle + QStringLiteral("\"")), qPrintable(handle));
@@ -1227,7 +1239,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         const qsizetype perspectiveUpdateStart = source.indexOf(QStringLiteral("function updatePerspectiveDrag(canvasX, canvasY)"));
         const qsizetype perspectiveEndStart = source.indexOf(QStringLiteral("function endPerspectiveDrag(commit)"));
@@ -1264,7 +1276,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         const qsizetype visualStart = source.indexOf(QStringLiteral("function visualHandlePosition(box, name, width, height)"));
         const qsizetype topStart = source.indexOf(QStringLiteral("function topMiddleVisualPoint"), visualStart);
@@ -1292,7 +1304,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         const qsizetype beginStart = source.indexOf(QStringLiteral("function beginPerspectiveDrag(delegate, handle, canvasX, canvasY)"));
         const qsizetype updateStart = source.indexOf(QStringLiteral("function updatePerspectiveDrag(canvasX, canvasY)"), beginStart);
@@ -1320,9 +1332,9 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
-        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n                                    {name: \"nw\"}"));
+        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"));
         const qsizetype pathStart = source.indexOf(QStringLiteral("model: pathHandlePlane.boxRef.boxModel.pathPoints"), resizeStart);
         const qsizetype rotateStart = source.indexOf(QStringLiteral("rotateHandle.rootWindow.beginRotateDrag(rotateHandle.boxRef"), resizeStart);
         QVERIFY(resizeStart >= 0);
@@ -1469,7 +1481,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
         const qsizetype buttonStart = source.indexOf(QStringLiteral("component TextStyleButton: Button"));
         const qsizetype buttonEnd = source.indexOf(QStringLiteral("component ShortcutMenuItem: MenuItem"));
         QVERIFY(buttonStart >= 0);
@@ -1571,7 +1583,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
         const qsizetype propertiesStart = source.indexOf(QStringLiteral("Label { text: qsTr(\"Text Properties\"); font.bold: true; enabled: textPropertiesSection.sectionReady }"));
         const qsizetype presetsStart = source.indexOf(QStringLiteral("Label { text: qsTr(\"Text Presets\"); font.bold: true; enabled: textPresetsSection.sectionReady }"));
         const qsizetype pageTextsStart = source.indexOf(QStringLiteral("Label { text: qsTr(\"Page Texts\"); font.bold: true; enabled: pageTextsSection.sectionReady }"));
@@ -1897,7 +1909,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         QVERIFY(source.contains(QStringLiteral("sidePanelFocusedTextInputs")));
         QVERIFY(source.contains(QStringLiteral("enabled: !Editor.editingText && window.sidePanelFocusedTextInputs === 0")));
@@ -1908,7 +1920,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         const qsizetype handlerStart = source.indexOf(QStringLiteral("function handleEscape()"));
         const qsizetype handlerEnd = source.indexOf(QStringLiteral("Connections {"), handlerStart);
@@ -1937,7 +1949,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         QVERIFY(source.contains(QStringLiteral("import QtQuick.Dialogs")));
         QVERIFY(source.contains(QStringLiteral("ColorDialog")));
@@ -1962,7 +1974,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         for (const QString& removedChromeColor : {
                  QStringLiteral("#202124"), QStringLiteral("#24282f"), QStringLiteral("#111318"),
@@ -2043,7 +2055,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         QVERIFY(source.contains(QStringLiteral("property real pageBaseScale: 1.0")));
         QVERIFY(source.contains(QStringLiteral("function fitPageScale()")));
@@ -2065,7 +2077,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
         const qsizetype rightPanelStart = source.indexOf(QStringLiteral("id: rightPanel"));
         const qsizetype popupStart = source.indexOf(QStringLiteral("Popup {"), rightPanelStart);
         QVERIFY(rightPanelStart >= 0);
@@ -2128,7 +2140,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
         const qsizetype menuItemStart = source.indexOf(QStringLiteral("component ShortcutMenuItem: MenuItem"));
         const qsizetype menuItemEnd = source.indexOf(QStringLiteral("function pageScale()"));
         QVERIFY(menuItemStart >= 0);
@@ -2199,7 +2211,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         QVERIFY(source.contains(QStringLiteral("model: Editor.pageLabels")));
         QVERIFY(source.contains(QStringLiteral("Editor.goToPage(index)")));
@@ -2215,7 +2227,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         QVERIFY(!source.contains(QStringLiteral("id: effectsPreviewImage")));
         QVERIFY(!source.contains(QStringLiteral("source: Editor.previewImageUrl")));
@@ -2254,7 +2266,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         const int renderer = source.indexOf(QStringLiteral("id: boxOutlinedText"));
         const int editor = source.indexOf(QStringLiteral("id: boxTextArea"));
@@ -2290,7 +2302,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         QVERIFY(source.contains(QStringLiteral("function perspectiveMatrix(box, width, height, renderScale, enabled)")));
         QVERIFY(source.contains(QStringLiteral("function perspectiveLayoutCorner(box, name, width, height)")));
@@ -2318,13 +2330,13 @@ private slots:
         QVERIFY(!source.contains(QStringLiteral("offsetFromCenter")));
         QVERIFY(!source.contains(QStringLiteral("dx / length * 16")));
         QVERIFY(!source.contains(QStringLiteral("drag.target: parent; onPressed: Editor.beginInteraction(); onReleased: Editor.endInteraction(); onCanceled: Editor.endInteraction(); onPositionChanged: Editor.setPerspectiveHandle")));
-        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n                                    {name: \"nw\"}"));
+        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"));
         const qsizetype pathStart = source.indexOf(QStringLiteral("model: pathHandlePlane.boxRef.boxModel.pathPoints"), resizeStart);
         QVERIFY(resizeStart >= 0);
         QVERIFY(pathStart > resizeStart);
         const QString manualHandleSource = source.mid(resizeStart, pathStart - resizeStart);
         QVERIFY(!manualHandleSource.contains(QStringLiteral("drag.target")));
-        QVERIFY(manualHandleSource.contains(QStringLiteral("mapToItem(canvas, mouse.x, mouse.y)")));
+        QVERIFY(manualHandleSource.contains(QStringLiteral("mapToItem(canvasItem, mouse.x, mouse.y)")));
         QVERIFY(source.contains(QStringLiteral("activePerspectiveDelegate.mapFromItem(canvas")));
         QVERIFY(source.contains(QStringLiteral("window.editor.setSelectedBounds(resizeX, resizeY, resizeW, resizeH)")));
         QVERIFY(source.contains(QStringLiteral("window.editor.setPerspectiveHandle")));
@@ -2348,16 +2360,16 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
-        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n                                    {name: \"nw\"}"));
+        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"));
         const qsizetype rotateUse = source.indexOf(QStringLiteral("rootWindow.rotateHandlePosition(boxRef.boxModel, boxRef.width, boxRef.height)"), resizeStart);
         QVERIFY(resizeStart >= 0);
         QVERIFY(rotateUse > resizeStart);
         const QString resizeSource = source.mid(resizeStart, rotateUse - resizeStart);
 
         QVERIFY(resizeSource.contains(QStringLiteral("x: rootWindow.visualHandlePosition(boxRef.boxModel, modelData.name, boxRef.width, boxRef.height).x - width / 2")));
-        QVERIFY(resizeSource.contains(QStringLiteral("const point = mapToItem(canvas, mouse.x, mouse.y)")));
+        QVERIFY(resizeSource.contains(QStringLiteral("const point = mapToItem(canvasItem, mouse.x, mouse.y)")));
         const qsizetype perspectiveBranch = resizeSource.indexOf(QStringLiteral("if (resizeHandle.boxRef.perspectiveActive)"));
         const qsizetype perspectiveBegin = resizeSource.indexOf(QStringLiteral("resizeHandle.rootWindow.beginPerspectiveDrag(resizeHandle.boxRef, modelData.name, point.x, point.y)"));
         const qsizetype normalBegin = resizeSource.indexOf(QStringLiteral("resizeHandle.rootWindow.beginResizeDrag(resizeHandle.boxRef, modelData.name, point.x, point.y)"));
@@ -2373,7 +2385,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         const qsizetype updateStart = source.indexOf(QStringLiteral("function updatePerspectiveDrag(canvasX, canvasY)"));
         const qsizetype updateEnd = source.indexOf(QStringLiteral("function endPerspectiveDrag(commit)"), updateStart);
@@ -2393,9 +2405,9 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
-        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n                                    {name: \"nw\"}"));
+        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"));
         const qsizetype rotateUse = source.indexOf(QStringLiteral("rootWindow.rotateHandlePosition(boxRef.boxModel, boxRef.width, boxRef.height)"), resizeStart);
         QVERIFY(resizeStart >= 0);
         QVERIFY(rotateUse > resizeStart);
@@ -2417,7 +2429,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         QVERIFY(!source.contains(QStringLiteral("perspectiveHandleOffset")));
         QVERIFY(!source.contains(QStringLiteral("function offsetFromCenter(point, width, height)")));
@@ -2425,7 +2437,7 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("function rotateHandlePosition(box, width, height)")));
         QVERIFY(source.contains(QStringLiteral("return { x: top.x, y: top.y - rotateHandleDistance() }")));
 
-        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n                                    {name: \"nw\"}"));
+        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"));
         const qsizetype rotateUse = source.indexOf(QStringLiteral("rootWindow.rotateHandlePosition(boxRef.boxModel, boxRef.width, boxRef.height)"));
         QVERIFY(resizeStart >= 0);
         QVERIFY(rotateUse > resizeStart);
@@ -2449,7 +2461,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         const qsizetype renderer = source.indexOf(QStringLiteral("id: boxOutlinedText"));
         const qsizetype editor = source.indexOf(QStringLiteral("TextArea {"), renderer);
@@ -2966,7 +2978,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString qmlSource = QString::fromUtf8(qml.readAll());
+        const QString qmlSource = ::qmlSource();
 
         for (const QString& handle : {QStringLiteral("nw"), QStringLiteral("n"), QStringLiteral("ne"), QStringLiteral("e"), QStringLiteral("se"), QStringLiteral("s"), QStringLiteral("sw"), QStringLiteral("w")}) {
             QVERIFY2(qmlSource.contains(QStringLiteral("name: \"") + handle + QStringLiteral("\"")), qPrintable(handle));
@@ -2987,7 +2999,7 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = QString::fromUtf8(qml.readAll());
+        const QString source = qmlSource();
 
         QVERIFY(source.contains(QStringLiteral("id: rawOverlayImage")));
         QVERIFY(source.contains(QStringLiteral("opacity: 0.45")));

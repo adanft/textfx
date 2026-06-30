@@ -60,6 +60,7 @@ qt_add_qml_module(textfx
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/TextBoxDelegate.qml
 )
 
 target_link_libraries(textfx
