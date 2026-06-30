@@ -1,3 +1,4 @@
+#include "app/ProjectSessionService.h"
 #include "core/ProjectStore.h"
 #include "io/JsonSerializer.h"
 
@@ -46,6 +47,27 @@ TEST_CASE("Project pages are naturally sorted")
     std::ranges::transform(pages, std::back_inserter(names), [](const auto& path) { return path.filename().string(); });
 
     CHECK(names == std::vector<std::string>{"1.jpg", "2.PNG", "3.jfif", "10.webp", "page-2.jpeg", "page-10.png"});
+    std::filesystem::remove_all(folder);
+}
+
+TEST_CASE("Project session service exposes page names labels and keys")
+{
+    const auto folder = makeTempDir("textfx-project-session-pages-");
+    for (const auto& name : {"page10.png", "page2.png"}) {
+        touch(folder / name);
+    }
+
+    const auto pages = ProjectSessionService::discoverPages(ProjectStore(folder));
+
+    REQUIRE(pages.paths.size() == 2);
+    CHECK(pages.names == QStringList({QStringLiteral("page2.png"), QStringLiteral("page10.png")}));
+    CHECK(ProjectSessionService::pageName(pages.names, 0) == QStringLiteral("page2.png"));
+    CHECK(ProjectSessionService::pageName(pages.names, 2).isEmpty());
+    CHECK(ProjectSessionService::pageLabels(pages.names) == QStringList({QStringLiteral("1 - page2.png"), QStringLiteral("2 - page10.png")}));
+    CHECK(ProjectSessionService::normalizePageIndex(1, pages.paths.size()) == 1);
+    CHECK(ProjectSessionService::normalizePageIndex(-1, pages.paths.size()) == -1);
+    CHECK(ProjectSessionService::pageKey(pages.paths.front()) == "page2.png");
+    CHECK(ProjectSessionService::pageKey({}).empty());
     std::filesystem::remove_all(folder);
 }
 

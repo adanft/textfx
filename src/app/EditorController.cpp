@@ -2,6 +2,7 @@
 
 #include "app/EditorViewModels.h"
 #include "app/ProjectExportService.h"
+#include "app/ProjectSessionService.h"
 #include "app/TextBoxClipboardService.h"
 #include "app/TextBoxEditingService.h"
 #include "app/TextBoxSelectionService.h"
@@ -40,8 +41,7 @@ QVariantList EditorController::layers() const
 
 QString EditorController::currentPageName() const
 {
-    if (currentPageIndex_ < 0 || currentPageIndex_ >= pages_.size()) return {};
-    return pages_.at(currentPageIndex_);
+    return ProjectSessionService::pageName(pages_, currentPageIndex_);
 }
 
 QUrl EditorController::currentPageUrl() const
@@ -72,9 +72,7 @@ QStringList EditorController::pageTexts() const
 
 QStringList EditorController::pageLabels() const
 {
-    QStringList labels;
-    for (int i = 0; i < pages_.size(); ++i) labels.push_back(QStringLiteral("%1 - %2").arg(i + 1).arg(pages_.at(i)));
-    return labels;
+    return ProjectSessionService::pageLabels(pages_);
 }
 
 bool EditorController::actionEnabled(const QString& command) const
@@ -697,15 +695,14 @@ void EditorController::refreshPages()
     if (!store_) {
         return;
     }
-    for (const auto& page : store_->listPagePaths()) {
-        pagePaths_.push_back(page);
-        pages_.push_back(QString::fromStdString(page.filename().string()));
-    }
+    const auto pages = ProjectSessionService::discoverPages(*store_);
+    pagePaths_ = pages.paths;
+    pages_ = pages.names;
 }
 
 bool EditorController::loadPageAt(int index)
 {
-    if (!store_ || index < 0 || index >= static_cast<int>(pagePaths_.size())) return false;
+    if (!store_ || ProjectSessionService::normalizePageIndex(index, pagePaths_.size()) < 0) return false;
     if (!autosaveCurrent()) return false;
 
     currentPageIndex_ = index;
@@ -740,7 +737,7 @@ bool EditorController::autosaveCurrent()
 
 std::string EditorController::currentPageKey() const
 {
-    return currentPage_.empty() ? std::string{} : currentPage_.filename().string();
+    return ProjectSessionService::pageKey(currentPage_);
 }
 
 bool EditorController::saveProjectPresets(const std::string& preferredName)
