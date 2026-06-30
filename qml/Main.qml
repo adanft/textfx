@@ -1512,21 +1512,6 @@ ApplicationWindow {
                         }
                     }
 
-                    Label {
-                        anchors.centerIn: parent
-                        visible: Editor.boxes.length === 0
-                        text: Editor.hasProject ? qsTr("Double-click canvas to create text") : qsTr("Create or open a project to start")
-                        color: window.palette.mid
-                    }
-
-                    Label {
-                        anchors.left: parent.left
-                        anchors.bottom: parent.bottom
-                        anchors.margins: 12
-                        visible: window.selectedBoxHasRenderEffects()
-                        text: qsTr("Live editing uses QML layout; rendered effects apply on export.")
-                        color: window.palette.highlight
-                    }
                     }
                 }
 

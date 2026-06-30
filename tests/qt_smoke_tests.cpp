@@ -1149,7 +1149,7 @@ private slots:
         const QString rotateSource = source.mid(rotateRectStart, pathStart - rotateRectStart);
         const QString pathSource = source.mid(pathStart, pathEnd - pathStart);
         const qsizetype boxDelegateStart = source.indexOf(QStringLiteral("delegate: Rectangle {\n                            id: boxDelegate"));
-        const qsizetype boxDelegateEnd = source.indexOf(QStringLiteral("Label {\n                        anchors.centerIn: parent"), boxDelegateStart);
+        const qsizetype boxDelegateEnd = source.indexOf(QStringLiteral("Pane {\n                    id: rightPanel"), boxDelegateStart);
         QVERIFY(boxDelegateStart >= 0);
         QVERIFY(boxDelegateEnd > boxDelegateStart);
         const QString boxDelegateSource = source.mid(boxDelegateStart, boxDelegateEnd - boxDelegateStart);
@@ -2207,7 +2207,8 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("model: [qsTr(\"Straight\"), qsTr(\"Smooth\")]")));
         QVERIFY(source.contains(QStringLiteral("Editor.addSelectedPathPoint()")));
         QVERIFY(source.contains(QStringLiteral("model: pathHandlePlane.boxRef.boxModel.pathPoints")));
-        QVERIFY(source.contains(QStringLiteral("Live editing uses QML layout; rendered effects apply on export.")));
+        QVERIFY(!source.contains(QStringLiteral("Double-click canvas to create text")));
+        QVERIFY(!source.contains(QStringLiteral("Live editing uses QML layout; rendered effects apply on export.")));
     }
 
     void qmlUsesOneOutlinedTextItemDisplayRenderer()
