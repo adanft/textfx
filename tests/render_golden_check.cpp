@@ -1,3 +1,5 @@
+#include "app/ProjectExportService.h"
+#include "core/ProjectStore.h"
 #include "render/RenderGraph.h"
 
 #include <filesystem>
@@ -118,6 +120,52 @@ int main(int argc, char** argv)
     const auto timedResult = graph.exportPagePngTimed(DocumentModel{}, pagePath, timedOutPath);
     if (!timedResult || timedResult->timing.elapsed < RenderGraph::ExportTiming::Duration::zero() || !hasPngMagic(timedOutPath)) {
         std::cerr << "Expected timed export to return non-negative timing data and write a PNG\n";
+        return 1;
+    }
+
+    DocumentModel serviceDocument;
+    ProjectStore exportStore(tempPath);
+    const auto serviceResult = ProjectExportService(exportStore).exportPages(ExportJob{
+        .pagePaths = {pagePath, tempPath / "missing-service-page.png"},
+        .currentPage = pagePath,
+        .currentDocument = &serviceDocument,
+    });
+    if (serviceResult.total != 2 || serviceResult.completed != 1 || serviceResult.failed != 1 || serviceResult.pages.size() != 2 || serviceResult.elapsed < std::chrono::steady_clock::duration::zero()) {
+        std::cerr << "Expected project export service to aggregate completed and failed page counts\n";
+        return 1;
+    }
+    if (!serviceResult.pages[0].completed || serviceResult.pages[0].timing.elapsed < RenderGraph::ExportTiming::Duration::zero() || !hasPngMagic(exportStore.pageExportPathFor(pagePath))) {
+        std::cerr << "Expected project export service to retain successful page timing and output path\n";
+        return 1;
+    }
+    if (serviceResult.pages[1].completed || serviceResult.pages[1].error != "Could not load page image: " + (tempPath / "missing-service-page.png").string()) {
+        std::cerr << "Expected project export service to retain failed page error details\n";
+        return 1;
+    }
+
+    const auto corruptSavedPagePath = tempPath / "corrupt-saved-page.png";
+    if (!page.save(QString::fromStdString(corruptSavedPagePath.string()), "PNG")) return 1;
+    std::filesystem::create_directories(tempPath / ProjectStore::SaveFolder);
+    {
+        std::ofstream corruptSave(exportStore.pageSavePathFor(corruptSavedPagePath));
+        corruptSave << "not-json";
+    }
+    const auto corruptSaveResult = ProjectExportService(exportStore).exportPages(ExportJob{
+        .pagePaths = {pagePath, corruptSavedPagePath},
+        .currentPage = pagePath,
+        .currentDocument = &serviceDocument,
+    });
+    if (corruptSaveResult.total != 2 || corruptSaveResult.completed != 1 || corruptSaveResult.failed != 1 || corruptSaveResult.pages.size() != 2) {
+        std::cerr << "Expected corrupt saved page JSON to count as one failed export page\n";
+        return 1;
+    }
+    if (!corruptSaveResult.pages[0].completed || corruptSaveResult.pages[0].error != "") {
+        std::cerr << "Expected current page to export successfully before corrupt saved page load failure\n";
+        return 1;
+    }
+    if (corruptSaveResult.pages[1].completed || corruptSaveResult.pages[1].pagePath != corruptSavedPagePath
+        || corruptSaveResult.pages[1].error != "Save file is not valid JSON.") {
+        std::cerr << "Expected corrupt saved page load failure to preserve the per-page error\n";
         return 1;
     }
 

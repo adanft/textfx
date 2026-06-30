@@ -1,5 +1,6 @@
 #include "app/EditorController.h"
 
+#include "app/ProjectExportService.h"
 #include "app/TextBoxEditingService.h"
 #include "fonts/FontResolver.h"
 #include "render/RenderGraph.h"
@@ -124,11 +125,6 @@ QVariantList pointsToVariantList(const std::vector<Point>& points)
     QVariantList result;
     for (const auto& point : points) result.push_back(QVariantList{point.x, point.y});
     return result;
-}
-
-bool exportPage(const ProjectStore& store, const RenderGraph& graph, const std::filesystem::path& page, const DocumentModel& document, std::string* error)
-{
-    return graph.exportPagePng(document, page, store.pageExportPathFor(page), error);
 }
 
 TextBox boxFromClipboardJson(const QJsonObject& object)
@@ -346,8 +342,6 @@ void EditorController::saveAll()
         return;
     }
 
-    int exported = 0;
-    int failures = 0;
     std::string error;
     if (store_->savePage(currentPage_, document_, &error)) {
         document_.markSaved();
@@ -357,29 +351,17 @@ void EditorController::saveAll()
         return;
     }
 
-    const RenderGraph graph;
-    for (const auto& page : pagePaths_) {
-        const bool isCurrent = page == currentPage_;
-        DocumentModel loaded;
-        const DocumentModel* document = &document_;
-        if (!isCurrent) {
-            if (!store_->loadPage(page, loaded, &error)) {
-                ++failures;
-                continue;
-            }
-            document = &loaded;
-        }
-        if (exportPage(*store_, graph, page, *document, &error)) {
-            ++exported;
-        } else {
-            ++failures;
-        }
-    }
+    const ProjectExportService exportService(*store_);
+    const auto exportResult = exportService.exportPages(ExportJob{
+        .pagePaths = pagePaths_,
+        .currentPage = currentPage_,
+        .currentDocument = &document_,
+    });
 
-    if (failures > 0) {
-        setNotification(QStringLiteral("Exported %1 page(s), %2 failed.").arg(exported).arg(failures));
+    if (exportResult.failed > 0) {
+        setNotification(QStringLiteral("Exported %1 page(s), %2 failed.").arg(exportResult.completed).arg(exportResult.failed));
     } else {
-        setNotification(QStringLiteral("Exported %1 page(s).").arg(exported));
+        setNotification(QStringLiteral("Exported %1 page(s).").arg(exportResult.completed));
     }
     emit stateChanged();
 }
