@@ -34,6 +34,8 @@ add_library(textfx_core
     src/app/EditorViewModels.h
     src/app/ProjectExportService.cpp
     src/app/ProjectExportService.h
+    src/app/TextBoxClipboardService.cpp
+    src/app/TextBoxClipboardService.h
     src/app/TextBoxEditingService.cpp
     src/app/TextBoxEditingService.h
     src/core/DocumentModel.cpp
