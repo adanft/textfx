@@ -111,44 +111,50 @@ ApplicationWindow {
         readonly property int maximumShadowOffset: 512
     }
 
-    function fitPageScale() {
-        const sourceWidth = pageImage.sourceSize.width
-        const sourceHeight = pageImage.sourceSize.height
-        if (sourceWidth <= 0 || sourceHeight <= 0 || canvas.width <= 0 || canvas.height <= 0)
-            return 1
-        return Math.min(canvas.width / sourceWidth, canvas.height / sourceHeight)
+    ViewportMetrics {
+        id: viewportMetrics
+        objectName: "viewportMetrics"
+        zoom: window.zoom
+        pageBaseScale: window.pageBaseScale
+        panX: window.panX
+        panY: window.panY
+        canvasWidth: canvas.width
+        canvasHeight: canvas.height
+        pageSourceWidth: pageImage.sourceSize.width
+        pageSourceHeight: pageImage.sourceSize.height
     }
 
-    function pageScale() { return pageBaseScale }
-    function pageDisplayWidth() { return pageImage.sourceSize.width * pageScale() }
-    function pageDisplayHeight() { return pageImage.sourceSize.height * pageScale() }
-    function pageLeft() { return (canvas.width - pageDisplayWidth()) / 2 }
-    function pageTop() { return (canvas.height - pageDisplayHeight()) / 2 }
-    function viewDocScale() { return pageScale() * window.zoom }
-    function livePreviewScale() { return Math.min(1.0, viewDocScale()) }
-    function documentToViewLength(value) { return value * viewDocScale() }
+    function fitPageScale() { return viewportMetrics.fitPageScale() }
+    function pageScale() { return viewportMetrics.pageScale() }
+    function pageDisplayWidth() { return viewportMetrics.pageDisplayWidth() }
+    function pageDisplayHeight() { return viewportMetrics.pageDisplayHeight() }
+    function pageLeft() { return viewportMetrics.pageLeft() }
+    function pageTop() { return viewportMetrics.pageTop() }
+    function viewDocScale() { return viewportMetrics.viewDocScale() }
+    function livePreviewScale() { return viewportMetrics.livePreviewScale() }
+    function documentToViewLength(value) { return viewportMetrics.documentToViewLength(value) }
     function selectionLineWidth() { return Math.max(1, documentToViewLength(2)) }
     function handleSize() { return Math.max(1, documentToViewLength(editorLimits.minimumBoxSize)) }
     function rotateHandleDistance() { return documentToViewLength(28) }
-    function documentToViewX(x) { return window.panX + (pageLeft() + x * pageScale()) * window.zoom }
-    function documentToViewY(y) { return window.panY + (pageTop() + y * pageScale()) * window.zoom }
-    function viewToDocumentX(x) { return (x - window.panX) / viewDocScale() - pageLeft() / pageScale() }
-    function viewToDocumentY(y) { return (y - window.panY) / viewDocScale() - pageTop() / pageScale() }
+    function documentToViewX(x) { return viewportMetrics.documentToViewX(x) }
+    function documentToViewY(y) { return viewportMetrics.documentToViewY(y) }
+    function viewToDocumentX(x) { return viewportMetrics.viewToDocumentX(x) }
+    function viewToDocumentY(y) { return viewportMetrics.viewToDocumentY(y) }
 
     function zoomAt(x, y, factor) {
-        const oldZoom = window.zoom
-        const nextZoom = Math.max(0.5, Math.min(6, oldZoom * factor))
-        if (nextZoom === oldZoom)
+        const nextState = viewportMetrics.zoomStateAt(x, y, factor)
+        if (!nextState.changed)
             return
-        window.panX = x - (x - window.panX) * (nextZoom / oldZoom)
-        window.panY = y - (y - window.panY) * (nextZoom / oldZoom)
-        window.zoom = nextZoom
+        window.panX = nextState.panX
+        window.panY = nextState.panY
+        window.zoom = nextState.zoom
     }
 
     function resetZoom() {
-        window.zoom = 1.0
-        window.panX = 0
-        window.panY = 0
+        const reset = viewportMetrics.resetState()
+        window.zoom = reset.zoom
+        window.panX = reset.panX
+        window.panY = reset.panY
     }
 
     function selectedBox() {

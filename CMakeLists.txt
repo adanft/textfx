@@ -83,6 +83,7 @@ qt_add_qml_module(textfx
         qml/ShortcutMenuItem.qml
         qml/TextBoxDelegate.qml
         qml/TextStyleButton.qml
+        qml/ViewportMetrics.qml
 )
 
 target_link_libraries(textfx

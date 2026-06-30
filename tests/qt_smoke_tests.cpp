@@ -283,6 +283,59 @@ private slots:
         QTRY_VERIFY(window->property("zoom").toReal() > zoomBeforeWheel);
     }
 
+    void qmlViewportMetricsConvertsCoordinatesAndZoomsAroundFocus()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        auto* viewport = window->findChild<QObject*>(QStringLiteral("viewportMetrics"));
+        QVERIFY(viewport);
+        QVERIFY(viewport->setProperty("canvasWidth", 500.0));
+        QVERIFY(viewport->setProperty("canvasHeight", 400.0));
+        QVERIFY(viewport->setProperty("pageSourceWidth", 200.0));
+        QVERIFY(viewport->setProperty("pageSourceHeight", 100.0));
+        QVERIFY(window->setProperty("pageBaseScale", 0.5));
+        QVERIFY(window->setProperty("zoom", 2.0));
+        QVERIFY(window->setProperty("panX", 10.0));
+        QVERIFY(window->setProperty("panY", 20.0));
+
+        const auto callWindow = [&](const char* method, double value) {
+            QVariant result;
+            const bool invoked = QMetaObject::invokeMethod(window, method, Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, value));
+            return invoked ? result.toDouble() : std::numeric_limits<double>::quiet_NaN();
+        };
+
+        QCOMPARE(callWindow("documentToViewLength", 12.0), 12.0);
+        QCOMPARE(callWindow("documentToViewX", 10.0), 420.0);
+        QCOMPARE(callWindow("documentToViewY", 30.0), 400.0);
+        QCOMPARE(callWindow("viewToDocumentX", 420.0), 10.0);
+        QCOMPARE(callWindow("viewToDocumentY", 400.0), 30.0);
+
+        QVERIFY(QMetaObject::invokeMethod(window, "zoomAt", Q_ARG(QVariant, 100.0), Q_ARG(QVariant, 80.0), Q_ARG(QVariant, 1.5)));
+        QCOMPARE(window->property("zoom").toDouble(), 3.0);
+        QCOMPARE(window->property("panX").toDouble(), -35.0);
+        QCOMPARE(window->property("panY").toDouble(), -10.0);
+
+        QVERIFY(window->setProperty("zoom", 6.0));
+        QVERIFY(window->setProperty("panX", 14.0));
+        QVERIFY(window->setProperty("panY", 18.0));
+        QVERIFY(QMetaObject::invokeMethod(window, "zoomAt", Q_ARG(QVariant, 100.0), Q_ARG(QVariant, 80.0), Q_ARG(QVariant, 1.5)));
+        QCOMPARE(window->property("zoom").toDouble(), 6.0);
+        QCOMPARE(window->property("panX").toDouble(), 14.0);
+        QCOMPARE(window->property("panY").toDouble(), 18.0);
+    }
+
     void copyPastePreservesCopiedBox()
     {
         EditorController editor;
@@ -2073,19 +2126,21 @@ private slots:
         const QString source = qmlSource();
 
         QVERIFY(source.contains(QStringLiteral("property real pageBaseScale: 1.0")));
-        QVERIFY(source.contains(QStringLiteral("function fitPageScale()")));
-        QVERIFY(source.contains(QStringLiteral("function pageScale() { return pageBaseScale }")));
+        QVERIFY(source.contains(QStringLiteral("ViewportMetrics {")));
+        QVERIFY(source.contains(QStringLiteral("objectName: \"viewportMetrics\"")));
+        QVERIFY(source.contains(QStringLiteral("function fitPageScale() { return viewportMetrics.fitPageScale() }")));
+        QVERIFY(source.contains(QStringLiteral("function pageScale() { return viewportMetrics.pageScale() }")));
         QVERIFY(source.contains(QStringLiteral("onStatusChanged: if (status === Image.Ready) window.pageBaseScale = window.fitPageScale()")));
 
-        const qsizetype pageScaleStart = source.indexOf(QStringLiteral("function pageScale()"));
+        const qsizetype pageScaleStart = source.indexOf(QStringLiteral("function pageScale() { return pageBaseScale }"));
         const qsizetype pageScaleEnd = source.indexOf(QStringLiteral("function pageDisplayWidth()"), pageScaleStart);
         QVERIFY(pageScaleStart >= 0);
         QVERIFY(pageScaleEnd > pageScaleStart);
         const QString pageScaleSource = source.mid(pageScaleStart, pageScaleEnd - pageScaleStart);
         QVERIFY(!pageScaleSource.contains(QStringLiteral("canvas.width")));
         QVERIFY(!pageScaleSource.contains(QStringLiteral("canvas.height")));
-        QVERIFY(source.contains(QStringLiteral("function pageDisplayWidth() { return pageImage.sourceSize.width * pageScale() }")));
-        QVERIFY(source.contains(QStringLiteral("function pageDisplayHeight() { return pageImage.sourceSize.height * pageScale() }")));
+        QVERIFY(source.contains(QStringLiteral("function pageDisplayWidth() { return pageSourceWidth * pageScale() }")));
+        QVERIFY(source.contains(QStringLiteral("function pageDisplayHeight() { return pageSourceHeight * pageScale() }")));
     }
 
     void qmlRightPanelUsesSectionTabsAndNoHorizontalOverflow()

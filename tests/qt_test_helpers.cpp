@@ -72,7 +72,8 @@ QString qmlSource()
         + readQmlFile(QStringLiteral("RightInspectorPanel.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("ShortcutMenuItem.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("TextBoxDelegate.qml")) + QLatin1Char('\n')
-        + readQmlFile(QStringLiteral("TextStyleButton.qml"));
+        + readQmlFile(QStringLiteral("TextStyleButton.qml")) + QLatin1Char('\n')
+        + readQmlFile(QStringLiteral("ViewportMetrics.qml"));
 }
 
 bool imageDiffers(const QString& a, const QString& b)
