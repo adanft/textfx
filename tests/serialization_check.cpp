@@ -5,6 +5,8 @@
 #include <iostream>
 #include <sstream>
 
+#include <QTemporaryDir>
+
 using namespace textfx;
 
 namespace {
@@ -44,14 +46,18 @@ int main()
         return 1;
     }
 
-    const auto output = std::filesystem::temp_directory_path() / "textfx-serialization-check.json";
+    QTemporaryDir tempDir;
+    if (!tempDir.isValid()) {
+        std::cerr << "Failed to create temporary directory for serialization check\n";
+        return 1;
+    }
+    const auto output = std::filesystem::path(tempDir.path().toStdString()) / "serialization-check.json";
     if (!JsonSerializer::savePage(output, "fixture.png", document, &error)) {
         std::cerr << "Page fixture failed to save: " << error << '\n';
         return 1;
     }
 
     const auto saved = readText(output);
-    std::filesystem::remove(output);
     if (saved.find("typebubblex_only") != std::string::npos || saved.find("mask_brush") != std::string::npos) {
         std::cerr << "Unsupported fields leaked into saved page JSON\n";
         return 1;

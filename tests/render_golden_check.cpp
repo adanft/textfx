@@ -9,6 +9,7 @@
 #include <QGuiApplication>
 #include <QImage>
 #include <QRect>
+#include <QTemporaryDir>
 
 using namespace textfx;
 
@@ -93,11 +94,18 @@ int main(int argc, char** argv)
     QGuiApplication app(argc, argv);
 
     const RenderGraph graph;
+    QTemporaryDir tempDir;
+    if (!tempDir.isValid()) {
+        std::cerr << "Failed to create temporary directory for render golden check\n";
+        return 1;
+    }
+    const auto tempPath = std::filesystem::path(tempDir.path().toStdString());
+
     QImage page(240, 160, QImage::Format_RGBA8888);
     const QColor background(230, 230, 230, 255);
     page.fill(background);
-    const auto pagePath = std::filesystem::temp_directory_path() / "textfx-export-page.png";
-    const auto outPath = std::filesystem::temp_directory_path() / "textfx-export.png";
+    const auto pagePath = tempPath / "export-page.png";
+    const auto outPath = tempPath / "export.png";
     if (!page.save(QString::fromStdString(pagePath.string()), "PNG")) return 1;
 
     DocumentModel editorLayout;
@@ -140,7 +148,7 @@ int main(int argc, char** argv)
     overlap.effects.pathPoints = {{0.5, 0.7}, {0.5, 0.7}};
     overlappedGlyphs.addTextBox(overlap);
 
-    const auto overlapImage = exportedImage(graph, overlappedGlyphs, pagePath, std::filesystem::temp_directory_path() / "textfx-export-overlap.png");
+    const auto overlapImage = exportedImage(graph, overlappedGlyphs, pagePath, tempPath / "export-overlap.png");
     const int darkOverlapPixels = countPixels(overlapImage, background, [](const QColor& color) { return color.red() < 40 && color.green() < 40 && color.blue() < 40; });
     if (overlapImage.isNull() || darkOverlapPixels < 100) {
         std::cerr << "Overlapped glyphs cut out instead of filling: darkPixels=" << darkOverlapPixels << '\n';
@@ -160,8 +168,8 @@ int main(int argc, char** argv)
     blurBox.effects.blurSize = 6;
     blurred.addTextBox(blurBox);
 
-    const auto unblurredImage = exportedImage(graph, unblurred, pagePath, std::filesystem::temp_directory_path() / "textfx-export-blur-off.png");
-    const auto blurredImage = exportedImage(graph, blurred, pagePath, std::filesystem::temp_directory_path() / "textfx-export-blur-on.png");
+    const auto unblurredImage = exportedImage(graph, unblurred, pagePath, tempPath / "export-blur-off.png");
+    const auto blurredImage = exportedImage(graph, blurred, pagePath, tempPath / "export-blur-on.png");
     const auto unblurredBounds = nonBackgroundBounds(unblurredImage, background);
     const auto blurredBounds = nonBackgroundBounds(blurredImage, background);
     const int hardUnblurredPixels = countPixels(unblurredImage, background, [](const QColor& color) { return color.red() < 40 && color.green() < 40 && color.blue() < 40; });
@@ -190,8 +198,8 @@ int main(int argc, char** argv)
     shadowBox.effects.shadowBlurSize = 6;
     shadowBlurred.addTextBox(shadowBox);
 
-    const auto shadowSharpImage = exportedImage(graph, shadowSharp, pagePath, std::filesystem::temp_directory_path() / "textfx-export-shadow-sharp.png");
-    const auto shadowBlurredImage = exportedImage(graph, shadowBlurred, pagePath, std::filesystem::temp_directory_path() / "textfx-export-shadow-blur.png");
+    const auto shadowSharpImage = exportedImage(graph, shadowSharp, pagePath, tempPath / "export-shadow-sharp.png");
+    const auto shadowBlurredImage = exportedImage(graph, shadowBlurred, pagePath, tempPath / "export-shadow-blur.png");
     const auto shadowSharpBounds = nonBackgroundBounds(shadowSharpImage, background);
     const auto shadowBlurredBounds = nonBackgroundBounds(shadowBlurredImage, background);
     const int hardShadowSharpPixels = countPixels(shadowSharpImage, background, [](const QColor& color) { return color.red() < 40 && color.green() < 40 && color.blue() < 40; });
@@ -214,7 +222,7 @@ int main(int argc, char** argv)
     edgeBox.effects.blurEnabled = true;
     edgeBox.effects.blurSize = 8;
     edgeBlur.addTextBox(edgeBox);
-    const auto edgeBlurImage = exportedImage(graph, edgeBlur, pagePath, std::filesystem::temp_directory_path() / "textfx-export-blur-clipped.png");
+    const auto edgeBlurImage = exportedImage(graph, edgeBlur, pagePath, tempPath / "export-blur-clipped.png");
     const QRect edgeRect(static_cast<int>(edgeBox.bounds.x), static_cast<int>(edgeBox.bounds.y), static_cast<int>(edgeBox.bounds.w), static_cast<int>(edgeBox.bounds.h));
     int edgeBleedPixels = 0;
     for (int y = 0; y < edgeBlurImage.height(); ++y) {
@@ -239,7 +247,7 @@ int main(int argc, char** argv)
     edgeShadowBox.effects.shadowOffsetY = 8;
     edgeShadowBox.effects.shadowBlurSize = 8;
     edgeShadow.addTextBox(edgeShadowBox);
-    const auto edgeShadowImage = exportedImage(graph, edgeShadow, pagePath, std::filesystem::temp_directory_path() / "textfx-export-shadow-clipped.png");
+    const auto edgeShadowImage = exportedImage(graph, edgeShadow, pagePath, tempPath / "export-shadow-clipped.png");
     const QRect edgeShadowRect(static_cast<int>(edgeShadowBox.bounds.x), static_cast<int>(edgeShadowBox.bounds.y), static_cast<int>(edgeShadowBox.bounds.w), static_cast<int>(edgeShadowBox.bounds.h));
     int edgeShadowBleedPixels = 0;
     int edgeShadowInsidePixels = 0;
@@ -274,7 +282,7 @@ int main(int argc, char** argv)
     rotatedFx.effects.shadowBlurSize = 3;
     rotatedBlur.addTextBox(rotatedFx);
 
-    const auto rotatedBlurImage = exportedImage(graph, rotatedBlur, pagePath, std::filesystem::temp_directory_path() / "textfx-export-rotated-blur.png");
+    const auto rotatedBlurImage = exportedImage(graph, rotatedBlur, pagePath, tempPath / "export-rotated-blur.png");
     const auto rotatedBlurBounds = nonBackgroundBounds(rotatedBlurImage, background);
     const int rotatedSoftPixels = countPixels(rotatedBlurImage, background, [](const QColor& color) {
         return color.red() > 40 && color.red() < 220 && color.green() > 40 && color.green() < 220 && color.blue() > 40 && color.blue() < 220;
@@ -353,8 +361,8 @@ int main(int argc, char** argv)
     pathBox.effects.pathMode = 1;
     smooth.addTextBox(pathBox);
 
-    const auto straightImage = exportedImage(graph, straight, pagePath, std::filesystem::temp_directory_path() / "textfx-export-path-straight.png");
-    const auto smoothImage = exportedImage(graph, smooth, pagePath, std::filesystem::temp_directory_path() / "textfx-export-path-smooth.png");
+    const auto straightImage = exportedImage(graph, straight, pagePath, tempPath / "export-path-straight.png");
+    const auto smoothImage = exportedImage(graph, smooth, pagePath, tempPath / "export-path-smooth.png");
     if (straightImage.isNull() || smoothImage.isNull() || !imagesDiffer(straightImage, smoothImage)) {
         std::cerr << "Path mode did not affect PNG export\n";
         return 1;
@@ -375,8 +383,8 @@ int main(int argc, char** argv)
     defaultFlatBox.effects.pathPoints = {{0.0, 0.5}, {0.5, 0.5}, {1.0, 0.5}};
     defaultFlatOn.addTextBox(defaultFlatBox);
 
-    const auto defaultFlatOffImage = exportedImage(graph, defaultFlatOff, pagePath, std::filesystem::temp_directory_path() / "textfx-export-default-path-off.png");
-    const auto defaultFlatOnImage = exportedImage(graph, defaultFlatOn, pagePath, std::filesystem::temp_directory_path() / "textfx-export-default-path-on.png");
+    const auto defaultFlatOffImage = exportedImage(graph, defaultFlatOff, pagePath, tempPath / "export-default-path-off.png");
+    const auto defaultFlatOnImage = exportedImage(graph, defaultFlatOn, pagePath, tempPath / "export-default-path-on.png");
     const auto defaultFlatOffBounds = nonBackgroundBounds(defaultFlatOffImage, background);
     const auto defaultFlatOnBounds = nonBackgroundBounds(defaultFlatOnImage, background);
     const int defaultFlatDiff = imageDifferenceCount(defaultFlatOffImage, defaultFlatOnImage);
@@ -401,8 +409,8 @@ int main(int argc, char** argv)
     DocumentModel tallPathBaseline;
     pathBaselineBox.bounds.h = 120.0;
     tallPathBaseline.addTextBox(pathBaselineBox);
-    const auto shortPathBaselineImage = exportedImage(graph, shortPathBaseline, pagePath, std::filesystem::temp_directory_path() / "textfx-export-short-path-baseline.png");
-    const auto tallPathBaselineImage = exportedImage(graph, tallPathBaseline, pagePath, std::filesystem::temp_directory_path() / "textfx-export-tall-path-baseline.png");
+    const auto shortPathBaselineImage = exportedImage(graph, shortPathBaseline, pagePath, tempPath / "export-short-path-baseline.png");
+    const auto tallPathBaselineImage = exportedImage(graph, tallPathBaseline, pagePath, tempPath / "export-tall-path-baseline.png");
     const auto shortPathBaselineBounds = nonBackgroundBounds(shortPathBaselineImage, background);
     const auto tallPathBaselineBounds = nonBackgroundBounds(tallPathBaselineImage, background);
     const int shortPathBaselineY = static_cast<int>(pathBaselineBox.bounds.y + 80.0 * 0.75);
@@ -428,7 +436,7 @@ int main(int argc, char** argv)
     topPathBox.effects.pathEnabled = true;
     topPathBox.effects.pathPoints = {{0.0, 0.05}, {1.0, 0.05}};
     topPathBaseline.addTextBox(topPathBox);
-    const auto topPathBaselineImage = exportedImage(graph, topPathBaseline, pagePath, std::filesystem::temp_directory_path() / "textfx-export-top-path-baseline.png");
+    const auto topPathBaselineImage = exportedImage(graph, topPathBaseline, pagePath, tempPath / "export-top-path-baseline.png");
     const auto topPathBaselineBounds = nonBackgroundBounds(topPathBaselineImage, background);
     const int expectedPathY = static_cast<int>(topPathBox.bounds.y + topPathBox.bounds.h * 0.05);
     if (topPathBaselineImage.isNull() || topPathBaselineBounds.isEmpty() || topPathBaselineBounds.bottom() > expectedPathY + 6) {
@@ -447,7 +455,7 @@ int main(int argc, char** argv)
     flatPathBox.effects.pathEnabled = true;
     flatPathBox.effects.pathPoints = {{0.0, 0.65}, {1.0, 0.65}};
     exportFlatPath.addTextBox(flatPathBox);
-    const auto flatPathImage = exportedImage(graph, exportFlatPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-flat-path-advance.png");
+    const auto flatPathImage = exportedImage(graph, exportFlatPath, pagePath, tempPath / "export-flat-path-advance.png");
     const auto flatPathBounds = nonBackgroundBounds(flatPathImage, background);
     if (flatPathImage.isNull() || flatPathBounds.height() <= 50 || flatPathBounds.width() < 120 || flatPathBounds.width() >= 240) {
         std::cerr << "Path text export collapsed multiline layout: bounds=" << flatPathBounds.x() << ',' << flatPathBounds.y() << ' '
@@ -459,7 +467,7 @@ int main(int argc, char** argv)
     flatPathBox.bounds = {0.0, 20.0, 150.0, 120.0};
     DocumentModel exportWrappedFlatPath;
     exportWrappedFlatPath.addTextBox(flatPathBox);
-    const auto wrappedFlatPathImage = exportedImage(graph, exportWrappedFlatPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-wrapped-flat-path.png");
+    const auto wrappedFlatPathImage = exportedImage(graph, exportWrappedFlatPath, pagePath, tempPath / "export-wrapped-flat-path.png");
     const auto wrappedFlatPathBounds = nonBackgroundBounds(wrappedFlatPathImage, background);
     if (wrappedFlatPathImage.isNull() || wrappedFlatPathBounds.height() <= 50 || wrappedFlatPathBounds.width() >= 150) {
         std::cerr << "Path text export ignored visual wrapping: bounds=" << wrappedFlatPathBounds.x() << ',' << wrappedFlatPathBounds.y() << ' '
@@ -477,8 +485,8 @@ int main(int argc, char** argv)
     exportEvenTwoPointPath.addTextBox(flatPathBox);
     flatPathBox.effects.pathPoints = {{0.0, 0.65}, {0.1, 0.65}, {1.0, 0.65}};
     exportUnevenFlatPath.addTextBox(flatPathBox);
-    const auto evenTwoPointImage = exportedImage(graph, exportEvenTwoPointPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-even-two-point-path.png");
-    const auto unevenFlatImage = exportedImage(graph, exportUnevenFlatPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-uneven-flat-path.png");
+    const auto evenTwoPointImage = exportedImage(graph, exportEvenTwoPointPath, pagePath, tempPath / "export-even-two-point-path.png");
+    const auto unevenFlatImage = exportedImage(graph, exportUnevenFlatPath, pagePath, tempPath / "export-uneven-flat-path.png");
     const int unevenFlatDiff = imageDifferenceCount(evenTwoPointImage, unevenFlatImage);
     if (evenTwoPointImage.isNull() || unevenFlatImage.isNull() || unevenFlatDiff > 100) {
         std::cerr << "Uneven collinear path changed glyph spacing: diffPixels=" << unevenFlatDiff << '\n';
@@ -491,8 +499,8 @@ int main(int argc, char** argv)
     flatPathBox.effects.pathPoints = {{0.0, 0.65}, {0.1, 0.20}, {1.0, 0.65}};
     DocumentModel exportCurvedSpacingPath;
     exportCurvedSpacingPath.addTextBox(flatPathBox);
-    const auto flatSpacingImage = exportedImage(graph, exportFlatSpacingPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-flat-spacing-path.png");
-    const auto curvedSpacingImage = exportedImage(graph, exportCurvedSpacingPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-curved-spacing-path.png");
+    const auto flatSpacingImage = exportedImage(graph, exportFlatSpacingPath, pagePath, tempPath / "export-flat-spacing-path.png");
+    const auto curvedSpacingImage = exportedImage(graph, exportCurvedSpacingPath, pagePath, tempPath / "export-curved-spacing-path.png");
     const auto flatSpacingBounds = nonBackgroundBounds(flatSpacingImage, background);
     const auto curvedSpacingBounds = nonBackgroundBounds(curvedSpacingImage, background);
     if (flatSpacingImage.isNull() || curvedSpacingImage.isNull() || flatSpacingBounds.isEmpty() || curvedSpacingBounds.isEmpty()) {
@@ -511,7 +519,7 @@ int main(int argc, char** argv)
     angledPathBox.effects.pathEnabled = true;
     angledPathBox.effects.pathPoints = {{0.0, 0.0}, {1.0, 1.0}};
     exportLayoutAngledPath.addTextBox(angledPathBox);
-    const auto layoutAngledImage = exportedImage(graph, exportLayoutAngledPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-layout-angled-path.png");
+    const auto layoutAngledImage = exportedImage(graph, exportLayoutAngledPath, pagePath, tempPath / "export-layout-angled-path.png");
     const auto layoutAngledBounds = nonBackgroundBounds(layoutAngledImage, background);
     if (layoutAngledImage.isNull() || layoutAngledBounds.width() <= layoutAngledBounds.height()) {
         std::cerr << "Path text export did not use layout-scaled angle: bounds=" << layoutAngledBounds.width() << 'x' << layoutAngledBounds.height() << '\n';
@@ -533,8 +541,8 @@ int main(int argc, char** argv)
     perspectiveBox.effects.perspectiveSe = {12.0, 10.0};
     warped.addTextBox(perspectiveBox);
 
-    const auto unwarpedImage = exportedImage(graph, unwarped, pagePath, std::filesystem::temp_directory_path() / "textfx-export-perspective-off.png");
-    const auto warpedImage = exportedImage(graph, warped, pagePath, std::filesystem::temp_directory_path() / "textfx-export-perspective-on.png");
+    const auto unwarpedImage = exportedImage(graph, unwarped, pagePath, tempPath / "export-perspective-off.png");
+    const auto warpedImage = exportedImage(graph, warped, pagePath, tempPath / "export-perspective-on.png");
     if (unwarpedImage.isNull() || warpedImage.isNull() || !imagesDiffer(unwarpedImage, warpedImage)) {
         std::cerr << "Perspective offsets did not affect PNG export\n";
         return 1;

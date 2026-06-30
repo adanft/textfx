@@ -99,6 +99,12 @@ include(CPack)
 if(BUILD_TESTING)
     find_package(Catch2 3 QUIET)
 
+    set(TEXTFX_QT_TEST_ENVIRONMENT
+        QT_QPA_PLATFORM=offscreen
+        QT_QUICK_BACKEND=software
+        QSG_RHI_BACKEND=software
+    )
+
     add_executable(textfx_serialization_check
         tests/serialization_check.cpp
     )
@@ -117,6 +123,15 @@ if(BUILD_TESTING)
 
     add_test(NAME textfx_serialization_check COMMAND textfx_serialization_check)
     add_test(NAME textfx_render_golden_check COMMAND textfx_render_golden_check)
+    set_tests_properties(textfx_serialization_check PROPERTIES
+        LABELS core
+        TIMEOUT 30
+    )
+    set_tests_properties(textfx_render_golden_check PROPERTIES
+        LABELS render
+        TIMEOUT 60
+        ENVIRONMENT "${TEXTFX_QT_TEST_ENVIRONMENT}"
+    )
 
     if(Catch2_FOUND)
         include(Catch)
@@ -131,10 +146,14 @@ if(BUILD_TESTING)
                 Catch2::Catch2WithMain
         )
 
-        catch_discover_tests(textfx_core_tests)
+        catch_discover_tests(textfx_core_tests
+            PROPERTIES
+                LABELS core
+                TIMEOUT 30
+        )
         list(APPEND TEXTFX_TEST_TARGETS textfx_core_tests)
     else()
-        message(STATUS "Catch2 3 not found; core tests are not built")
+        message(STATUS "Catch2 3 not found; Catch2 core tests are not built. Install Catch2 3 locally to include them in the check target.")
     endif()
 
     if(Qt6Test_FOUND)
@@ -159,9 +178,14 @@ if(BUILD_TESTING)
         )
 
         add_test(NAME textfx_qt_smoke_tests COMMAND textfx_qt_smoke_tests)
+        set_tests_properties(textfx_qt_smoke_tests PROPERTIES
+            LABELS "qml;smoke"
+            TIMEOUT 90
+            ENVIRONMENT "${TEXTFX_QT_TEST_ENVIRONMENT}"
+        )
         list(APPEND TEXTFX_TEST_TARGETS textfx_qt_smoke_tests)
     else()
-        message(STATUS "Qt6 Test not found; Qt smoke tests are not built")
+        message(STATUS "Qt6 Test not found; Qt/QML smoke tests are not built. Install the Qt6 Test component locally to include them in the check target.")
     endif()
 
     add_executable(textfx_font_diagnostic
