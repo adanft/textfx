@@ -1,6 +1,7 @@
 #include "app/EditorController.h"
 
 #include "app/EditorViewModels.h"
+#include "app/PageTextService.h"
 #include "app/ProjectExportService.h"
 #include "app/ProjectSessionService.h"
 #include "app/TextBoxClipboardService.h"
@@ -18,7 +19,6 @@
 #include <QTextDocument>
 #include <QUrl>
 
-#include <algorithm>
 #include <utility>
 
 namespace textfx {
@@ -63,11 +63,7 @@ QVariantList EditorController::presets() const
 
 QStringList EditorController::pageTexts() const
 {
-    QStringList list;
-    if (const auto found = pageTexts_.find(currentPageKey()); found != pageTexts_.end()) {
-        for (const auto& text : found->second) list.push_back(toQString(text));
-    }
-    return list;
+    return PageTextService::textsForPage(pageTexts_, currentPageKey());
 }
 
 QStringList EditorController::pageLabels() const
@@ -497,23 +493,25 @@ void EditorController::pasteBox()
 bool EditorController::applyPageText(int index)
 {
     const auto key = currentPageKey();
-    const auto found = pageTexts_.find(key);
-    if (found == pageTexts_.end() || index < 0 || index >= static_cast<int>(found->second.size())) return false;
-    if (auto* box = selectedBox()) {
-        box->text = found->second[static_cast<std::size_t>(index)];
-        pageTextPositions_[key] = std::min(index + 1, static_cast<int>(found->second.size()));
+    const auto result = PageTextService::applyText(document_.textBoxes(), selectedIndex_, pageTexts_, pageTextPositions_, key, index);
+    switch (result) {
+    case PageTextApplyStatus::Applied:
         markDocumentChanged();
         emit pageTextsChanged();
         return true;
+    case PageTextApplyStatus::NoSelectedBox:
+        setNotification(QStringLiteral("Select a box before applying page text"));
+        return false;
+    case PageTextApplyStatus::MissingText:
+        return false;
     }
-    setNotification(QStringLiteral("Select a box before applying page text"));
     return false;
 }
 
 bool EditorController::applyNextPageText()
 {
     const auto key = currentPageKey();
-    const int index = pageTextPositions_[key];
+    const int index = PageTextService::nextTextIndex(pageTextPositions_, key);
     if (!applyPageText(index)) return false;
     return true;
 }

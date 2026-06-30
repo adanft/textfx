@@ -32,6 +32,8 @@ add_library(textfx_core
     src/app/EditorController.h
     src/app/EditorViewModels.cpp
     src/app/EditorViewModels.h
+    src/app/PageTextService.cpp
+    src/app/PageTextService.h
     src/app/ProjectExportService.cpp
     src/app/ProjectExportService.h
     src/app/ProjectSessionService.cpp

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/PageTextService.h"
 #include "core/DocumentModel.h"
 #include "core/ProjectStore.h"
 
@@ -12,7 +13,6 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
-#include <unordered_map>
 
 namespace textfx {
 
@@ -168,8 +168,8 @@ private:
     bool rawVisible_ = false;
     bool editingText_ = false;
     QString notification_;
-    std::unordered_map<std::string, std::vector<std::string>> pageTexts_;
-    std::unordered_map<std::string, int> pageTextPositions_;
+    PageTextMap pageTexts_;
+    PageTextPositionMap pageTextPositions_;
     int interactionDepth_ = 0;
     bool pendingDocumentChanged_ = false;
 };

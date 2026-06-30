@@ -1,3 +1,4 @@
+#include "app/PageTextService.h"
 #include "app/ProjectSessionService.h"
 #include "core/ProjectStore.h"
 #include "io/JsonSerializer.h"
@@ -214,6 +215,31 @@ Third line
     REQUIRE(texts.at("page10.png").size() == 1);
     CHECK(texts.at("page10.png").at(0) == "Third line");
     std::filesystem::remove_all(folder);
+}
+
+TEST_CASE("Page text service applies selected texts and advances per-page positions")
+{
+    PageTextMap pageTexts{{"page1.png", {"First", "Second"}}, {"page2.png", {"Other"}}};
+    PageTextPositionMap positions;
+    std::vector<TextBox> boxes(1);
+
+    CHECK(PageTextService::textsForPage(pageTexts, "page1.png") == QStringList({QStringLiteral("First"), QStringLiteral("Second")}));
+    CHECK(PageTextService::textsForPage(pageTexts, "missing.png").isEmpty());
+    CHECK(PageTextService::nextTextIndex(positions, "page1.png") == 0);
+    REQUIRE(positions.at("page1.png") == 0);
+
+    CHECK(PageTextService::applyText(boxes, 0, pageTexts, positions, "page1.png", 0) == PageTextApplyStatus::Applied);
+    CHECK(boxes.front().text == "First");
+    CHECK(positions.at("page1.png") == 1);
+
+    CHECK(PageTextService::applyText(boxes, 0, pageTexts, positions, "page1.png", 1) == PageTextApplyStatus::Applied);
+    CHECK(boxes.front().text == "Second");
+    CHECK(positions.at("page1.png") == 2);
+
+    CHECK(PageTextService::applyText(boxes, 0, pageTexts, positions, "page1.png", 2) == PageTextApplyStatus::MissingText);
+    CHECK(positions.at("page1.png") == 2);
+    CHECK(PageTextService::applyText(boxes, -1, pageTexts, positions, "page2.png", 0) == PageTextApplyStatus::NoSelectedBox);
+    CHECK_FALSE(positions.contains("page2.png"));
 }
 
 TEST_CASE("Missing project presets returns built-in defaults without writing a file")
