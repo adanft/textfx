@@ -129,6 +129,18 @@ Point clampedUnitPoint(double x, double y)
     return {std::clamp(x, 0.0, 1.0), std::clamp(y, 0.0, 1.0)};
 }
 
+double distanceSquared(const Point& a, const Point& b)
+{
+    const double dx = a.x - b.x;
+    const double dy = a.y - b.y;
+    return dx * dx + dy * dy;
+}
+
+Point midpoint(const Point& a, const Point& b)
+{
+    return {(a.x + b.x) * 0.5, (a.y + b.y) * 0.5};
+}
+
 std::vector<Point> pointsFromJson(const QJsonValue& value)
 {
     std::vector<Point> points;
@@ -733,7 +745,16 @@ void EditorController::addSelectedPathPoint()
     if (auto* box = selectedBox()) {
         box->effects.pathEnabled = true;
         if (box->effects.pathPoints.size() < 3) box->effects.pathPoints = {{0.0, 0.5}, {0.5, 0.5}, {1.0, 0.5}};
-        box->effects.pathPoints.insert(box->effects.pathPoints.end() - 1, {0.5, 0.5});
+        std::size_t insertIndex = 1;
+        double longest = -1.0;
+        for (std::size_t i = 0; i + 1 < box->effects.pathPoints.size(); ++i) {
+            const double length = distanceSquared(box->effects.pathPoints[i], box->effects.pathPoints[i + 1]);
+            if (length > longest) {
+                longest = length;
+                insertIndex = i + 1;
+            }
+        }
+        box->effects.pathPoints.insert(box->effects.pathPoints.begin() + static_cast<std::ptrdiff_t>(insertIndex), midpoint(box->effects.pathPoints[insertIndex - 1], box->effects.pathPoints[insertIndex]));
         markDocumentChanged();
     }
 }
@@ -767,6 +788,11 @@ void EditorController::setPathHandle(int index, double x, double y)
             markDocumentChanged();
         }
     }
+}
+
+bool EditorController::leftMouseButtonDown() const
+{
+    return QGuiApplication::mouseButtons().testFlag(Qt::LeftButton);
 }
 
 void EditorController::duplicateSelected()

@@ -3,9 +3,11 @@
 #include <QColor>
 #include <QFont>
 #include <QImage>
+#include <QPointF>
 #include <QQuickPaintedItem>
 #include <QStringList>
 #include <QVariantList>
+#include <QVector>
 
 namespace textfx {
 
@@ -93,6 +95,7 @@ public:
 
 #ifdef TEXTFX_TESTING
     QStringList wrappedLinesForTesting() const;
+    QPointF pathBaselinePointForTesting(qreal distance, qreal layoutWidth, qreal layoutHeight) const;
 #endif
 
     void paint(QPainter* painter) override;
@@ -126,7 +129,7 @@ signals:
 
 private:
     QFont layoutFont() const;
-    QPainterPath textPath(const QFont& font, qreal layoutWidth, qreal inset, QStringList* lineTexts = nullptr) const;
+    QPainterPath textPath(const QFont& font, qreal layoutWidth, qreal inset, QStringList* lineTexts = nullptr, QVector<qreal>* lineXs = nullptr, QVector<qreal>* lineBaselines = nullptr) const;
     QPainterPath pathText(const QFont& font, qreal layoutWidth, qreal layoutHeight) const;
     QString blurCacheKey(int radius, const QRect& sourceRect) const;
     QString text_;

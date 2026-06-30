@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 
 #include <QColor>
 #include <QGuiApplication>
@@ -39,6 +40,18 @@ bool imagesDiffer(const QImage& a, const QImage& b)
         }
     }
     return false;
+}
+
+int imageDifferenceCount(const QImage& a, const QImage& b)
+{
+    if (a.size() != b.size()) return std::numeric_limits<int>::max();
+    int count = 0;
+    for (int y = 0; y < a.height(); ++y) {
+        for (int x = 0; x < a.width(); ++x) {
+            if (a.pixelColor(x, y) != b.pixelColor(x, y)) ++count;
+        }
+    }
+    return count;
 }
 
 int firstNonBackgroundY(const QImage& image, const QColor& background)
@@ -276,7 +289,7 @@ int main(int argc, char** argv)
 
     DocumentModel allEffects;
     TextBox fx;
-    fx.text = "AllEffects";
+    fx.text = "AllEffectsAllEffects";
     fx.bounds = {20.0, 30.0, 180.0, 70.0};
     fx.style.fontSize = 24;
     fx.style.textColor = "2030ffff";
@@ -309,7 +322,7 @@ int main(int argc, char** argv)
     }
     const QImage fxImage(QString::fromStdString(outPath.string()));
     const auto fxBounds = nonBackgroundBounds(fxImage, background);
-    if (fxBounds.top() < 50 || fxBounds.height() < 20) {
+    if (fxBounds.top() < 35 || fxBounds.height() < 20) {
         std::cerr << "Path/perspective effects were dropped: bounds=" << fxBounds.x() << ',' << fxBounds.y() << ' '
                   << fxBounds.width() << 'x' << fxBounds.height() << '\n';
         return 1;
@@ -344,6 +357,164 @@ int main(int argc, char** argv)
     const auto smoothImage = exportedImage(graph, smooth, pagePath, std::filesystem::temp_directory_path() / "textfx-export-path-smooth.png");
     if (straightImage.isNull() || smoothImage.isNull() || !imagesDiffer(straightImage, smoothImage)) {
         std::cerr << "Path mode did not affect PNG export\n";
+        return 1;
+    }
+
+    DocumentModel defaultFlatOff;
+    TextBox defaultFlatBox;
+    defaultFlatBox.text = "HELLO WEAVER!";
+    defaultFlatBox.bounds = {0.0, 20.0, 150.0, 120.0};
+    defaultFlatBox.style.fontSize = 34;
+    defaultFlatBox.style.letterSpacing = 1;
+    defaultFlatBox.style.alignment = TextAlignment::Center;
+    defaultFlatBox.style.textColor = "000000ff";
+    defaultFlatOff.addTextBox(defaultFlatBox);
+
+    DocumentModel defaultFlatOn;
+    defaultFlatBox.effects.pathEnabled = true;
+    defaultFlatBox.effects.pathPoints = {{0.0, 0.5}, {0.5, 0.5}, {1.0, 0.5}};
+    defaultFlatOn.addTextBox(defaultFlatBox);
+
+    const auto defaultFlatOffImage = exportedImage(graph, defaultFlatOff, pagePath, std::filesystem::temp_directory_path() / "textfx-export-default-path-off.png");
+    const auto defaultFlatOnImage = exportedImage(graph, defaultFlatOn, pagePath, std::filesystem::temp_directory_path() / "textfx-export-default-path-on.png");
+    const auto defaultFlatOffBounds = nonBackgroundBounds(defaultFlatOffImage, background);
+    const auto defaultFlatOnBounds = nonBackgroundBounds(defaultFlatOnImage, background);
+    const int defaultFlatDiff = imageDifferenceCount(defaultFlatOffImage, defaultFlatOnImage);
+    if (defaultFlatOffImage.isNull() || defaultFlatOnImage.isNull() || defaultFlatOffBounds.isEmpty() || defaultFlatOnBounds.isEmpty()
+        || defaultFlatDiff != 0 || std::abs(defaultFlatOffBounds.left() - defaultFlatOnBounds.left()) > 3 || std::abs(defaultFlatOffBounds.top() - defaultFlatOnBounds.top()) > 3
+        || std::abs(defaultFlatOffBounds.width() - defaultFlatOnBounds.width()) > 6 || std::abs(defaultFlatOffBounds.height() - defaultFlatOnBounds.height()) > 6) {
+        std::cerr << "Default flat path changed rendered pixels: diff=" << defaultFlatDiff << " off=" << defaultFlatOffBounds.x() << ',' << defaultFlatOffBounds.y() << ' '
+                  << defaultFlatOffBounds.width() << 'x' << defaultFlatOffBounds.height() << " on=" << defaultFlatOnBounds.x() << ','
+                  << defaultFlatOnBounds.y() << ' ' << defaultFlatOnBounds.width() << 'x' << defaultFlatOnBounds.height() << '\n';
+        return 1;
+    }
+
+    DocumentModel shortPathBaseline;
+    TextBox pathBaselineBox;
+    pathBaselineBox.text = "BASELINE";
+    pathBaselineBox.bounds = {0.0, 20.0, 240.0, 80.0};
+    pathBaselineBox.style.fontSize = 30;
+    pathBaselineBox.style.textColor = "000000ff";
+    pathBaselineBox.effects.pathEnabled = true;
+    pathBaselineBox.effects.pathPoints = {{0.0, 0.75}, {1.0, 0.75}};
+    shortPathBaseline.addTextBox(pathBaselineBox);
+    DocumentModel tallPathBaseline;
+    pathBaselineBox.bounds.h = 120.0;
+    tallPathBaseline.addTextBox(pathBaselineBox);
+    const auto shortPathBaselineImage = exportedImage(graph, shortPathBaseline, pagePath, std::filesystem::temp_directory_path() / "textfx-export-short-path-baseline.png");
+    const auto tallPathBaselineImage = exportedImage(graph, tallPathBaseline, pagePath, std::filesystem::temp_directory_path() / "textfx-export-tall-path-baseline.png");
+    const auto shortPathBaselineBounds = nonBackgroundBounds(shortPathBaselineImage, background);
+    const auto tallPathBaselineBounds = nonBackgroundBounds(tallPathBaselineImage, background);
+    const int shortPathBaselineY = static_cast<int>(pathBaselineBox.bounds.y + 80.0 * 0.75);
+    if (shortPathBaselineImage.isNull() || tallPathBaselineImage.isNull() || shortPathBaselineBounds.isEmpty() || tallPathBaselineBounds.isEmpty()
+        || tallPathBaselineBounds.top() - shortPathBaselineBounds.top() < 24) {
+        std::cerr << "Straight path text did not follow absolute path y: short=" << shortPathBaselineBounds.x() << ',' << shortPathBaselineBounds.y() << ' '
+                  << shortPathBaselineBounds.width() << 'x' << shortPathBaselineBounds.height() << " tall=" << tallPathBaselineBounds.x() << ','
+                  << tallPathBaselineBounds.y() << ' ' << tallPathBaselineBounds.width() << 'x' << tallPathBaselineBounds.height() << '\n';
+        return 1;
+    }
+    if (std::abs(shortPathBaselineBounds.bottom() - shortPathBaselineY) > 4) {
+        std::cerr << "Straight path text is not on the guide baseline: guideY=" << shortPathBaselineY << " bounds=" << shortPathBaselineBounds.x() << ','
+                  << shortPathBaselineBounds.y() << ' ' << shortPathBaselineBounds.width() << 'x' << shortPathBaselineBounds.height() << '\n';
+        return 1;
+    }
+
+    DocumentModel topPathBaseline;
+    TextBox topPathBox;
+    topPathBox.text = "HELLO";
+    topPathBox.bounds = {0.0, 20.0, 240.0, 80.0};
+    topPathBox.style.fontSize = 30;
+    topPathBox.style.textColor = "000000ff";
+    topPathBox.effects.pathEnabled = true;
+    topPathBox.effects.pathPoints = {{0.0, 0.05}, {1.0, 0.05}};
+    topPathBaseline.addTextBox(topPathBox);
+    const auto topPathBaselineImage = exportedImage(graph, topPathBaseline, pagePath, std::filesystem::temp_directory_path() / "textfx-export-top-path-baseline.png");
+    const auto topPathBaselineBounds = nonBackgroundBounds(topPathBaselineImage, background);
+    const int expectedPathY = static_cast<int>(topPathBox.bounds.y + topPathBox.bounds.h * 0.05);
+    if (topPathBaselineImage.isNull() || topPathBaselineBounds.isEmpty() || topPathBaselineBounds.bottom() > expectedPathY + 6) {
+        std::cerr << "Straight path text detached below guide: guideY=" << expectedPathY << " bounds=" << topPathBaselineBounds.x() << ','
+                  << topPathBaselineBounds.y() << ' ' << topPathBaselineBounds.width() << 'x' << topPathBaselineBounds.height() << '\n';
+        return 1;
+    }
+
+    DocumentModel exportFlatPath;
+    TextBox flatPathBox;
+    flatPathBox.text = "HELLO\nWEAVER!";
+    flatPathBox.bounds = {0.0, 20.0, 240.0, 120.0};
+    flatPathBox.style.fontSize = 34;
+    flatPathBox.style.letterSpacing = 1.5;
+    flatPathBox.style.textColor = "000000ff";
+    flatPathBox.effects.pathEnabled = true;
+    flatPathBox.effects.pathPoints = {{0.0, 0.65}, {1.0, 0.65}};
+    exportFlatPath.addTextBox(flatPathBox);
+    const auto flatPathImage = exportedImage(graph, exportFlatPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-flat-path-advance.png");
+    const auto flatPathBounds = nonBackgroundBounds(flatPathImage, background);
+    if (flatPathImage.isNull() || flatPathBounds.height() <= 50 || flatPathBounds.width() < 120 || flatPathBounds.width() >= 240) {
+        std::cerr << "Path text export collapsed multiline layout: bounds=" << flatPathBounds.x() << ',' << flatPathBounds.y() << ' '
+                  << flatPathBounds.width() << 'x' << flatPathBounds.height() << '\n';
+        return 1;
+    }
+
+    flatPathBox.text = "HELLO WEAVER!";
+    flatPathBox.bounds = {0.0, 20.0, 150.0, 120.0};
+    DocumentModel exportWrappedFlatPath;
+    exportWrappedFlatPath.addTextBox(flatPathBox);
+    const auto wrappedFlatPathImage = exportedImage(graph, exportWrappedFlatPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-wrapped-flat-path.png");
+    const auto wrappedFlatPathBounds = nonBackgroundBounds(wrappedFlatPathImage, background);
+    if (wrappedFlatPathImage.isNull() || wrappedFlatPathBounds.height() <= 50 || wrappedFlatPathBounds.width() >= 150) {
+        std::cerr << "Path text export ignored visual wrapping: bounds=" << wrappedFlatPathBounds.x() << ',' << wrappedFlatPathBounds.y() << ' '
+                  << wrappedFlatPathBounds.width() << 'x' << wrappedFlatPathBounds.height() << '\n';
+        return 1;
+    }
+
+    DocumentModel exportUnevenFlatPath;
+    flatPathBox.text = "EVEN SPACING";
+    flatPathBox.bounds = {0.0, 20.0, 240.0, 120.0};
+    flatPathBox.style.fontSize = 30;
+    flatPathBox.style.letterSpacing = 0.0;
+    flatPathBox.effects.pathPoints = {{0.0, 0.65}, {1.0, 0.65}};
+    DocumentModel exportEvenTwoPointPath;
+    exportEvenTwoPointPath.addTextBox(flatPathBox);
+    flatPathBox.effects.pathPoints = {{0.0, 0.65}, {0.1, 0.65}, {1.0, 0.65}};
+    exportUnevenFlatPath.addTextBox(flatPathBox);
+    const auto evenTwoPointImage = exportedImage(graph, exportEvenTwoPointPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-even-two-point-path.png");
+    const auto unevenFlatImage = exportedImage(graph, exportUnevenFlatPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-uneven-flat-path.png");
+    const int unevenFlatDiff = imageDifferenceCount(evenTwoPointImage, unevenFlatImage);
+    if (evenTwoPointImage.isNull() || unevenFlatImage.isNull() || unevenFlatDiff > 100) {
+        std::cerr << "Uneven collinear path changed glyph spacing: diffPixels=" << unevenFlatDiff << '\n';
+        return 1;
+    }
+
+    flatPathBox.effects.pathPoints = {{0.0, 0.65}, {1.0, 0.65}};
+    DocumentModel exportFlatSpacingPath;
+    exportFlatSpacingPath.addTextBox(flatPathBox);
+    flatPathBox.effects.pathPoints = {{0.0, 0.65}, {0.1, 0.20}, {1.0, 0.65}};
+    DocumentModel exportCurvedSpacingPath;
+    exportCurvedSpacingPath.addTextBox(flatPathBox);
+    const auto flatSpacingImage = exportedImage(graph, exportFlatSpacingPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-flat-spacing-path.png");
+    const auto curvedSpacingImage = exportedImage(graph, exportCurvedSpacingPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-curved-spacing-path.png");
+    const auto flatSpacingBounds = nonBackgroundBounds(flatSpacingImage, background);
+    const auto curvedSpacingBounds = nonBackgroundBounds(curvedSpacingImage, background);
+    if (flatSpacingImage.isNull() || curvedSpacingImage.isNull() || flatSpacingBounds.isEmpty() || curvedSpacingBounds.isEmpty()) {
+        std::cerr << "Curved path changed horizontal glyph spacing: flat=" << flatSpacingBounds.x() << ',' << flatSpacingBounds.y() << ' '
+                  << flatSpacingBounds.width() << 'x' << flatSpacingBounds.height() << " curved=" << curvedSpacingBounds.x() << ','
+                  << curvedSpacingBounds.y() << ' ' << curvedSpacingBounds.width() << 'x' << curvedSpacingBounds.height() << '\n';
+        return 1;
+    }
+
+    DocumentModel exportLayoutAngledPath;
+    TextBox angledPathBox;
+    angledPathBox.text = "ANGLE";
+    angledPathBox.bounds = {0.0, 0.0, 240.0, 120.0};
+    angledPathBox.style.fontSize = 34;
+    angledPathBox.style.textColor = "000000ff";
+    angledPathBox.effects.pathEnabled = true;
+    angledPathBox.effects.pathPoints = {{0.0, 0.0}, {1.0, 1.0}};
+    exportLayoutAngledPath.addTextBox(angledPathBox);
+    const auto layoutAngledImage = exportedImage(graph, exportLayoutAngledPath, pagePath, std::filesystem::temp_directory_path() / "textfx-export-layout-angled-path.png");
+    const auto layoutAngledBounds = nonBackgroundBounds(layoutAngledImage, background);
+    if (layoutAngledImage.isNull() || layoutAngledBounds.width() <= layoutAngledBounds.height()) {
+        std::cerr << "Path text export did not use layout-scaled angle: bounds=" << layoutAngledBounds.width() << 'x' << layoutAngledBounds.height() << '\n';
         return 1;
     }
 

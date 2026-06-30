@@ -6,6 +6,7 @@
 #include "ui/OutlinedTextItem.h"
 
 #include <QClipboard>
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QGuiApplication>
@@ -630,6 +631,129 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("pathEnabled: modelData.path")));
         QVERIFY(source.contains(QStringLiteral("pathMode: modelData.pathMode")));
         QVERIFY(source.contains(QStringLiteral("pathPoints: modelData.pathPoints")));
+        QVERIFY(source.contains(QStringLiteral("id: pathGuide")));
+        QVERIFY(source.contains(QStringLiteral("visible: boxRef.selected && boxRef.boxModel.path && boxRef.boxModel.pathPoints.length > 1")));
+        QVERIFY(source.contains(QStringLiteral("transform: Matrix4x4 { matrix: pathGuide.rootWindow.perspectiveMatrix(pathGuide.boxRef.boxModel, pathGuide.width, pathGuide.height, pathGuide.rootWindow.viewDocScale(), pathGuide.boxRef.perspectiveActive) }")));
+        QVERIFY(source.contains(QStringLiteral("function smoothGuidePoints(points)")));
+        QVERIFY(source.contains(QStringLiteral("pathMode === 1 ? smoothGuidePoints(points) : points.map(point => guidePoint(point))")));
+        QVERIFY(!source.contains(QStringLiteral("const baselineOffset = lineWidth / 2")));
+        QVERIFY(source.contains(QStringLiteral("ctx.moveTo(guidePoints[0].x, guidePoints[0].y)")));
+        QVERIFY(source.contains(QStringLiteral("for (let pass = 0; pass < 3 && result.length >= 3; ++pass)")));
+        QVERIFY(source.contains(QStringLiteral("* 0.25")));
+        QVERIFY(source.contains(QStringLiteral("* 0.75")));
+        QVERIFY(source.contains(QStringLiteral("onPathModeChanged: requestPaint()")));
+        QVERIFY(source.contains(QStringLiteral("onPathPointsChanged: requestPaint()")));
+    }
+
+    void qmlPathHandleDragUpdatesPathPoints()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(40, 40, 160, 60);
+        editor.updateSelectedText(QStringLiteral("Path"));
+        editor.setSelectedPathEnabled(true);
+
+        const QVariantList before = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList();
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        QObject* object = nullptr;
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("pathHandle")));
+        auto* handle = qobject_cast<QQuickItem*>(object);
+        QVERIFY(handle);
+        QTRY_VERIFY(handle->isVisible());
+        auto* box = handle->parentItem();
+        QVERIFY(box);
+        const double boxWidth = box->width();
+        const double boxHeight = box->height();
+
+        QSignalSpy changed(&editor, &EditorController::documentChanged);
+        const QPoint start = handle->mapToScene(QPointF(handle->width() / 2, handle->height() / 2)).toPoint();
+        const QPoint end = start + QPoint(48, -24);
+        QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, start);
+        QTest::mouseMove(window, start + QPoint(12, -6));
+        QTest::mouseMove(window, start + QPoint(24, -12));
+        QTest::mouseMove(window, start + QPoint(36, -18));
+        QTest::mouseMove(window, end);
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, end);
+
+        QTRY_VERIFY(changed.count() >= 1);
+        const QVariantList after = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList();
+        QVERIFY(after != before);
+        const auto beforePoint = before.at(0).toList();
+        const auto afterPoint = after.at(0).toList();
+        const double beforeX = beforePoint.at(0).toDouble();
+        const double beforeY = beforePoint.at(1).toDouble();
+        const double afterX = afterPoint.at(0).toDouble();
+        const double afterY = afterPoint.at(1).toDouble();
+        const double expectedDx = 48.0 / boxWidth;
+        const double expectedDy = -24.0 / boxHeight;
+        QVERIFY(afterX - beforeX > 0.05);
+        QVERIFY(beforeY - afterY > 0.05);
+        QVERIFY(std::abs((afterX - beforeX) - expectedDx) < 0.08);
+        QVERIFY(std::abs((afterY - beforeY) - expectedDy) < 0.08);
+
+        QTest::mouseMove(window, end + QPoint(48, -24));
+        QCoreApplication::processEvents();
+        const QVariantList afterReleaseMove = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList();
+        QCOMPARE(afterReleaseMove, after);
+    }
+
+    void qmlPathHandleFollowsPerspectivePlane()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(40, 40, 160, 60);
+        editor.setSelectedPathEnabled(true);
+        editor.setPathHandle(0, 0.0, 0.0);
+        editor.setPerspectiveHandle(QStringLiteral("nw"), 30.0, -10.0);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        QObject* object = nullptr;
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("pathHandle")));
+        auto* handle = qobject_cast<QQuickItem*>(object);
+        QVERIFY(handle);
+        QTRY_VERIFY(handle->isVisible());
+        auto* pathPlane = handle->parentItem();
+        QVERIFY(pathPlane);
+        auto* box = pathPlane->parentItem();
+        QVERIFY(box);
+
+        const QPointF raw = box->mapToScene(QPointF(0.0, 0.0));
+        const QPointF expected = box->mapToScene(QPointF(30.0, -10.0));
+        const QPointF actual = handle->mapToScene(QPointF(handle->width() / 2, handle->height() / 2));
+
+        QVERIFY(std::hypot(actual.x() - raw.x(), actual.y() - raw.y()) > 8.0);
+        QVERIFY(std::hypot(actual.x() - expected.x(), actual.y() - expected.y()) < 2.0);
+
+        const QVariantList before = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList();
+        const QPoint start = actual.toPoint();
+        const QPoint end = start + QPoint(18, 0);
+        QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, start);
+        QTest::mouseMove(window, end);
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, end);
+        const QVariantList after = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList();
+        QVERIFY(after != before);
+        QVERIFY(after.at(0).toList().at(0).toDouble() > before.at(0).toList().at(0).toDouble());
     }
 
     void perspectiveUsesLiveClippedRendererWithoutPreviewArtifact()
@@ -1011,7 +1135,7 @@ private slots:
         const QString source = QString::fromUtf8(qml.readAll());
 
         const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n                                    {name: \"nw\"}"));
-        const qsizetype pathStart = source.indexOf(QStringLiteral("model: parent.boxModel.pathPoints"), resizeStart);
+        const qsizetype pathStart = source.indexOf(QStringLiteral("model: pathHandlePlane.boxRef.boxModel.pathPoints"), resizeStart);
         const qsizetype pathEnd = source.indexOf(QStringLiteral("Label {"), pathStart);
         const qsizetype rotateRectStart = source.indexOf(QStringLiteral("id: rotateHandle"), resizeStart);
         const qsizetype rotateStart = source.indexOf(QStringLiteral("rotateHandle.rootWindow.beginRotateDrag(rotateHandle.boxRef"), resizeStart);
@@ -1042,7 +1166,7 @@ private slots:
         QVERIFY(resizeSource.contains(QStringLiteral("property var rootWindow: boxRef.rootWindow")));
         QVERIFY(resizeSource.contains(QStringLiteral("property var editorRef: boxRef.editorRef")));
         QVERIFY(rotateSource.contains(QStringLiteral("property var boxRef: parent")));
-        QVERIFY(pathSource.contains(QStringLiteral("property var boxRef: parent")));
+        QVERIFY(pathSource.contains(QStringLiteral("property var boxRef: pathPlane.boxRef")));
         QVERIFY(pathSource.contains(QStringLiteral("property var editorRef: boxRef.editorRef")));
         QVERIFY(!resizeSource.contains(QStringLiteral("if (boxDelegate.perspectiveActive)")));
         QVERIFY(!resizeSource.contains(QStringLiteral("boxDelegate.rootWindow.endResizeDrag")));
@@ -1199,7 +1323,7 @@ private slots:
         const QString source = QString::fromUtf8(qml.readAll());
 
         const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n                                    {name: \"nw\"}"));
-        const qsizetype pathStart = source.indexOf(QStringLiteral("model: parent.boxModel.pathPoints"), resizeStart);
+        const qsizetype pathStart = source.indexOf(QStringLiteral("model: pathHandlePlane.boxRef.boxModel.pathPoints"), resizeStart);
         const qsizetype rotateStart = source.indexOf(QStringLiteral("rotateHandle.rootWindow.beginRotateDrag(rotateHandle.boxRef"), resizeStart);
         QVERIFY(resizeStart >= 0);
         QVERIFY(rotateStart > resizeStart);
@@ -1602,6 +1726,51 @@ private slots:
         const auto clampedPath = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList().at(0).toList();
         QCOMPARE(clampedPath.at(0).toDouble(), 0.0);
         QCOMPARE(clampedPath.at(1).toDouble(), 1.0);
+    }
+
+    void pathPointsInsertIntoLongestSegmentInOrder()
+    {
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(0, 0, 100, 40);
+        editor.setSelectedPathEnabled(true);
+
+        editor.addSelectedPathPoint();
+        auto points = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList();
+        QCOMPARE(points.size(), 4);
+        QCOMPARE(points.at(1).toList().at(0).toDouble(), 0.25);
+        QCOMPARE(points.at(1).toList().at(1).toDouble(), 0.5);
+
+        editor.addSelectedPathPoint();
+        points = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList();
+        QCOMPARE(points.size(), 5);
+        QCOMPARE(points.at(3).toList().at(0).toDouble(), 0.75);
+        QCOMPARE(points.at(3).toList().at(1).toDouble(), 0.5);
+    }
+
+    void straightPathHandleMovementMatchesTypeXFreeDrag()
+    {
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(0, 0, 100, 40);
+        editor.setSelectedPathEnabled(true);
+        editor.setSelectedPathMode(0);
+        editor.setPathHandle(1, 0.25, 0.9);
+
+        auto point = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList().at(1).toList();
+        QCOMPARE(point.at(0).toDouble(), 0.25);
+        QCOMPARE(point.at(1).toDouble(), 0.9);
+
+        editor.setPathHandle(0, 0.8, 0.2);
+        point = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList().at(0).toList();
+        QCOMPARE(point.at(0).toDouble(), 0.8);
+        QCOMPARE(point.at(1).toDouble(), 0.2);
+
+        editor.setSelectedPathMode(1);
+        editor.setPathHandle(1, 0.25, 0.9);
+        point = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList().at(1).toList();
+        QCOMPARE(point.at(0).toDouble(), 0.25);
+        QCOMPARE(point.at(1).toDouble(), 0.9);
     }
 
     void effectsPersistAsTypeXFields()
@@ -2037,7 +2206,7 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("model: [qsTr(\"Vertical\"), qsTr(\"Horizontal\")]")));
         QVERIFY(source.contains(QStringLiteral("model: [qsTr(\"Straight\"), qsTr(\"Smooth\")]")));
         QVERIFY(source.contains(QStringLiteral("Editor.addSelectedPathPoint()")));
-        QVERIFY(source.contains(QStringLiteral("model: parent.boxModel.pathPoints")));
+        QVERIFY(source.contains(QStringLiteral("model: pathHandlePlane.boxRef.boxModel.pathPoints")));
         QVERIFY(source.contains(QStringLiteral("Live editing uses QML layout; rendered effects apply on export.")));
     }
 
@@ -2149,7 +2318,7 @@ private slots:
         QVERIFY(!source.contains(QStringLiteral("dx / length * 16")));
         QVERIFY(!source.contains(QStringLiteral("drag.target: parent; onPressed: Editor.beginInteraction(); onReleased: Editor.endInteraction(); onCanceled: Editor.endInteraction(); onPositionChanged: Editor.setPerspectiveHandle")));
         const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n                                    {name: \"nw\"}"));
-        const qsizetype pathStart = source.indexOf(QStringLiteral("model: parent.boxModel.pathPoints"), resizeStart);
+        const qsizetype pathStart = source.indexOf(QStringLiteral("model: pathHandlePlane.boxRef.boxModel.pathPoints"), resizeStart);
         QVERIFY(resizeStart >= 0);
         QVERIFY(pathStart > resizeStart);
         const QString manualHandleSource = source.mid(resizeStart, pathStart - resizeStart);
@@ -2165,11 +2334,13 @@ private slots:
 
         const qsizetype wrapper = source.indexOf(QStringLiteral("id: boxTextPerspective"));
         const qsizetype renderer = source.indexOf(QStringLiteral("id: boxOutlinedText"), wrapper);
-        const qsizetype editor = source.indexOf(QStringLiteral("TextArea {"), renderer);
+        const qsizetype pathGuide = source.indexOf(QStringLiteral("id: pathGuide"), renderer);
+        const qsizetype editor = source.indexOf(QStringLiteral("TextArea {"), pathGuide);
         QVERIFY(wrapper >= 0);
         QVERIFY(renderer > wrapper);
+        QVERIFY(pathGuide > renderer);
         QVERIFY(editor > renderer);
-        QVERIFY(source.mid(renderer, editor - renderer).contains(QStringLiteral("transform: Matrix4x4")) == false);
+        QVERIFY(source.mid(renderer, pathGuide - renderer).contains(QStringLiteral("transform: Matrix4x4")) == false);
     }
 
     void qmlPerspectiveResizeDragStartsFromVisualHandle()
@@ -2469,6 +2640,7 @@ private slots:
         item.setWidth(width);
         item.setHeight(height);
         item.setText(QStringLiteral("GradientPath"));
+        item.setFontFamily(QStringLiteral("sans-serif"));
         item.setPixelSize(28);
         item.setColor(Qt::black);
         item.setGradientEnabled(true);
@@ -2526,6 +2698,163 @@ private slots:
         QVERIFY(liveBlue > 0);
         QVERIFY(exportRed > 0);
         QVERIFY(exportBlue > 0);
+    }
+
+    void outlinedTextItemPathPreservesMultilineTextOnFlatPath()
+    {
+        const QColor background(Qt::transparent);
+        auto render = [background]() {
+            OutlinedTextItem item;
+            item.setWidth(260);
+            item.setHeight(120);
+            item.setText(QStringLiteral("HELLO\nWEAVER!"));
+            item.setPixelSize(34);
+            item.setLetterSpacing(1.5);
+            item.setColor(Qt::black);
+            item.setPathEnabled(true);
+            item.setPathPoints(QVariantList{QVariantList{0.0, 0.65}, QVariantList{1.0, 0.65}});
+
+            QImage image(260, 120, QImage::Format_ARGB32_Premultiplied);
+            image.fill(background);
+            QPainter painter(&image);
+            item.paint(&painter);
+            return image;
+        };
+
+        const QRect pathBounds = visibleBounds(render(), background);
+        QVERIFY(!pathBounds.isEmpty());
+        QVERIFY2(pathBounds.height() > 50, qPrintable(QStringLiteral("path bounds %1x%2").arg(pathBounds.width()).arg(pathBounds.height())));
+        QVERIFY2(pathBounds.width() > 120 && pathBounds.width() < 260, qPrintable(QStringLiteral("path bounds %1x%2").arg(pathBounds.width()).arg(pathBounds.height())));
+    }
+
+    void outlinedTextItemDefaultFlatPathKeepsPlainVisibleBounds()
+    {
+        const QColor background(Qt::transparent);
+        auto render = [background](bool pathEnabled) {
+            OutlinedTextItem item;
+            item.setWidth(150);
+            item.setHeight(120);
+            item.setText(QStringLiteral("HELLO WEAVER!"));
+            item.setPixelSize(34);
+            item.setLetterSpacing(1);
+            item.setColor(Qt::black);
+            item.setHorizontalAlignment(Qt::AlignHCenter);
+            item.setPathEnabled(pathEnabled);
+            item.setPathPoints(QVariantList{QVariantList{0.0, 0.5}, QVariantList{0.5, 0.5}, QVariantList{1.0, 0.5}});
+
+            QImage image(150, 120, QImage::Format_ARGB32_Premultiplied);
+            image.fill(background);
+            QPainter painter(&image);
+            item.paint(&painter);
+            return image;
+        };
+
+        const QImage plain = render(false);
+        const QImage path = render(true);
+        const QRect plainBounds = visibleBounds(plain, background);
+        const QRect pathBounds = visibleBounds(path, background);
+        QVERIFY(!plainBounds.isEmpty());
+        QVERIFY(!pathBounds.isEmpty());
+        QVERIFY2(!imagesDiffer(plain, path), "default flat path must render exactly like plain text");
+        QVERIFY2(std::abs(plainBounds.left() - pathBounds.left()) <= 3, qPrintable(QStringLiteral("plain=%1 path=%2").arg(plainBounds.left()).arg(pathBounds.left())));
+        QVERIFY2(std::abs(plainBounds.top() - pathBounds.top()) <= 3, qPrintable(QStringLiteral("plain=%1 path=%2").arg(plainBounds.top()).arg(pathBounds.top())));
+        QVERIFY2(std::abs(plainBounds.width() - pathBounds.width()) <= 6, qPrintable(QStringLiteral("plain=%1 path=%2").arg(plainBounds.width()).arg(pathBounds.width())));
+        QVERIFY2(std::abs(plainBounds.height() - pathBounds.height()) <= 6, qPrintable(QStringLiteral("plain=%1 path=%2").arg(plainBounds.height()).arg(pathBounds.height())));
+    }
+
+    void outlinedTextItemPathUsesVisualWrappedLinesOnFlatPath()
+    {
+        const QColor background(Qt::transparent);
+        OutlinedTextItem item;
+        item.setWidth(150);
+        item.setHeight(120);
+        item.setText(QStringLiteral("HELLO WEAVER!"));
+        item.setPixelSize(34);
+        item.setLetterSpacing(1.5);
+        item.setColor(Qt::black);
+        item.setPathEnabled(true);
+        item.setPathPoints(QVariantList{QVariantList{0.0, 0.65}, QVariantList{1.0, 0.65}});
+
+        QImage image(150, 120, QImage::Format_ARGB32_Premultiplied);
+        image.fill(background);
+        QPainter painter(&image);
+        item.paint(&painter);
+
+        const QRect pathBounds = visibleBounds(image, background);
+        QVERIFY(!pathBounds.isEmpty());
+        QVERIFY2(pathBounds.height() > 50, qPrintable(QStringLiteral("path bounds %1x%2").arg(pathBounds.width()).arg(pathBounds.height())));
+        QVERIFY2(pathBounds.width() < 150, qPrintable(QStringLiteral("path bounds %1x%2").arg(pathBounds.width()).arg(pathBounds.height())));
+    }
+
+    void outlinedTextItemPathCentersLinesLikeTypeX()
+    {
+        const QColor background(Qt::transparent);
+        auto render = [background](int alignment) {
+            OutlinedTextItem item;
+            item.setWidth(240);
+            item.setHeight(100);
+            item.setText(QStringLiteral("SHORT"));
+            item.setPixelSize(30);
+            item.setColor(Qt::black);
+            item.setHorizontalAlignment(alignment);
+            item.setPathEnabled(true);
+            item.setPathPoints(QVariantList{QVariantList{0.0, 0.60}, QVariantList{1.0, 0.60}});
+
+            QImage image(240, 100, QImage::Format_ARGB32_Premultiplied);
+            image.fill(background);
+            QPainter painter(&image);
+            item.paint(&painter);
+            return visibleBounds(image, background);
+        };
+
+        const QRect left = render(Qt::AlignLeft);
+        const QRect center = render(Qt::AlignHCenter);
+        const QRect right = render(Qt::AlignRight);
+        QVERIFY(!left.isEmpty());
+        QVERIFY(!center.isEmpty());
+        QVERIFY(!right.isEmpty());
+        QVERIFY2(std::abs(left.center().x() - center.center().x()) <= 3, qPrintable(QStringLiteral("left=%1 center=%2").arg(left.center().x()).arg(center.center().x())));
+        QVERIFY2(std::abs(right.center().x() - center.center().x()) <= 3, qPrintable(QStringLiteral("center=%1 right=%2").arg(center.center().x()).arg(right.center().x())));
+    }
+
+    void outlinedTextItemPathPointDoesNotStretchHorizontalSpacing()
+    {
+        const QColor background(Qt::transparent);
+        auto render = [background](const QVariantList& points) {
+            OutlinedTextItem item;
+            item.setWidth(240);
+            item.setHeight(120);
+            item.setText(QStringLiteral("EVEN SPACING"));
+            item.setPixelSize(30);
+            item.setColor(Qt::black);
+            item.setPathEnabled(true);
+            item.setPathPoints(points);
+
+            QImage image(240, 120, QImage::Format_ARGB32_Premultiplied);
+            image.fill(background);
+            QPainter painter(&image);
+            item.paint(&painter);
+            return visibleBounds(image, background);
+        };
+
+        const QRect flat = render(QVariantList{QVariantList{0.0, 0.65}, QVariantList{1.0, 0.65}});
+        const QRect curved = render(QVariantList{QVariantList{0.0, 0.65}, QVariantList{0.1, 0.20}, QVariantList{1.0, 0.65}});
+        QVERIFY(!flat.isEmpty());
+        QVERIFY(!curved.isEmpty());
+        QVERIFY2(std::abs(flat.left() - curved.left()) <= 16, qPrintable(QStringLiteral("flat=%1 curved=%2").arg(flat.left()).arg(curved.left())));
+        QVERIFY2(std::abs(flat.right() - curved.right()) <= 24, qPrintable(QStringLiteral("flat=%1 curved=%2").arg(flat.right()).arg(curved.right())));
+        QVERIFY2(std::abs(flat.width() - curved.width()) <= 32, qPrintable(QStringLiteral("flat=%1 curved=%2").arg(flat.width()).arg(curved.width())));
+    }
+
+    void outlinedTextItemSamplesStraightPathByDistance()
+    {
+        OutlinedTextItem item;
+        item.setPathEnabled(true);
+        item.setPathPoints(QVariantList{QVariantList{0.0, 0.8}, QVariantList{0.2, 0.2}, QVariantList{1.0, 0.8}});
+
+        const QPointF sample = item.pathBaselinePointForTesting(100.0, 200.0, 100.0);
+        QVERIFY(std::abs(sample.x() - 66.1) < 0.2);
+        QVERIFY(std::abs(sample.y() - 29.8) < 0.2);
     }
 
     void outlinedTextItemWrapsWithinOutlineInset()

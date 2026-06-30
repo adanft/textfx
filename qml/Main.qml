@@ -70,6 +70,20 @@ ApplicationWindow {
       property real moveStartCanvasY: 0
       property real moveX: 0
       property real moveY: 0
+        property int activePathHandleIndex: -1
+        property var activePathHandlePlane: null
+        property bool activePathHandlePerspective: false
+        property bool pathHandleInteractionActive: false
+        property bool pathHandleDragPressed: false
+        property real activePathBoxWidth: 1
+        property real activePathBoxHeight: 1
+        property real activePathBoxRotation: 0
+        property real pathHandlePressCanvasX: 0
+        property real pathHandlePressCanvasY: 0
+        property real pathHandlePressLocalX: 0
+        property real pathHandlePressLocalY: 0
+        property real pathHandleStartX: 0
+        property real pathHandleStartY: 0
 
     component ColorButton: Button {
         id: colorButton
@@ -601,6 +615,63 @@ ApplicationWindow {
         dragMode = 0
     }
 
+    function beginPathHandleDrag(pathPlane, index, startX, startY, pressCanvasX, pressCanvasY) {
+        activePathHandlePlane = pathPlane
+        activePathBoxWidth = pathPlane ? pathPlane.width : 1
+        activePathBoxHeight = pathPlane ? pathPlane.height : 1
+        activePathHandlePerspective = !!(pathPlane && pathPlane.boxRef && pathPlane.boxRef.perspectiveActive)
+        activePathBoxRotation = pathPlane && pathPlane.boxRef ? pathPlane.boxRef.rotation : 0
+        activePathHandleIndex = index
+        pathHandlePressCanvasX = pressCanvasX
+        pathHandlePressCanvasY = pressCanvasY
+        const pressLocal = pathPlane ? pathPlane.mapFromItem(canvas, pressCanvasX, pressCanvasY) : Qt.point(pressCanvasX, pressCanvasY)
+        pathHandlePressLocalX = pressLocal.x
+        pathHandlePressLocalY = pressLocal.y
+        pathHandleStartX = startX
+        pathHandleStartY = startY
+        dragMode = 8
+        pathHandleDragPressed = true
+        pathHandleInteractionActive = true
+        window.editor.beginInteraction()
+    }
+
+    function updatePathHandleDragFromCanvas(canvasX, canvasY) {
+        if (!pathHandleInteractionActive || !pathHandleDragPressed || dragMode !== 8 || activePathHandleIndex < 0)
+            return
+        if (!window.editor.leftMouseButtonDown()) {
+            endPathHandleDrag()
+            return
+        }
+        let localDx = 0
+        let localDy = 0
+        if (activePathHandlePerspective) {
+            const local = activePathHandlePlane ? activePathHandlePlane.mapFromItem(canvas, canvasX, canvasY) : Qt.point(canvasX, canvasY)
+            localDx = local.x - pathHandlePressLocalX
+            localDy = local.y - pathHandlePressLocalY
+        } else {
+            const radians = -activePathBoxRotation * Math.PI / 180
+            const dx = canvasX - pathHandlePressCanvasX
+            const dy = canvasY - pathHandlePressCanvasY
+            localDx = dx * Math.cos(radians) - dy * Math.sin(radians)
+            localDy = dx * Math.sin(radians) + dy * Math.cos(radians)
+        }
+        window.editor.setPathHandle(activePathHandleIndex, (pathHandleStartX + localDx) / activePathBoxWidth, (pathHandleStartY + localDy) / activePathBoxHeight)
+    }
+
+    function endPathHandleDrag() {
+        if (dragMode !== 8)
+            return false
+        if (pathHandleInteractionActive)
+            window.editor.endInteraction()
+        pathHandleDragPressed = false
+        pathHandleInteractionActive = false
+        activePathHandlePlane = null
+        activePathHandlePerspective = false
+        activePathHandleIndex = -1
+        dragMode = 0
+        return true
+    }
+
     function handleEscape() {
         if (Editor.editingText) {
             Editor.endTextEdit()
@@ -614,6 +685,8 @@ ApplicationWindow {
                 endRotateDrag(false)
             else if (dragMode === 7)
                 endMoveDrag(false)
+            else if (dragMode === 8)
+                endPathHandleDrag()
             dragMode = 0
         } else if (Editor.selectedIndex >= 0) {
             Editor.selectBox(-1)
@@ -1009,6 +1082,21 @@ ApplicationWindow {
                         border.width: 1
                     }
 
+                    MouseArea {
+                        anchors.fill: parent
+                        visible: window.dragMode === 8 && window.pathHandleInteractionActive
+                        enabled: visible
+                        z: 100
+                        hoverEnabled: true
+                        acceptedButtons: Qt.LeftButton
+                        preventStealing: true
+                        onPositionChanged: mouse => {
+                            window.updatePathHandleDragFromCanvas(mouse.x, mouse.y)
+                        }
+                        onReleased: window.endPathHandleDrag()
+                        onCanceled: window.endPathHandleDrag()
+                    }
+
                     Repeater {
                         model: Editor.boxes
                         delegate: Rectangle {
@@ -1123,6 +1211,70 @@ ApplicationWindow {
                                     pathMode: modelData.pathMode
                                     pathPoints: modelData.pathPoints
                                     renderScale: rootWindow.livePreviewScale()
+                                }
+                            }
+
+                            Canvas {
+                                id: pathGuide
+
+                                property var boxRef: parent
+                                property var rootWindow: boxRef.rootWindow
+                                property var editorRef: boxRef.editorRef
+                                property int pathMode: boxRef.boxModel.pathMode
+                                property var pathPoints: boxRef.boxModel.pathPoints
+                                anchors.fill: parent
+                                visible: boxRef.selected && boxRef.boxModel.path && boxRef.boxModel.pathPoints.length > 1
+                                z: 18
+                                transform: Matrix4x4 { matrix: pathGuide.rootWindow.perspectiveMatrix(pathGuide.boxRef.boxModel, pathGuide.width, pathGuide.height, pathGuide.rootWindow.viewDocScale(), pathGuide.boxRef.perspectiveActive) }
+                                function guidePoint(point) {
+                                    return Qt.point(rootWindow.pointValue(point, 0, 0.5) * width,
+                                                    rootWindow.pointValue(point, 1, 0.5) * height)
+                                }
+                                function guideLineWidth() { return Math.max(2, rootWindow.selectionLineWidth()) }
+                                function smoothGuidePoints(points) {
+                                    let result = points.map(point => guidePoint(point))
+                                    for (let pass = 0; pass < 3 && result.length >= 3; ++pass) {
+                                        const next = [result[0]]
+                                        for (let i = 0; i + 1 < result.length; ++i) {
+                                            const from = result[i]
+                                            const to = result[i + 1]
+                                            next.push(Qt.point(from.x + (to.x - from.x) * 0.25,
+                                                               from.y + (to.y - from.y) * 0.25))
+                                            next.push(Qt.point(from.x + (to.x - from.x) * 0.75,
+                                                               from.y + (to.y - from.y) * 0.75))
+                                        }
+                                        next.push(result[result.length - 1])
+                                        result = next
+                                    }
+                                    return result
+                                }
+                                onPaint: {
+                                    const ctx = getContext("2d")
+                                    ctx.clearRect(0, 0, width, height)
+                                    const points = pathPoints
+                                    if (!points || points.length < 2) return
+                                     const guidePoints = pathMode === 1 ? smoothGuidePoints(points) : points.map(point => guidePoint(point))
+                                     const lineWidth = guideLineWidth()
+                                     ctx.beginPath()
+                                     ctx.moveTo(guidePoints[0].x, guidePoints[0].y)
+                                     for (let i = 1; i < guidePoints.length; ++i)
+                                         ctx.lineTo(guidePoints[i].x, guidePoints[i].y)
+                                     ctx.lineWidth = lineWidth
+                                    ctx.strokeStyle = "#ffb000"
+                                    ctx.stroke()
+                                }
+                                onVisibleChanged: requestPaint()
+                                onWidthChanged: requestPaint()
+                                onHeightChanged: requestPaint()
+                                onPathModeChanged: requestPaint()
+                                onPathPointsChanged: requestPaint()
+                                Connections {
+                                    target: pathGuide.rootWindow
+                                    function onZoomChanged() { pathGuide.requestPaint() }
+                                }
+                                Connections {
+                                    target: pathGuide.editorRef
+                                    function onDocumentChanged() { pathGuide.requestPaint() }
                                 }
                             }
 
@@ -1312,19 +1464,50 @@ ApplicationWindow {
                                     onCanceled: { rotateHandle.rootWindow.endRotateDrag(false); rotateHandle.editorRef.endInteraction() }
                                 }
                             }
-                            Repeater {
-                                model: parent.boxModel.pathPoints
-                                delegate: Rectangle {
-                                    id: pathHandle
+                            Item {
+                                id: pathHandlePlane
+                                property var boxRef: parent
+                                property var rootWindow: boxRef.rootWindow
+                                anchors.fill: parent
+                                z: 20
+                                transform: Matrix4x4 { matrix: pathHandlePlane.rootWindow.perspectiveMatrix(pathHandlePlane.boxRef.boxModel, pathHandlePlane.width, pathHandlePlane.height, pathHandlePlane.rootWindow.viewDocScale(), pathHandlePlane.boxRef.perspectiveActive) }
+                                Repeater {
+                                    model: pathHandlePlane.boxRef.boxModel.pathPoints
+                                    delegate: Rectangle {
+                                        id: pathHandle
+                                        objectName: "pathHandle"
 
-                                    property var boxRef: parent
-                                    property var rootWindow: boxRef.rootWindow
-                                    property var editorRef: boxRef.editorRef
-                                    width: Math.max(1, rootWindow.documentToViewLength(10)); height: width; color: rootWindow.palette.highlight; visible: boxRef.selected && boxRef.boxModel.path
-                                    x: rootWindow.pointValue(modelData, 0, 0.5) * boxRef.width - width / 2
-                                    y: rootWindow.pointValue(modelData, 1, 0.5) * boxRef.height - height / 2
-                                    MouseArea { anchors.fill: parent; drag.target: parent; onPressed: pathHandle.editorRef.beginInteraction(); onReleased: pathHandle.editorRef.endInteraction(); onCanceled: pathHandle.editorRef.endInteraction(); onPositionChanged: pathHandle.editorRef.setPathHandle(index, (pathHandle.x + pathHandle.width / 2) / pathHandle.boxRef.width, (pathHandle.y + pathHandle.height / 2) / pathHandle.boxRef.height) }
-                                }
+                                        property var pathPlane: parent
+                                        property var boxRef: pathPlane.boxRef
+                                        property var rootWindow: pathPlane.rootWindow
+                                        property var editorRef: boxRef.editorRef
+                                        width: Math.max(1, rootWindow.documentToViewLength(10)); height: width; color: "#ffb000"; border.color: "#202020"; visible: boxRef.selected && boxRef.boxModel.path
+                                        x: rootWindow.pointValue(modelData, 0, 0.5) * pathPlane.width - width / 2
+                                        y: rootWindow.pointValue(modelData, 1, 0.5) * pathPlane.height - height / 2
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            anchors.margins: -Math.max(8, pathHandle.width)
+                                            acceptedButtons: Qt.LeftButton
+                                            preventStealing: true
+                                            onPressed: mouse => {
+                                                mouse.accepted = true
+                                                pathHandle.editorRef.selectBox(pathHandle.boxRef.boxModel.index)
+                                                const canvasPoint = mapToItem(canvas, mouse.x, mouse.y)
+                                                const startX = rootWindow.pointValue(modelData, 0, 0.5) * pathHandle.pathPlane.width
+                                                const startY = rootWindow.pointValue(modelData, 1, 0.5) * pathHandle.pathPlane.height
+                                                pathHandle.rootWindow.beginPathHandleDrag(pathHandle.pathPlane, index, startX, startY, canvasPoint.x, canvasPoint.y)
+                                            }
+                                            onPositionChanged: mouse => {
+                                                if (!pressed || !(mouse.buttons & Qt.LeftButton))
+                                                    return
+                                                const point = mapToItem(canvas, mouse.x, mouse.y)
+                                                pathHandle.rootWindow.updatePathHandleDragFromCanvas(point.x, point.y)
+                                            }
+                                            onReleased: pathHandle.rootWindow.endPathHandleDrag()
+                                            onCanceled: pathHandle.rootWindow.endPathHandleDrag()
+                                        }
+                                    }
+                                 }
                             }
                         }
                     }

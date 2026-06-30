@@ -122,6 +122,7 @@ public:
     Q_INVOKABLE bool updateSelectedPreset();
     Q_INVOKABLE bool renameSelectedPreset(const QString& name);
     Q_INVOKABLE bool deleteSelectedPreset();
+    Q_INVOKABLE bool leftMouseButtonDown() const;
     Q_INVOKABLE void beginInteraction();
     Q_INVOKABLE void endInteraction();
     Q_INVOKABLE void beginTextEdit();
