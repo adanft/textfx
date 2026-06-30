@@ -15,6 +15,7 @@
 #include <QImage>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QMetaObject>
 #include <QPainter>
 #include <QFontDatabase>
 #include <QFontInfo>
@@ -1829,7 +1830,8 @@ private slots:
         const QString source = qmlSource();
 
         QVERIFY(source.contains(QStringLiteral("sidePanelFocusedTextInputs")));
-        QVERIFY(source.contains(QStringLiteral("enabled: !Editor.editingText && window.sidePanelFocusedTextInputs === 0")));
+        QVERIFY(source.contains(QStringLiteral("sidePanelTextInputFocused: window.sidePanelFocusedTextInputs > 0")));
+        QVERIFY(source.contains(QStringLiteral("enabled: editorChrome.editor && !editorChrome.editor.editingText && !editorChrome.sidePanelTextInputFocused")));
         QVERIFY(source.contains(QStringLiteral("onActiveFocusChanged: window.noteSidePanelTextInputFocus(activeFocus)")));
     }
 
@@ -1840,7 +1842,7 @@ private slots:
         const QString source = qmlSource();
 
         const qsizetype handlerStart = source.indexOf(QStringLiteral("function handleEscape()"));
-        const qsizetype handlerEnd = source.indexOf(QStringLiteral("Connections {"), handlerStart);
+        const qsizetype handlerEnd = source.indexOf(QStringLiteral("menuBar: chrome.menuBar"), handlerStart);
         QVERIFY(handlerStart >= 0);
         QVERIFY(handlerEnd > handlerStart);
         const QString handler = source.mid(handlerStart, handlerEnd - handlerStart);
@@ -1856,7 +1858,8 @@ private slots:
         QVERIFY(handler.contains(QStringLiteral("endResizeDrag(false)")));
         QVERIFY(handler.contains(QStringLiteral("dragMode = editorInteraction.dragModeIdle")));
         QVERIFY(handler.contains(QStringLiteral("Editor.selectBox(-1)")));
-        QVERIFY(source.contains(QStringLiteral("Shortcut { sequence: \"Esc\"; context: Qt.ApplicationShortcut; onActivated: window.handleEscape() }")));
+        QVERIFY(source.contains(QStringLiteral("Shortcut { sequence: \"Esc\"; context: Qt.ApplicationShortcut; onActivated: editorChrome.escapeRequested() }")));
+        QVERIFY(source.contains(QStringLiteral("onEscapeRequested: window.handleEscape()")));
         QVERIFY(source.contains(QStringLiteral("if (event.key === Qt.Key_Escape) { window.handleEscape(); event.accepted = true; return }")));
         QVERIFY(source.contains(QStringLiteral("if (event.key === Qt.Key_Escape) { rootWindow.handleEscape(); event.accepted = true }")));
         QVERIFY(!handler.contains(QStringLiteral("Editor.deleteSelected")));
@@ -1866,19 +1869,24 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
+        const QString colorButtonSource = readQmlFile(QStringLiteral("ColorButton.qml"));
+        const QString editorChromeSource = readQmlFile(QStringLiteral("EditorChrome.qml"));
         const QString source = qmlSource();
 
-        QVERIFY(source.contains(QStringLiteral("import QtQuick.Dialogs")));
-        QVERIFY(source.contains(QStringLiteral("ColorDialog")));
-        QVERIFY(source.contains(QStringLiteral("color: colorButton.enabled ? colorButton.swatchColor : colorButton.palette.mid")));
-        QVERIFY(source.contains(QStringLiteral("Label { text: colorButton.swatchText; enabled: colorButton.enabled; Layout.fillWidth: true }")));
-        QVERIFY(source.contains(QStringLiteral("selectedColor")));
-        QVERIFY(source.contains(QStringLiteral("dialogColorHex(selectedColor)")));
-        QVERIFY(source.contains(QStringLiteral("Editor.setSelectedTextColor(hex)")));
-        QVERIFY(source.contains(QStringLiteral("Editor.setSelectedOutlineColor(hex)")));
-        QVERIFY(source.contains(QStringLiteral("Editor.setSelectedShadowColor(hex)")));
-        QVERIFY(source.contains(QStringLiteral("Editor.setSelectedGradientColorA(hex)")));
-        QVERIFY(source.contains(QStringLiteral("Editor.setSelectedGradientColorB(hex)")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("import QtQuick.Dialogs")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("ColorDialog")));
+        QVERIFY(colorButtonSource.contains(QStringLiteral("color: colorButton.enabled ? colorButton.swatchColor : colorButton.palette.mid")));
+        QVERIFY(colorButtonSource.contains(QStringLiteral("Label { text: colorButton.swatchText; enabled: colorButton.enabled; Layout.fillWidth: true }")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("selectedColor")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("dialogColorHex(selectedColor)")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("editor.setSelectedTextColor(hex)")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("editor.setSelectedOutlineColor(hex)")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("editor.setSelectedShadowColor(hex)")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("editor.setSelectedGradientColorA(hex)")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("editor.setSelectedGradientColorB(hex)")));
+        QVERIFY(!mainSource.contains(QStringLiteral("ColorDialog {")));
+        QVERIFY(!mainSource.contains(QStringLiteral("dialogColorHex(selectedColor)")));
         QVERIFY(!source.contains(QStringLiteral("inputMask")));
         QVERIFY(!source.contains(QStringLiteral("onEditingFinished: Editor.setSelectedTextColor")));
         QVERIFY(!source.contains(QStringLiteral("onEditingFinished: Editor.setSelectedOutlineColor")));
@@ -1903,7 +1911,9 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("color: window.palette.window")));
         QVERIFY(source.contains(QStringLiteral("color: window.palette.base")));
         QVERIFY(source.contains(QStringLiteral("window.palette.highlight")));
-        QVERIFY(source.contains(QStringLiteral("window.palette.highlightedText")));
+        QVERIFY(source.contains(QStringLiteral("hostPalette: window.palette")));
+        QVERIFY(source.contains(QStringLiteral("editorChrome.hostPalette.highlight")));
+        QVERIFY(source.contains(QStringLiteral("editorChrome.hostPalette.highlightedText")));
         QVERIFY(source.contains(QStringLiteral("SplitView {")));
         QVERIFY(source.contains(QStringLiteral("orientation: Qt.Horizontal")));
         QVERIFY(source.contains(QStringLiteral("SplitView.minimumWidth: 240")));
@@ -2057,6 +2067,8 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
+        const QString editorChromeSource = readQmlFile(QStringLiteral("EditorChrome.qml"));
         const QString source = qmlSource();
         const QString menuItemSource = readQmlFile(QStringLiteral("ShortcutMenuItem.qml"));
         const qsizetype menuItemStart = menuItemSource.indexOf(QStringLiteral("MenuItem {"));
@@ -2065,7 +2077,7 @@ private slots:
         QVERIFY(menuItemEnd > menuItemStart);
         const QString menuItemDefinition = menuItemSource.mid(menuItemStart, menuItemEnd - menuItemStart);
 
-        QVERIFY(!readQmlFile(QStringLiteral("Main.qml")).contains(QStringLiteral("component ShortcutMenuItem: MenuItem")));
+        QVERIFY(!mainSource.contains(QStringLiteral("component ShortcutMenuItem: MenuItem")));
         QVERIFY(menuItemDefinition.contains(QStringLiteral("MenuItem {")));
         QVERIFY(menuItemDefinition.contains(QStringLiteral("contentItem: Item")));
         QVERIFY(menuItemDefinition.contains(QStringLiteral("RowLayout {")));
@@ -2076,31 +2088,36 @@ private slots:
         QVERIFY(!menuItemSource.contains(QStringLiteral("✓")));
         QVERIFY(!menuItemSource.contains(QStringLiteral("Layout.preferredWidth: 16")));
         QVERIFY(!source.contains(QStringLiteral("Layout.preferredWidth: shortcutMenuItem.checkable ? 16 : 0")));
-        QVERIFY(source.contains(QStringLiteral("Action { id: openAction; text: qsTr(\"Open\"); shortcut: StandardKey.Open")));
-        QVERIFY(source.contains(QStringLiteral("Action { id: saveAction; text: qsTr(\"Save\"); shortcut: StandardKey.Save")));
-        QVERIFY(source.contains(QStringLiteral("Action { id: saveAllAction; text: qsTr(\"Save All\"); shortcut: \"Ctrl+Shift+S\"")));
-        QVERIFY(source.contains(QStringLiteral("Action { id: quitAction; text: qsTr(\"Quit\"); onTriggered: Qt.quit() }")));
-        QVERIFY(source.contains(QStringLiteral("Action { id: copyAction; text: qsTr(\"Copy\"); shortcut: StandardKey.Copy")));
-        QVERIFY(source.contains(QStringLiteral("Action { id: pasteAction; text: qsTr(\"Paste\"); shortcut: StandardKey.Paste")));
-        QVERIFY(source.contains(QStringLiteral("Action { id: deleteAction; text: qsTr(\"Delete\"); shortcut: StandardKey.Delete")));
-        QVERIFY(source.contains(QStringLiteral("Action { id: duplicateAction; text: qsTr(\"Duplicate\"); enabled:")));
-        QVERIFY(source.contains(QStringLiteral("Action { id: zoomInAction; text: qsTr(\"Zoom In\"); shortcut: \"Ctrl++\"")));
-        QVERIFY(source.contains(QStringLiteral("Action { id: zoomOutAction; text: qsTr(\"Zoom Out\"); shortcut: \"Ctrl+-\"")));
-        QVERIFY(source.contains(QStringLiteral("Action { id: resetZoomAction; text: qsTr(\"Reset Zoom\"); shortcut: \"Ctrl+0\"")));
-        QVERIFY(source.contains(QStringLiteral("Action { id: rawOverlayAction; text: qsTr(\"Show Raw Overlay\"); checkable: true; checked: Editor.rawVisible; shortcut: \"Ctrl+H\"")));
-        QVERIFY(source.contains(QStringLiteral("ShortcutMenuItem { action: openAction; shortcutLabel: \"Ctrl+O\" }")));
-        QVERIFY(source.contains(QStringLiteral("ShortcutMenuItem { action: saveAction; shortcutLabel: \"Ctrl+S\" }")));
-        QVERIFY(source.contains(QStringLiteral("ShortcutMenuItem { action: saveAllAction; shortcutLabel: \"Ctrl+Shift+S\" }")));
-        QVERIFY(source.contains(QStringLiteral("ShortcutMenuItem { action: quitAction }")));
-        QVERIFY(source.contains(QStringLiteral("ShortcutMenuItem { action: copyAction; shortcutLabel: \"Ctrl+C\" }")));
-        QVERIFY(source.contains(QStringLiteral("ShortcutMenuItem { action: pasteAction; shortcutLabel: \"Ctrl+V\" }")));
-        QVERIFY(source.contains(QStringLiteral("ShortcutMenuItem { action: deleteAction; shortcutLabel: \"Del\" }")));
-        QVERIFY(source.contains(QStringLiteral("ShortcutMenuItem { action: zoomInAction; shortcutLabel: \"Ctrl++\" }")));
-        QVERIFY(source.contains(QStringLiteral("ShortcutMenuItem { action: zoomOutAction; shortcutLabel: \"Ctrl+-\" }")));
-        QVERIFY(source.contains(QStringLiteral("ShortcutMenuItem { action: resetZoomAction; shortcutLabel: \"Ctrl+0\" }")));
-        QVERIFY(source.contains(QStringLiteral("ShortcutMenuItem { action: rawOverlayAction; shortcutLabel: \"Ctrl+H\" }")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("Action { id: openAction; text: qsTr(\"Open\"); shortcut: StandardKey.Open")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("Action { id: saveAction; text: qsTr(\"Save\"); shortcut: StandardKey.Save")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("Action { id: saveAllAction; text: qsTr(\"Save All\"); shortcut: \"Ctrl+Shift+S\"")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("Action { id: quitAction; text: qsTr(\"Quit\"); onTriggered: Qt.quit() }")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("Action { id: copyAction; text: qsTr(\"Copy\"); shortcut: StandardKey.Copy")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("Action { id: pasteAction; text: qsTr(\"Paste\"); shortcut: StandardKey.Paste")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("Action { id: deleteAction; text: qsTr(\"Delete\"); shortcut: StandardKey.Delete")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("Action { id: duplicateAction; text: qsTr(\"Duplicate\"); enabled:")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("Action { id: zoomInAction; text: qsTr(\"Zoom In\"); shortcut: \"Ctrl++\"")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("Action { id: zoomOutAction; text: qsTr(\"Zoom Out\"); shortcut: \"Ctrl+-\"")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("Action { id: resetZoomAction; text: qsTr(\"Reset Zoom\"); shortcut: \"Ctrl+0\"")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("Action { id: rawOverlayAction; text: qsTr(\"Show Raw Overlay\"); checkable: true; checked: editorChrome.editor ? editorChrome.editor.rawVisible : false; shortcut: \"Ctrl+H\"")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("ShortcutMenuItem { action: openAction; shortcutLabel: \"Ctrl+O\" }")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("ShortcutMenuItem { action: saveAction; shortcutLabel: \"Ctrl+S\" }")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("ShortcutMenuItem { action: saveAllAction; shortcutLabel: \"Ctrl+Shift+S\" }")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("ShortcutMenuItem { action: quitAction }")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("ShortcutMenuItem { action: copyAction; shortcutLabel: \"Ctrl+C\" }")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("ShortcutMenuItem { action: pasteAction; shortcutLabel: \"Ctrl+V\" }")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("ShortcutMenuItem { action: deleteAction; shortcutLabel: \"Del\" }")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("ShortcutMenuItem { action: zoomInAction; shortcutLabel: \"Ctrl++\" }")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("ShortcutMenuItem { action: zoomOutAction; shortcutLabel: \"Ctrl+-\" }")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("ShortcutMenuItem { action: resetZoomAction; shortcutLabel: \"Ctrl+0\" }")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("ShortcutMenuItem { action: rawOverlayAction; shortcutLabel: \"Ctrl+H\" }")));
 
-        QVERIFY(source.contains(QStringLiteral("menuBar: MenuBar")));
+        QVERIFY(mainSource.contains(QStringLiteral("menuBar: chrome.menuBar")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("property alias menuBar: chromeMenuBar")));
+        QVERIFY(mainSource.contains(QStringLiteral("EditorChrome {")));
+        QVERIFY(!mainSource.contains(QStringLiteral("Action { id: openAction")));
+        QVERIFY(!mainSource.contains(QStringLiteral("FolderDialog")));
+        QVERIFY(!mainSource.contains(QStringLiteral("ColorDialog {")));
         QVERIFY(!source.contains(QStringLiteral("menuBarVisible")));
         QVERIFY(!source.contains(QStringLiteral("menuBarAction")));
         QVERIFY(!source.contains(QStringLiteral("Hide Menu Bar")));
@@ -2126,7 +2143,44 @@ private slots:
         QVERIFY(!source.contains(QStringLiteral("Editor.newDocument()")));
         QVERIFY(!source.contains(QStringLiteral("Editor.exportPng()")));
         QVERIFY(!source.contains(QStringLiteral("localPathFromUrl")));
-        QVERIFY(source.contains(QStringLiteral("Editor.openProjectUrl(selectedFolder)")));
+        QVERIFY(editorChromeSource.contains(QStringLiteral("editorChrome.editor.openProjectUrl(selectedFolder)")));
+    }
+
+    void qmlMainWiresEditorChromeSignalsAndBindings()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(10, 20, 100, 50);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+
+        auto* chrome = window->findChild<QObject*>(QStringLiteral("editorChrome"));
+        QVERIFY(chrome);
+        QCOMPARE(chrome->property("editor").value<QObject*>(), &editor);
+        QCOMPARE(chrome->property("hostWidth").toReal(), window->width());
+        QCOMPARE(chrome->property("hostHeight").toReal(), window->height());
+        QVERIFY(chrome->property("zoomCenterX").toReal() > 0.0);
+        QVERIFY(chrome->property("zoomCenterY").toReal() >= 0.0);
+
+        QVERIFY(window->setProperty("zoom", 2.0));
+        QVERIFY(QMetaObject::invokeMethod(chrome, "resetZoomRequested"));
+        QTRY_COMPARE(window->property("zoom").toReal(), 1.0);
+
+        QVERIFY(QMetaObject::invokeMethod(
+            chrome, "zoomAtRequested", Q_ARG(double, 320.0), Q_ARG(double, 240.0), Q_ARG(double, 1.1)));
+        QTRY_COMPARE(window->property("zoom").toReal(), 1.1);
+
+        QCOMPARE(editor.selectedIndex(), 0);
+        QVERIFY(QMetaObject::invokeMethod(chrome, "escapeRequested"));
+        QTRY_COMPARE(editor.selectedIndex(), -1);
     }
 
     void qmlHasPageSelectorAndTextFXEffectControls()

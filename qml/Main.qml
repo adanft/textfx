@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import TextFX.Ui 1.0
 
@@ -27,7 +26,6 @@ ApplicationWindow {
     property real createCurrentX: 0
     property real createCurrentY: 0
     property int sidePanelFocusedTextInputs: 0
-    property string colorDialogSetter: ""
     property var activeResizeDelegate: null
     property string activeResizeHandle: ""
     property real resizeStartX: 0
@@ -152,12 +150,6 @@ ApplicationWindow {
         window.panY = 0
     }
 
-    function toast(message) {
-        toastLabel.text = message
-        toastPopup.open()
-        toastTimer.restart()
-    }
-
     function selectedBox() {
         for (let i = 0; i < Editor.boxes.length; ++i) {
             if (Editor.boxes[i].index === Editor.selectedIndex)
@@ -195,25 +187,8 @@ ApplicationWindow {
         return "#" + value.slice(0, 6)
     }
 
-    function dialogColorHex(colorValue) {
-        const value = String(colorValue)
-        if (/^#[0-9a-fA-F]{8}$/.test(value))
-            return "#" + value.slice(3)
-        return qmlColor(value)
-    }
-
     function openColorDialog(hex, setter) {
-        colorDialog.selectedColor = hex
-        colorDialogSetter = setter
-        colorDialog.open()
-    }
-
-    function applyColorDialogSelection(hex) {
-        if (colorDialogSetter === "text") Editor.setSelectedTextColor(hex)
-        else if (colorDialogSetter === "outline") Editor.setSelectedOutlineColor(hex)
-        else if (colorDialogSetter === "shadow") Editor.setSelectedShadowColor(hex)
-        else if (colorDialogSetter === "gradientA") Editor.setSelectedGradientColorA(hex)
-        else if (colorDialogSetter === "gradientB") Editor.setSelectedGradientColorB(hex)
+        chrome.openColorDialog(hex, setter)
     }
 
     function pointValue(point, index, fallback) {
@@ -641,55 +616,22 @@ ApplicationWindow {
         }
     }
 
-    Connections {
-        target: Editor
-        function onNotificationChanged() { if (Editor.notification.length > 0) window.toast(Editor.notification) }
+    menuBar: chrome.menuBar
+
+    EditorChrome {
+        id: chrome
+        objectName: "editorChrome"
+        editor: window.editor
+        hostPalette: window.palette
+        hostWidth: window.width
+        hostHeight: window.height
+        zoomCenterX: canvas.width / 2
+        zoomCenterY: canvas.height / 2
+        sidePanelTextInputFocused: window.sidePanelFocusedTextInputs > 0
+        onZoomAtRequested: (x, y, factor) => window.zoomAt(x, y, factor)
+        onResetZoomRequested: window.resetZoom()
+        onEscapeRequested: window.handleEscape()
     }
-
-    Action { id: openAction; text: qsTr("Open"); shortcut: StandardKey.Open; enabled: Editor.actionEnabled("open"); onTriggered: openProjectDialog.open() }
-    Action { id: saveAction; text: qsTr("Save"); shortcut: StandardKey.Save; enabled: Editor.hasProject; onTriggered: Editor.save() }
-    Action { id: saveAllAction; text: qsTr("Save All"); shortcut: "Ctrl+Shift+S"; enabled: Editor.hasProject; onTriggered: Editor.saveAll() }
-    Action { id: previousPageAction; text: qsTr("Previous"); shortcut: "PgUp"; enabled: Editor.canGoPrevious; onTriggered: Editor.previousPage() }
-    Action { id: nextPageAction; text: qsTr("Next"); shortcut: "PgDown"; enabled: Editor.canGoNext; onTriggered: Editor.nextPage() }
-    Action { id: copyAction; text: qsTr("Copy"); shortcut: StandardKey.Copy; enabled: Editor.actionEnabled("copy") && !Editor.editingText; onTriggered: Editor.copySelected() }
-    Action { id: pasteAction; text: qsTr("Paste"); shortcut: StandardKey.Paste; enabled: Editor.actionEnabled("paste") && !Editor.editingText; onTriggered: Editor.pasteBox() }
-    Action { id: duplicateAction; text: qsTr("Duplicate"); enabled: Editor.actionEnabled("duplicate") && !Editor.editingText; onTriggered: Editor.duplicateSelected() }
-    Action { id: deleteAction; text: qsTr("Delete"); shortcut: StandardKey.Delete; enabled: Editor.actionEnabled("delete") && !Editor.editingText; onTriggered: Editor.deleteSelected() }
-    Action { id: quitAction; text: qsTr("Quit"); onTriggered: Qt.quit() }
-    Action { id: zoomInAction; text: qsTr("Zoom In"); shortcut: "Ctrl++"; onTriggered: window.zoomAt(canvas.width / 2, canvas.height / 2, 1.1) }
-    Action { id: zoomOutAction; text: qsTr("Zoom Out"); shortcut: "Ctrl+-"; onTriggered: window.zoomAt(canvas.width / 2, canvas.height / 2, 1 / 1.1) }
-    Action { id: resetZoomAction; text: qsTr("Reset Zoom"); shortcut: "Ctrl+0"; onTriggered: window.resetZoom() }
-    Action { id: rawOverlayAction; text: qsTr("Show Raw Overlay"); checkable: true; checked: Editor.rawVisible; shortcut: "Ctrl+H"; onTriggered: Editor.rawVisible = checked }
-
-    menuBar: MenuBar {
-        Menu {
-            title: qsTr("File")
-            ShortcutMenuItem { action: openAction; shortcutLabel: "Ctrl+O" }
-            ShortcutMenuItem { action: saveAction; shortcutLabel: "Ctrl+S" }
-            ShortcutMenuItem { action: saveAllAction; shortcutLabel: "Ctrl+Shift+S" }
-            MenuSeparator {}
-            ShortcutMenuItem { action: quitAction }
-        }
-        Menu {
-            title: qsTr("Edit")
-            ShortcutMenuItem { action: copyAction; shortcutLabel: "Ctrl+C" }
-            ShortcutMenuItem { action: pasteAction; shortcutLabel: "Ctrl+V" }
-            ShortcutMenuItem { action: deleteAction; shortcutLabel: "Del" }
-            ShortcutMenuItem { action: duplicateAction }
-        }
-        Menu {
-            title: qsTr("View")
-            ShortcutMenuItem { action: zoomInAction; shortcutLabel: "Ctrl++" }
-            ShortcutMenuItem { action: zoomOutAction; shortcutLabel: "Ctrl+-" }
-            ShortcutMenuItem { action: resetZoomAction; shortcutLabel: "Ctrl+0" }
-            MenuSeparator {}
-            ShortcutMenuItem { action: rawOverlayAction; shortcutLabel: "Ctrl+H" }
-        }
-    }
-
-    Shortcut { sequence: "Ctrl+="; onActivated: zoomInAction.trigger() }
-    Shortcut { sequence: "Ctrl+Space"; enabled: !Editor.editingText && window.sidePanelFocusedTextInputs === 0; onActivated: Editor.applyNextPageText() }
-    Shortcut { sequence: "Esc"; context: Qt.ApplicationShortcut; onActivated: window.handleEscape() }
 
     Rectangle {
         anchors.fill: parent
@@ -1315,28 +1257,5 @@ ApplicationWindow {
                 }
             }
         }
-    }
-
-    Popup {
-        id: toastPopup
-        x: window.width - width - 24
-        y: window.height - height - 24
-        modal: false
-        closePolicy: Popup.NoAutoClose
-        Label { id: toastLabel; padding: 12; color: window.palette.highlightedText }
-        background: Rectangle { color: window.palette.highlight; radius: 6 }
-    }
-
-    Timer { id: toastTimer; interval: 2200; onTriggered: toastPopup.close() }
-
-    FolderDialog {
-        id: openProjectDialog
-        title: qsTr("Open Project")
-        onAccepted: Editor.openProjectUrl(selectedFolder)
-    }
-
-    ColorDialog {
-        id: colorDialog
-        onAccepted: window.applyColorDialogSelection(window.dialogColorHex(selectedColor))
     }
 }
