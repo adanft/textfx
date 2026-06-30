@@ -1450,9 +1450,9 @@ private slots:
         QVERIFY(letterSpacingSpin > letterSpacingLabel);
         QVERIFY(colorLabel > letterSpacingSpin);
         QVERIFY(colorButton > colorLabel);
-        QVERIFY(propertiesSource.contains(QStringLiteral("model: window.fontFamilyOptions(window.selectedBox() ? window.selectedBox().fontFamily : \"\")")));
-        QVERIFY(propertiesSource.contains(QStringLiteral("ComboBox {\n                                            id: fontFamilyCombo\n                                            Layout.fillWidth: true\n                                            Layout.minimumWidth: 0\n                                            model: window.fontFamilyOptions")));
-        const qsizetype fontComboEnd = propertiesSource.indexOf(QStringLiteral("onActivated: Editor.setSelectedFontFamily(currentText)"), fontCombo);
+        QVERIFY(propertiesSource.contains(QStringLiteral("model: leftInspectorPanel.fontFamilyOptionsProvider(leftInspectorPanel.selectedBox() ? leftInspectorPanel.selectedBox().fontFamily : \"\")")));
+        QVERIFY(propertiesSource.contains(QStringLiteral("ComboBox {\n                            id: fontFamilyCombo\n                            Layout.fillWidth: true\n                            Layout.minimumWidth: 0\n                            model: leftInspectorPanel.fontFamilyOptionsProvider")));
+        const qsizetype fontComboEnd = propertiesSource.indexOf(QStringLiteral("onActivated: leftInspectorPanel.editor.setSelectedFontFamily(currentText)"), fontCombo);
         QVERIFY(fontComboEnd > fontCombo);
         const QString fontComboSource = propertiesSource.mid(fontCombo, fontComboEnd - fontCombo);
         QVERIFY(fontComboSource.contains(QStringLiteral("contentItem: Label {")));
@@ -1461,14 +1461,15 @@ private slots:
         QVERIFY(fontComboSource.contains(QStringLiteral("enabled: fontFamilyCombo.enabled")));
         QVERIFY(fontComboSource.contains(QStringLiteral("elide: Text.ElideRight")));
         QVERIFY(fontComboSource.contains(QStringLiteral("verticalAlignment: Text.AlignVCenter")));
-        QVERIFY(propertiesSource.contains(QStringLiteral("onActivated: Editor.setSelectedFontFamily(currentText)")));
-        QVERIFY(!propertiesSource.contains(QStringLiteral("onEditingFinished: Editor.setSelectedFontFamily")));
+        QVERIFY(propertiesSource.contains(QStringLiteral("onActivated: leftInspectorPanel.editor.setSelectedFontFamily(currentText)")));
+        QVERIFY(!propertiesSource.contains(QStringLiteral("onEditingFinished: leftInspectorPanel.editor.setSelectedFontFamily")));
         QVERIFY(!propertiesSource.contains(QStringLiteral("placeholderText: qsTr(\"Font\")")));
         QVERIFY(propertiesSource.contains(QStringLiteral("Label { text: qsTr(\"Style\") }")));
         QVERIFY(propertiesSource.contains(QStringLiteral("Flow {")));
-        QVERIFY(propertiesSource.contains(QStringLiteral("text: String.fromCodePoint(0xf0264); accessibleLabel: qsTr(\"Bold\"); checked: window.selectedBox() ? window.selectedBox().bold : false; onClicked: Editor.setSelectedBold(checked)")));
-        QVERIFY(propertiesSource.contains(QStringLiteral("text: String.fromCodePoint(0xf0277); accessibleLabel: qsTr(\"Italic\"); checked: window.selectedBox() ? window.selectedBox().italic : false; onClicked: Editor.setSelectedItalic(checked)")));
-        QVERIFY(propertiesSource.contains(QStringLiteral("text: String.fromCodePoint(0xf0b36); accessibleLabel: qsTr(\"Uppercase\"); checked: window.selectedBox() ? window.selectedBox().uppercase : false; onClicked: Editor.setSelectedUppercase(checked)")));
+        QVERIFY(propertiesSource.contains(QStringLiteral("objectName: \"leftInspectorBoldButton\"")));
+        QVERIFY(propertiesSource.contains(QStringLiteral("accessibleLabel: qsTr(\"Bold\"); checked: leftInspectorPanel.selectedBox() ? leftInspectorPanel.selectedBox().bold : false; onClicked: leftInspectorPanel.editor.setSelectedBold(checked)")));
+        QVERIFY(propertiesSource.contains(QStringLiteral("text: String.fromCodePoint(0xf0277); accessibleLabel: qsTr(\"Italic\"); checked: leftInspectorPanel.selectedBox() ? leftInspectorPanel.selectedBox().italic : false; onClicked: leftInspectorPanel.editor.setSelectedItalic(checked)")));
+        QVERIFY(propertiesSource.contains(QStringLiteral("text: String.fromCodePoint(0xf0b36); accessibleLabel: qsTr(\"Uppercase\"); checked: leftInspectorPanel.selectedBox() ? leftInspectorPanel.selectedBox().uppercase : false; onClicked: leftInspectorPanel.editor.setSelectedUppercase(checked)")));
         QVERIFY(!propertiesSource.contains(QStringLiteral("Label { text: qsTr(\"Bold\") }")));
         QVERIFY(!propertiesSource.contains(QStringLiteral("Label { text: qsTr(\"Italic\") }")));
         QVERIFY(!propertiesSource.contains(QStringLiteral("Label { text: qsTr(\"Uppercase\") }")));
@@ -1483,9 +1484,9 @@ private slots:
         QVERIFY(alignmentLabel > styleFlow);
         QVERIFY(alignmentFlow > alignmentLabel);
         QVERIFY(!propertiesSource.contains(QStringLiteral("model: [qsTr(\"Left\"), qsTr(\"Center\"), qsTr(\"Right\")]")));
-        QVERIFY(propertiesSource.contains(QStringLiteral("text: String.fromCodePoint(0xf0262); accessibleLabel: qsTr(\"Align Left\"); checked: window.selectedBox() ? window.selectedBox().alignment === 0 : false; onClicked: Editor.setSelectedAlignment(0)")));
-        QVERIFY(propertiesSource.contains(QStringLiteral("text: String.fromCodePoint(0xf0260); accessibleLabel: qsTr(\"Align Center\"); checked: window.selectedBox() ? window.selectedBox().alignment === 1 : false; onClicked: Editor.setSelectedAlignment(1)")));
-        QVERIFY(propertiesSource.contains(QStringLiteral("text: String.fromCodePoint(0xf0263); accessibleLabel: qsTr(\"Align Right\"); checked: window.selectedBox() ? window.selectedBox().alignment === 2 : false; onClicked: Editor.setSelectedAlignment(2)")));
+        QVERIFY(propertiesSource.contains(QStringLiteral("text: String.fromCodePoint(0xf0262); accessibleLabel: qsTr(\"Align Left\"); checked: leftInspectorPanel.selectedBox() ? leftInspectorPanel.selectedBox().alignment === 0 : false; onClicked: leftInspectorPanel.editor.setSelectedAlignment(0)")));
+        QVERIFY(propertiesSource.contains(QStringLiteral("text: String.fromCodePoint(0xf0260); accessibleLabel: qsTr(\"Align Center\"); checked: leftInspectorPanel.selectedBox() ? leftInspectorPanel.selectedBox().alignment === 1 : false; onClicked: leftInspectorPanel.editor.setSelectedAlignment(1)")));
+        QVERIFY(propertiesSource.contains(QStringLiteral("text: String.fromCodePoint(0xf0263); accessibleLabel: qsTr(\"Align Right\"); checked: leftInspectorPanel.selectedBox() ? leftInspectorPanel.selectedBox().alignment === 2 : false; onClicked: leftInspectorPanel.editor.setSelectedAlignment(2)")));
         QVERIFY(!source.contains(QStringLiteral("CheckBox { checked: window.selectedBox() ? window.selectedBox().bold")));
         QVERIFY(!source.contains(QStringLiteral("CheckBox { checked: window.selectedBox() ? window.selectedBox().italic")));
         QVERIFY(!source.contains(QStringLiteral("CheckBox { checked: window.selectedBox() ? window.selectedBox().uppercase")));
@@ -1513,20 +1514,20 @@ private slots:
 
         QVERIFY(propertiesSource.contains(QStringLiteral("GroupBox {")));
         QVERIFY(source.contains(QStringLiteral("id: textPropertiesSection")));
-        QVERIFY(source.contains(QStringLiteral("readonly property bool sectionReady: Editor.selectedIndex >= 0")));
+        QVERIFY(source.contains(QStringLiteral("readonly property bool sectionReady: leftInspectorPanel.editor.selectedIndex >= 0")));
         QVERIFY(propertiesSource.contains(QStringLiteral("enabled: textPropertiesSection.sectionReady")));
         QVERIFY(presetsSource.contains(QStringLiteral("GroupBox {")));
         QVERIFY(source.contains(QStringLiteral("id: textPresetsSection")));
-        QVERIFY(source.contains(QStringLiteral("readonly property bool sectionReady: Editor.hasProject && Editor.selectedIndex >= 0")));
+        QVERIFY(source.contains(QStringLiteral("readonly property bool sectionReady: leftInspectorPanel.editor.hasProject && leftInspectorPanel.editor.selectedIndex >= 0")));
         QVERIFY(presetsSource.contains(QStringLiteral("enabled: textPresetsSection.sectionReady")));
         QVERIFY(presetsSource.contains(QStringLiteral("TextField { id: presetNameField")));
         QVERIFY(presetsSource.contains(QStringLiteral("ComboBox {")));
         QVERIFY(presetsSource.contains(QStringLiteral("id: presetSelect")));
-        QVERIFY(presetsSource.contains(QStringLiteral("id: presetSelect\n                                                Layout.fillWidth: true\n                                                Layout.minimumWidth: 0")));
-        QVERIFY(presetsSource.contains(QStringLiteral("model: Editor.presets")));
+        QVERIFY(presetsSource.contains(QStringLiteral("id: presetSelect\n                                Layout.fillWidth: true\n                                Layout.minimumWidth: 0")));
+        QVERIFY(presetsSource.contains(QStringLiteral("model: leftInspectorPanel.editor.presets")));
         QVERIFY(presetsSource.contains(QStringLiteral("textRole: \"name\"")));
-        QVERIFY(presetsSource.contains(QStringLiteral("currentIndex: Editor.selectedPresetIndex >= 0 ? Editor.selectedPresetIndex : (Editor.presets.length > 0 ? 0 : -1)")));
-        const qsizetype presetComboEnd = presetsSource.indexOf(QStringLiteral("onActivated: index => Editor.selectPreset(index)"));
+        QVERIFY(presetsSource.contains(QStringLiteral("currentIndex: leftInspectorPanel.editor.selectedPresetIndex >= 0 ? leftInspectorPanel.editor.selectedPresetIndex : (leftInspectorPanel.editor.presets.length > 0 ? 0 : -1)")));
+        const qsizetype presetComboEnd = presetsSource.indexOf(QStringLiteral("onActivated: index => leftInspectorPanel.editor.selectPreset(index)"));
         QVERIFY(presetComboEnd > 0);
         const QString presetComboSource = presetsSource.mid(presetsSource.indexOf(QStringLiteral("id: presetSelect")), presetComboEnd);
         QVERIFY(presetComboSource.contains(QStringLiteral("contentItem: Label {")));
@@ -1535,19 +1536,19 @@ private slots:
         QVERIFY(presetComboSource.contains(QStringLiteral("enabled: presetSelect.enabled")));
         QVERIFY(presetComboSource.contains(QStringLiteral("elide: Text.ElideRight")));
         QVERIFY(presetComboSource.contains(QStringLiteral("verticalAlignment: Text.AlignVCenter")));
-        QVERIFY(presetsSource.contains(QStringLiteral("Button { text: qsTr(\"Apply\"); enabled: Editor.hasProject && Editor.selectedIndex >= 0 && Editor.selectedPresetIndex >= 0; onClicked: Editor.applySelectedPreset() }")));
-        QVERIFY(presetsSource.contains(QStringLiteral("Button { text: qsTr(\"Rename\"); enabled: Editor.hasProject && Editor.selectedIndex >= 0 && Editor.selectedPresetIndex >= 0")));
-        QVERIFY(presetsSource.contains(QStringLiteral("Button { text: qsTr(\"Delete\"); enabled: Editor.hasProject && Editor.selectedIndex >= 0 && Editor.selectedPresetIndex >= 0")));
-        QVERIFY(presetsSource.contains(QStringLiteral("onActivated: index => Editor.selectPreset(index)")));
+        QVERIFY(presetsSource.contains(QStringLiteral("Button { text: qsTr(\"Apply\"); enabled: leftInspectorPanel.editor.hasProject && leftInspectorPanel.editor.selectedIndex >= 0 && leftInspectorPanel.editor.selectedPresetIndex >= 0; onClicked: leftInspectorPanel.editor.applySelectedPreset() }")));
+        QVERIFY(presetsSource.contains(QStringLiteral("Button { text: qsTr(\"Rename\"); enabled: leftInspectorPanel.editor.hasProject && leftInspectorPanel.editor.selectedIndex >= 0 && leftInspectorPanel.editor.selectedPresetIndex >= 0")));
+        QVERIFY(presetsSource.contains(QStringLiteral("Button { text: qsTr(\"Delete\"); enabled: leftInspectorPanel.editor.hasProject && leftInspectorPanel.editor.selectedIndex >= 0 && leftInspectorPanel.editor.selectedPresetIndex >= 0")));
+        QVERIFY(presetsSource.contains(QStringLiteral("onActivated: index => leftInspectorPanel.editor.selectPreset(index)")));
         QVERIFY(!presetsSource.contains(QStringLiteral("ListView")));
-        QVERIFY(presetsSource.contains(QStringLiteral("Editor.applySelectedPreset()")));
+        QVERIFY(presetsSource.contains(QStringLiteral("leftInspectorPanel.editor.applySelectedPreset()")));
         QVERIFY(presetsSource.contains(QStringLiteral("text: qsTr(\"Apply\")")));
         QVERIFY(presetsSource.contains(QStringLiteral("Flow {")));
-        QVERIFY(presetsSource.contains(QStringLiteral("Editor.addPreset(presetNameField.text)")));
+        QVERIFY(presetsSource.contains(QStringLiteral("leftInspectorPanel.editor.addPreset(presetNameField.text)")));
         QVERIFY(presetsSource.contains(QStringLiteral("text: qsTr(\"Create\")")));
-        QVERIFY(presetsSource.contains(QStringLiteral("Editor.updateSelectedPreset()")));
-        QVERIFY(presetsSource.contains(QStringLiteral("Editor.renameSelectedPreset(presetNameField.text)")));
-        QVERIFY(presetsSource.contains(QStringLiteral("Editor.deleteSelectedPreset()")));
+        QVERIFY(presetsSource.contains(QStringLiteral("leftInspectorPanel.editor.updateSelectedPreset()")));
+        QVERIFY(presetsSource.contains(QStringLiteral("leftInspectorPanel.editor.renameSelectedPreset(presetNameField.text)")));
+        QVERIFY(presetsSource.contains(QStringLiteral("leftInspectorPanel.editor.deleteSelectedPreset()")));
         const qsizetype crudFlowStart = presetsSource.indexOf(QStringLiteral("Flow {"));
         const qsizetype createButton = presetsSource.indexOf(QStringLiteral("text: qsTr(\"Create\")"), crudFlowStart);
         const qsizetype updateButton = presetsSource.indexOf(QStringLiteral("text: qsTr(\"Update\")"), createButton);
@@ -1559,20 +1560,18 @@ private slots:
         QVERIFY(renameButton > updateButton);
         QVERIFY(deleteButton > renameButton);
 
-        const qsizetype nextSection = source.indexOf(QStringLiteral("id: canvas"), pageTextsStart);
-        QVERIFY(nextSection > pageTextsStart);
-        const QString pageTextsSource = source.mid(pageTextsStart, nextSection - pageTextsStart);
+        const QString pageTextsSource = source.mid(pageTextsStart);
         QVERIFY(source.contains(QStringLiteral("id: pageTextsSection")));
-        QVERIFY(source.contains(QStringLiteral("readonly property bool sectionReady: Editor.hasProject && Editor.pageTexts.length > 0")));
+        QVERIFY(source.contains(QStringLiteral("readonly property bool sectionReady: leftInspectorPanel.editor.hasProject && leftInspectorPanel.editor.pageTexts.length > 0")));
         QVERIFY(pageTextsSource.contains(QStringLiteral("Label { text: qsTr(\"Page Texts\"); font.bold: true; enabled: pageTextsSection.sectionReady }")));
         QVERIFY(pageTextsSource.contains(QStringLiteral("Frame {")));
         QVERIFY(pageTextsSource.contains(QStringLiteral("id: pageTextsFrame")));
         QVERIFY(pageTextsSource.contains(QStringLiteral("background: Rectangle { color: pageTextsFrame.palette.base; border.color: pageTextsFrame.palette.mid; border.width: 1 }")));
-        QVERIFY(pageTextsSource.contains(QStringLiteral("horizontalAlignment: Text.AlignRight; text: Editor.pageTexts.length; enabled: pageTextsSection.sectionReady")));
+        QVERIFY(pageTextsSource.contains(QStringLiteral("horizontalAlignment: Text.AlignRight; text: leftInspectorPanel.editor.pageTexts.length; enabled: pageTextsSection.sectionReady")));
         QVERIFY(pageTextsSource.contains(QStringLiteral("enabled: pageTextsSection.sectionReady")));
         QVERIFY(pageTextsSource.contains(QStringLiteral("ListView {")));
         QVERIFY(!pageTextsSource.contains(QStringLiteral("texts.txt")));
-        const qsizetype headerCount = pageTextsSource.indexOf(QStringLiteral("horizontalAlignment: Text.AlignRight; text: Editor.pageTexts.length; enabled: pageTextsSection.sectionReady"));
+        const qsizetype headerCount = pageTextsSource.indexOf(QStringLiteral("horizontalAlignment: Text.AlignRight; text: leftInspectorPanel.editor.pageTexts.length; enabled: pageTextsSection.sectionReady"));
         const qsizetype pageTextsBox = pageTextsSource.indexOf(QStringLiteral("Frame {"), headerCount);
         const qsizetype listView = pageTextsSource.indexOf(QStringLiteral("ListView {"), pageTextsBox);
         QVERIFY(pageTextsBox > headerCount);
@@ -1585,13 +1584,13 @@ private slots:
         QVERIFY(pageTextsSource.contains(QStringLiteral("readonly property real minimumListHeight: 200")));
         QVERIFY(pageTextsSource.contains(QStringLiteral("Layout.minimumHeight: minimumListHeight + topPadding + bottomPadding")));
         QVERIFY(pageTextsSource.contains(QStringLiteral("Layout.preferredHeight: pageTextsFrame.minimumListHeight")));
-        QVERIFY(pageTextsSource.contains(QStringLiteral("model: Editor.pageTexts")));
+        QVERIFY(pageTextsSource.contains(QStringLiteral("model: leftInspectorPanel.editor.pageTexts")));
         QVERIFY(pageTextsSource.contains(QStringLiteral("delegate: ItemDelegate {")));
         QVERIFY(pageTextsSource.contains(QStringLiteral("hoverEnabled: true")));
         QVERIFY(pageTextsSource.contains(QStringLiteral("background: Rectangle { color: pageTextDelegate.down || pageTextDelegate.hovered ? Qt.alpha(pageTextDelegate.palette.highlight")));
         QVERIFY(pageTextsSource.contains(QStringLiteral("contentItem: Label {")));
         QVERIFY(pageTextsSource.contains(QStringLiteral("elide: Text.ElideRight")));
-        QVERIFY(pageTextsSource.contains(QStringLiteral("onClicked: Editor.applyPageText(index)")));
+        QVERIFY(pageTextsSource.contains(QStringLiteral("onClicked: leftInspectorPanel.editor.applyPageText(index)")));
     }
 
     void effectControlsUpdateSelectedBox()
@@ -1832,7 +1831,7 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("sidePanelFocusedTextInputs")));
         QVERIFY(source.contains(QStringLiteral("sidePanelTextInputFocused: window.sidePanelFocusedTextInputs > 0")));
         QVERIFY(source.contains(QStringLiteral("enabled: editorChrome.editor && !editorChrome.editor.editingText && !editorChrome.sidePanelTextInputFocused")));
-        QVERIFY(source.contains(QStringLiteral("onActiveFocusChanged: window.noteSidePanelTextInputFocus(activeFocus)")));
+        QVERIFY(source.contains(QStringLiteral("onActiveFocusChanged: leftInspectorPanel.textInputFocusChanged(activeFocus)")));
     }
 
     void qmlEscapeCancelsCurrentContextInOrder()
@@ -1899,6 +1898,8 @@ private slots:
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
+        const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
+        const QString leftPanelSource = readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
         const QString source = qmlSource();
 
         for (const QString& removedChromeColor : {
@@ -1919,6 +1920,8 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("SplitView.minimumWidth: 240")));
         QVERIFY(source.contains(QStringLiteral("SplitView.preferredWidth: 280")));
         QVERIFY(source.contains(QStringLiteral("SplitView.fillWidth: true")));
+        QVERIFY(mainSource.contains(QStringLiteral("LeftInspectorPanel {")));
+        QVERIFY(mainSource.contains(QStringLiteral("objectName: \"leftInspectorPanel\"")));
         QVERIFY(source.contains(QStringLiteral("id: sidePanel")));
         QVERIFY(source.contains(QStringLiteral("id: canvasSlot")));
         QVERIFY(source.contains(QStringLiteral("id: canvas")));
@@ -1935,12 +1938,12 @@ private slots:
         QVERIFY(canvasSlotStart > sidePanelStart);
         QVERIFY(canvasStart > canvasSlotStart);
         QVERIFY(rightPanelStart > canvasStart);
-        QVERIFY(source.mid(sidePanelStart, source.indexOf(QStringLiteral("SplitView.minimumWidth: 240"), sidePanelStart) - sidePanelStart).contains(QStringLiteral("z: 1")));
+        QVERIFY(leftPanelSource.contains(QStringLiteral("z: 1")));
         QVERIFY(source.mid(canvasSlotStart, canvasStart - canvasSlotStart).contains(QStringLiteral("z: 0")));
         QVERIFY(source.mid(canvasStart, source.indexOf(QStringLiteral("x: -canvasSlot.x"), canvasStart) - canvasStart).contains(QStringLiteral("z: 0")));
         QVERIFY(source.mid(rightPanelStart, source.indexOf(QStringLiteral("SplitView.minimumWidth: 180"), rightPanelStart) - rightPanelStart).contains(QStringLiteral("z: 1")));
-        const QString sidePanelSource = source.mid(sidePanelStart, canvasStart - sidePanelStart);
-        QVERIFY(source.lastIndexOf(QStringLiteral("Pane {"), sidePanelStart) >= 0);
+        const QString sidePanelSource = leftPanelSource;
+        QVERIFY(leftPanelSource.contains(QStringLiteral("Pane {")));
         QVERIFY(sidePanelSource.contains(QStringLiteral("GroupBox")));
         QVERIFY(sidePanelSource.contains(QStringLiteral("Label { text: qsTr(\"Text Properties\"); font.bold: true; enabled: textPropertiesSection.sectionReady }")));
         QVERIFY(sidePanelSource.contains(QStringLiteral("Label { text: qsTr(\"Text Presets\"); font.bold: true; enabled: textPresetsSection.sectionReady }")));
@@ -1955,10 +1958,10 @@ private slots:
         QVERIFY(sidePanelSource.contains(QStringLiteral("height: Math.max(implicitHeight, leftPanelScroll.availableHeight)")));
         QVERIFY(!sidePanelSource.contains(QStringLiteral("height: Math.max(implicitHeight, sidePanel.availableHeight)")));
         QVERIFY(sidePanelSource.contains(QStringLiteral("TextField { id: presetNameField; Layout.fillWidth: true; Layout.minimumWidth: 0")));
-        QVERIFY(sidePanelSource.contains(QStringLiteral("RowLayout {\n                                            Layout.fillWidth: true\n                                            Layout.minimumWidth: 0\n                                            spacing: 8")));
-        QVERIFY(sidePanelSource.contains(QStringLiteral("SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: editorLimits.minimumFontSize; to: editorLimits.maximumFontSize")));
-        QVERIFY(sidePanelSource.contains(QStringLiteral("SpinBox { Layout.fillWidth: true; Layout.minimumWidth: 0; from: editorLimits.minimumTextSpacing; to: editorLimits.maximumTextSpacing")));
-        QVERIFY(sidePanelSource.count(QStringLiteral("Flow {\n                                            Layout.fillWidth: true\n                                            Layout.minimumWidth: 0")) >= 3);
+        QVERIFY(sidePanelSource.contains(QStringLiteral("RowLayout {\n                            Layout.fillWidth: true\n                            Layout.minimumWidth: 0\n                            spacing: 8")));
+        QVERIFY(sidePanelSource.contains(QStringLiteral("SpinBox { objectName: \"leftInspectorFontSizeSpinBox\"; Layout.fillWidth: true; Layout.minimumWidth: 0; from: leftInspectorPanel.editorLimits.minimumFontSize; to: leftInspectorPanel.editorLimits.maximumFontSize")));
+        QVERIFY(sidePanelSource.contains(QStringLiteral("SpinBox { objectName: \"leftInspectorLineSpacingSpinBox\"; Layout.fillWidth: true; Layout.minimumWidth: 0; from: leftInspectorPanel.editorLimits.minimumTextSpacing; to: leftInspectorPanel.editorLimits.maximumTextSpacing")));
+        QVERIFY(sidePanelSource.count(QStringLiteral("Flow {\n                            Layout.fillWidth: true\n                            Layout.minimumWidth: 0")) >= 3);
         const qsizetype propertiesStart = sidePanelSource.indexOf(QStringLiteral("Label { text: qsTr(\"Text Properties\"); font.bold: true; enabled: textPropertiesSection.sectionReady }"));
         const qsizetype presetsStart = sidePanelSource.indexOf(QStringLiteral("Label { text: qsTr(\"Text Presets\"); font.bold: true; enabled: textPresetsSection.sectionReady }"));
         const qsizetype pageTextsStart = sidePanelSource.indexOf(QStringLiteral("Label { text: qsTr(\"Page Texts\"); font.bold: true; enabled: pageTextsSection.sectionReady }"));
@@ -2181,6 +2184,144 @@ private slots:
         QCOMPARE(editor.selectedIndex(), 0);
         QVERIFY(QMetaObject::invokeMethod(chrome, "escapeRequested"));
         QTRY_COMPARE(editor.selectedIndex(), -1);
+    }
+
+    void qmlMainWiresLeftInspectorPanelApi()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(10, 20, 100, 50);
+        editor.setSelectedFontFamily(QStringLiteral("TextFX Inspector Test"));
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+
+        auto* leftInspector = window->findChild<QObject*>(QStringLiteral("leftInspectorPanel"));
+        QVERIFY(leftInspector);
+        QCOMPARE(leftInspector->property("editor").value<QObject*>(), &editor);
+        QVERIFY(leftInspector->property("editorLimits").value<QObject*>());
+
+        QVariant selected;
+        QVERIFY(QMetaObject::invokeMethod(leftInspector, "selectedBox", Q_RETURN_ARG(QVariant, selected)));
+        QCOMPARE(selected.toMap().value(QStringLiteral("fontFamily")).toString(), QStringLiteral("TextFX Inspector Test"));
+
+        QCOMPARE(window->property("sidePanelFocusedTextInputs").toInt(), 0);
+        QVERIFY(QMetaObject::invokeMethod(leftInspector, "textInputFocusChanged", Q_ARG(bool, true)));
+        QTRY_COMPARE(window->property("sidePanelFocusedTextInputs").toInt(), 1);
+        QVERIFY(QMetaObject::invokeMethod(leftInspector, "textInputFocusChanged", Q_ARG(bool, false)));
+        QTRY_COMPARE(window->property("sidePanelFocusedTextInputs").toInt(), 0);
+    }
+
+    void qmlLeftInspectorTextPropertyControlUpdatesSelectedBox()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(10, 20, 100, 50);
+        editor.setSelectedBold(false);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        QObject* object = nullptr;
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("leftInspectorBoldButton")));
+        auto* button = qobject_cast<QQuickItem*>(object);
+        QVERIFY(button);
+        QTRY_VERIFY(button->isVisible());
+        QVERIFY(button->isEnabled());
+
+        const QPoint center = button->mapToScene(QPointF(button->width() / 2, button->height() / 2)).toPoint();
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, center);
+
+        QTRY_VERIFY(editor.boxes().at(0).toMap().value(QStringLiteral("bold")).toBool());
+    }
+
+    void qmlLeftInspectorPageTextDelegateAppliesThroughEditor()
+    {
+        registerQmlTypes();
+
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        touch(dir.filePath(QStringLiteral("page1.png")));
+        QFile texts(dir.filePath(QStringLiteral("texts.txt")));
+        QVERIFY(texts.open(QIODevice::WriteOnly | QIODevice::Text));
+        texts.write("[page1.png]\nPanel page text\n");
+        texts.close();
+
+        EditorController editor;
+        editor.openProject(dir.path());
+        QCOMPARE(editor.pageTexts(), QStringList({QStringLiteral("Panel page text")}));
+        editor.createTextBox(10, 20, 100, 50);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        QObject* object = nullptr;
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("leftInspectorPageTextDelegate")));
+        auto* delegate = qobject_cast<QQuickItem*>(object);
+        QVERIFY(delegate);
+        QTRY_VERIFY(delegate->isVisible());
+        QVERIFY(delegate->isEnabled());
+
+        const QPoint center = delegate->mapToScene(QPointF(delegate->width() / 2, delegate->height() / 2)).toPoint();
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, center);
+
+        QTRY_COMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(), QStringLiteral("Panel page text"));
+    }
+
+    void qmlLeftInspectorColorButtonRoutesThroughEditorChrome()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(10, 20, 100, 50);
+        editor.setSelectedTextColor(QStringLiteral("#112233"));
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        auto* chrome = window->findChild<QObject*>(QStringLiteral("editorChrome"));
+        QVERIFY(chrome);
+        QCOMPARE(chrome->property("colorDialogSetter").toString(), QString());
+
+        QObject* object = nullptr;
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("leftInspectorTextColorButton")));
+        auto* button = qobject_cast<QQuickItem*>(object);
+        QVERIFY(button);
+        QTRY_VERIFY(button->isVisible());
+        QVERIFY(button->isEnabled());
+
+        const QPoint center = button->mapToScene(QPointF(button->width() / 2, button->height() / 2)).toPoint();
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, center);
+
+        QTRY_COMPARE(chrome->property("colorDialogSetter").toString(), QStringLiteral("text"));
     }
 
     void qmlHasPageSelectorAndTextFXEffectControls()

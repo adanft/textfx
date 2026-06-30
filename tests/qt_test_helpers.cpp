@@ -67,6 +67,7 @@ QString qmlSource()
     return readQmlFile(QStringLiteral("Main.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("ColorButton.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("EditorChrome.qml")) + QLatin1Char('\n')
+        + readQmlFile(QStringLiteral("LeftInspectorPanel.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("ShortcutMenuItem.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("TextBoxDelegate.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("TextStyleButton.qml"));
