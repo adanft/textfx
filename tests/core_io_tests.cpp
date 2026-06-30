@@ -49,9 +49,9 @@ TEST_CASE("Project pages are naturally sorted")
     std::filesystem::remove_all(folder);
 }
 
-TEST_CASE("Missing typex page data opens an empty clean document")
+TEST_CASE("Missing TextFX page data opens an empty clean document")
 {
-    const auto folder = makeTempDir("textfx-missing-typex-");
+    const auto folder = makeTempDir("textfx-missing-page-data-");
     const auto page = folder / "001.png";
     touch(page);
 
@@ -114,7 +114,7 @@ TEST_CASE("Compatible page save preserves MVP editable fields")
     std::filesystem::remove_all(folder);
 }
 
-TEST_CASE("Perspective offsets persist as TypeX pixel offsets")
+TEST_CASE("Perspective offsets persist as TextFX pixel offsets")
 {
     const auto folder = makeTempDir("textfx-perspective-offsets-");
     const auto page = folder / "001.png";
@@ -151,7 +151,7 @@ TEST_CASE("Unsupported fields are ignored on import and omitted on save")
     touch(page);
     std::filesystem::create_directories(savePath.parent_path());
     std::ofstream(savePath) << R"({
-        "format": "typex.page-boxes.v1",
+        "format": "textfx.page-boxes.v1",
         "page": "001.png",
         "typebubblex_only": true,
         "boxes": [{"text": "Kept", "x": 1, "y": 2, "w": 3, "h": 4, "mask_brush": {"unsupported": true}, "shadow_blur_size": 999}]
@@ -210,7 +210,7 @@ TEST_CASE("Missing project presets returns built-in defaults without writing a f
     std::filesystem::remove_all(folder);
 }
 
-TEST_CASE("Project presets persist as TypeX presets file")
+TEST_CASE("Project presets persist as TextFX presets file")
 {
     const auto folder = makeTempDir("textfx-project-presets-");
     ProjectStore store(folder);
@@ -225,7 +225,7 @@ TEST_CASE("Project presets persist as TypeX presets file")
     CHECK(projectPresets.front().name == "Narration");
     CHECK(projectPresets.front().style.bold);
     const std::string text = readText(store.presetsPath());
-    CHECK(text.find("typex.text-presets.v1") != std::string::npos);
+    CHECK(text.find("textfx.text-presets.v1") != std::string::npos);
     CHECK(text.find("Narration") != std::string::npos);
     std::filesystem::remove_all(folder);
 }

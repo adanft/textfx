@@ -1,5 +1,5 @@
 {
-  "format": "typex.text-presets.v1",
+  "format": "textfx.text-presets.v1",
   "presets": [
     {
       "name": "MVP Caption",

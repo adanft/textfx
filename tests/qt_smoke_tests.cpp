@@ -473,7 +473,7 @@ private slots:
 
         QCOMPARE(editor.currentPageName(), QStringLiteral("page2.png"));
         QVERIFY(!editor.dirty());
-        const auto savedPath = dir.filePath(QStringLiteral(".typex/page1.json"));
+        const auto savedPath = dir.filePath(QStringLiteral(".textfx/page1.json"));
         QVERIFY(QFile::exists(savedPath));
         QCOMPARE(readJson(savedPath).value(QStringLiteral("boxes")).toArray().size(), 1);
 
@@ -500,9 +500,9 @@ private slots:
         editor.goToPage(1);
 
         QCOMPARE(editor.currentPageName(), QStringLiteral("page2.png"));
-        QVERIFY(QFile::exists(dir.filePath(QStringLiteral(".typex/page1.json"))));
+        QVERIFY(QFile::exists(dir.filePath(QStringLiteral(".textfx/page1.json"))));
         QVERIFY(!QFile::exists(dir.filePath(QStringLiteral("exported/page1.png"))));
-        QCOMPARE(readJson(dir.filePath(QStringLiteral(".typex/page1.json"))).value(QStringLiteral("boxes")).toArray().size(), 1);
+        QCOMPARE(readJson(dir.filePath(QStringLiteral(".textfx/page1.json"))).value(QStringLiteral("boxes")).toArray().size(), 1);
     }
 
     void openingProjectAbortsWhenCurrentAutosaveFails()
@@ -519,11 +519,11 @@ private slots:
         editor.createTextBox(10, 20, 100, 50);
         QVERIFY(editor.dirty());
 
-        QVERIFY(QFile(first.filePath(QStringLiteral(".typex"))).open(QIODevice::WriteOnly));
+        QVERIFY(QFile(first.filePath(QStringLiteral(".textfx"))).open(QIODevice::WriteOnly));
         editor.openProject(second.path());
 
         QCOMPARE(editor.currentPageName(), QStringLiteral("page1.png"));
-        QVERIFY(editor.notification().contains(QStringLiteral(".typex")));
+        QVERIFY(editor.notification().contains(QStringLiteral(".textfx")));
     }
 
     void saveWritesJsonAndCurrentExportedPng()
@@ -545,8 +545,8 @@ private slots:
         editor.save();
 
         QVERIFY(!editor.dirty());
-        QVERIFY(QFile::exists(dir.filePath(QStringLiteral(".typex/page1.json"))));
-        QCOMPARE(readJson(dir.filePath(QStringLiteral(".typex/page1.json"))).value(QStringLiteral("boxes")).toArray().size(), 1);
+        QVERIFY(QFile::exists(dir.filePath(QStringLiteral(".textfx/page1.json"))));
+        QCOMPARE(readJson(dir.filePath(QStringLiteral(".textfx/page1.json"))).value(QStringLiteral("boxes")).toArray().size(), 1);
 
         QVERIFY2(hasPngMagic(output), qPrintable(editor.notification()));
         QVERIFY(imageDiffers(dir.filePath(QStringLiteral("page1.png")), output));
@@ -562,7 +562,7 @@ private slots:
         QVERIFY(editor.notification().contains(QStringLiteral("Saved boxes and exported PNG to")));
     }
 
-    void saveReportsBoxSaveFailureLikeTypeX()
+    void saveReportsBoxSaveFailure()
     {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
@@ -571,7 +571,7 @@ private slots:
         EditorController editor;
         editor.openProject(dir.path());
         editor.createTextBox(1, 2, 80, 40);
-        QVERIFY(QFile(dir.filePath(QStringLiteral(".typex"))).open(QIODevice::WriteOnly));
+        QVERIFY(QFile(dir.filePath(QStringLiteral(".textfx"))).open(QIODevice::WriteOnly));
 
         editor.save();
 
@@ -595,9 +595,9 @@ private slots:
         editor.nextPage();
         editor.createTextBox(3, 4, 90, 50);
         editor.updateSelectedText(QStringLiteral("Second page"));
-        QFile emptyPage(dir.filePath(QStringLiteral(".typex/page3.json")));
+        QFile emptyPage(dir.filePath(QStringLiteral(".textfx/page3.json")));
         QVERIFY(emptyPage.open(QIODevice::WriteOnly | QIODevice::Text));
-        emptyPage.write(R"({"format":"typex.page-boxes.v1","page":"page3.png","boxes":[]})");
+        emptyPage.write(R"({"format":"textfx.page-boxes.v1","page":"page3.png","boxes":[]})");
         emptyPage.close();
         QVERIFY(QDir(dir.path()).mkpath(QStringLiteral("exported")));
         QFile stale(dir.filePath(QStringLiteral("exported/page3.png")));
@@ -611,15 +611,15 @@ private slots:
         editor.saveAll();
 
         QVERIFY(!editor.dirty());
-        QCOMPARE(readJson(dir.filePath(QStringLiteral(".typex/page1.json"))).value(QStringLiteral("boxes")).toArray().size(), 1);
-        QCOMPARE(readJson(dir.filePath(QStringLiteral(".typex/page2.json"))).value(QStringLiteral("boxes")).toArray().size(), 1);
-        QCOMPARE(readJson(dir.filePath(QStringLiteral(".typex/page3.json"))).value(QStringLiteral("boxes")).toArray().size(), 0);
+        QCOMPARE(readJson(dir.filePath(QStringLiteral(".textfx/page1.json"))).value(QStringLiteral("boxes")).toArray().size(), 1);
+        QCOMPARE(readJson(dir.filePath(QStringLiteral(".textfx/page2.json"))).value(QStringLiteral("boxes")).toArray().size(), 1);
+        QCOMPARE(readJson(dir.filePath(QStringLiteral(".textfx/page3.json"))).value(QStringLiteral("boxes")).toArray().size(), 0);
 
         QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("exported/page1.png"))), qPrintable(editor.notification()));
         QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("exported/page2.png"))), qPrintable(editor.notification()));
         QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("exported/page3.png"))), qPrintable(editor.notification()));
         QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("exported/page4.png"))), qPrintable(editor.notification()));
-        QVERIFY(!QFile::exists(dir.filePath(QStringLiteral(".typex/page4.json"))));
+        QVERIFY(!QFile::exists(dir.filePath(QStringLiteral(".textfx/page4.json"))));
         QCOMPARE(editor.notification(), QStringLiteral("Exported 4 page(s)."));
     }
 
@@ -1003,7 +1003,7 @@ private slots:
         editor.rotateSelected(15);
         editor.save();
 
-        const auto box = readJson(dir.filePath(QStringLiteral(".typex/page1.json"))).value(QStringLiteral("boxes")).toArray().at(0).toObject();
+        const auto box = readJson(dir.filePath(QStringLiteral(".textfx/page1.json"))).value(QStringLiteral("boxes")).toArray().at(0).toObject();
         QCOMPARE(box.value(QStringLiteral("x")).toDouble(), 15.0);
         QCOMPARE(box.value(QStringLiteral("y")).toDouble(), 27.0);
         QCOMPARE(box.value(QStringLiteral("w")).toDouble(), 110.0);
@@ -1417,7 +1417,7 @@ private slots:
         editor.resizeSelected(10.25, 20.5);
         editor.save();
 
-        const auto box = readJson(dir.filePath(QStringLiteral(".typex/page1.json"))).value(QStringLiteral("boxes")).toArray().at(0).toObject();
+        const auto box = readJson(dir.filePath(QStringLiteral(".textfx/page1.json"))).value(QStringLiteral("boxes")).toArray().at(0).toObject();
         QCOMPARE(box.value(QStringLiteral("x")).toDouble(), 16.0);
         QCOMPARE(box.value(QStringLiteral("y")).toDouble(), 30.0);
         QCOMPARE(box.value(QStringLiteral("w")).toDouble(), 134.0);
@@ -1835,7 +1835,7 @@ private slots:
         QCOMPARE(point.at(1).toDouble(), 0.9);
     }
 
-    void effectsPersistAsTypeXFields()
+    void effectsPersistAsTextFXFields()
     {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
@@ -1858,7 +1858,7 @@ private slots:
         editor.setSelectedPathMode(1);
         editor.save();
 
-        const auto box = readJson(dir.filePath(QStringLiteral(".typex/page1.json"))).value(QStringLiteral("boxes")).toArray().at(0).toObject();
+        const auto box = readJson(dir.filePath(QStringLiteral(".textfx/page1.json"))).value(QStringLiteral("boxes")).toArray().at(0).toObject();
         QVERIFY(box.value(QStringLiteral("uppercase")).toBool());
         QCOMPARE(box.value(QStringLiteral("alignment")).toInt(), 2);
         QCOMPARE(box.value(QStringLiteral("line_spacing")).toInt(), 9);
@@ -1919,7 +1919,7 @@ private slots:
         editor.setSelectedFontSize(31);
         editor.setSelectedBold(true);
         QVERIFY(editor.addPreset(QStringLiteral("Narration")));
-        QVERIFY(QFile::exists(dir.filePath(QStringLiteral(".typex/presets.json"))));
+        QVERIFY(QFile::exists(dir.filePath(QStringLiteral(".textfx/presets.json"))));
         QCOMPARE(editor.presets().last().toMap().value(QStringLiteral("name")).toString(), QStringLiteral("Narration"));
 
         editor.setSelectedFontSize(44);
@@ -1950,7 +1950,7 @@ private slots:
 
         QCOMPARE(editor.presets().first().toMap().value(QStringLiteral("name")).toString(), QStringLiteral("Globo normal"));
         QCOMPARE(editor.presets().first().toMap().value(QStringLiteral("fontFamily")).toString(), QStringLiteral("Custom Bubble"));
-        const auto saved = readJson(dir.filePath(QStringLiteral(".typex/presets.json"))).value(QStringLiteral("presets")).toArray();
+        const auto saved = readJson(dir.filePath(QStringLiteral(".textfx/presets.json"))).value(QStringLiteral("presets")).toArray();
         QCOMPARE(saved.size(), 1);
         QCOMPARE(saved.at(0).toObject().value(QStringLiteral("name")).toString(), QStringLiteral("Globo normal"));
     }
@@ -2259,7 +2259,7 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("Editor.openProjectUrl(selectedFolder)")));
     }
 
-    void qmlHasPageSelectorAndTypeXEffectControls()
+    void qmlHasPageSelectorAndTextFXEffectControls()
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));

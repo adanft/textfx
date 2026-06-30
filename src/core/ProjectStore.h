@@ -11,7 +11,7 @@ namespace textfx {
 
 class ProjectStore {
 public:
-    static constexpr auto SaveFolder = ".typex";
+    static constexpr auto SaveFolder = ".textfx";
     static constexpr auto ExportFolder = "exported";
 
     explicit ProjectStore(std::filesystem::path folder);

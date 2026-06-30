@@ -9,8 +9,8 @@ namespace textfx {
 
 class JsonSerializer {
 public:
-    static constexpr auto PageFormat = "typex.page-boxes.v1";
-    static constexpr auto PresetsFormat = "typex.text-presets.v1";
+    static constexpr auto PageFormat = "textfx.page-boxes.v1";
+    static constexpr auto PresetsFormat = "textfx.text-presets.v1";
 
     static bool loadPage(const std::filesystem::path& path, DocumentModel& document, std::string* error = nullptr);
     static bool savePage(const std::filesystem::path& path, const std::string& pageName, const DocumentModel& document, std::string* error = nullptr);

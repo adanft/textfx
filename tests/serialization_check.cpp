@@ -26,8 +26,8 @@ std::string readText(const std::filesystem::path& path)
 
 int main()
 {
-    const auto pageFixture = fixtures() / "typex-compatible-page.json";
-    const auto presetFixture = fixtures() / "typex-compatible-presets.json";
+    const auto pageFixture = fixtures() / "textfx-page.json";
+    const auto presetFixture = fixtures() / "textfx-presets.json";
 
     DocumentModel document;
     std::string error;

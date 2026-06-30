@@ -1,6 +1,6 @@
 # TextFX
 
-TextFX is the C++/Qt successor MVP for TypeX. The app opens image folders, shows the active page image, navigates pages, autosaves `.typex` project data, and uses the same Qt-rendered PNG path for preview and export.
+TextFX is the C++/Qt successor MVP for TypeX. The app opens image folders, shows the active page image, navigates pages, autosaves `.textfx` project data, and uses the same Qt-rendered PNG path for preview and export.
 
 ## Dependencies
 
