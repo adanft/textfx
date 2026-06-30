@@ -101,6 +101,12 @@ int main(int argc, char** argv)
     }
     const auto tempPath = std::filesystem::path(tempDir.path().toStdString());
 
+    const auto missingPageResult = graph.exportPagePngResult(DocumentModel{}, tempPath / "missing-page.png", tempPath / "missing-export.png");
+    if (missingPageResult || missingPageResult.error() != "Could not load page image: " + (tempPath / "missing-page.png").string()) {
+        std::cerr << "Expected missing page export to return an equivalent std::expected error\n";
+        return 1;
+    }
+
     QImage page(240, 160, QImage::Format_RGBA8888);
     const QColor background(230, 230, 230, 255);
     page.fill(background);

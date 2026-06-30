@@ -16,7 +16,9 @@
 #include <QVector>
 
 #include <algorithm>
+#include <expected>
 #include <filesystem>
+#include <system_error>
 
 namespace textfx {
 namespace {
@@ -193,12 +195,11 @@ void drawTextBox(QPainter& painter, const TextBox& box)
 
 } // namespace
 
-bool RenderGraph::exportPagePng(const DocumentModel& document, const std::filesystem::path& pageImagePath, const std::filesystem::path& exportPath, std::string* error) const
+std::expected<void, std::string> RenderGraph::exportPagePngResult(const DocumentModel& document, const std::filesystem::path& pageImagePath, const std::filesystem::path& exportPath) const
 {
     QImage source(QString::fromStdString(pageImagePath.string()));
     if (source.isNull()) {
-        if (error) *error = "Could not load page image: " + pageImagePath.string();
-        return false;
+        return std::unexpected("Could not load page image: " + pageImagePath.string());
     }
     source = source.convertToFormat(QImage::Format_ARGB32_Premultiplied);
 
@@ -206,14 +207,31 @@ bool RenderGraph::exportPagePng(const DocumentModel& document, const std::filesy
     for (const auto& box : document.textBoxes()) drawTextBox(painter, box);
     painter.end();
 
-    std::filesystem::create_directories(exportPath.parent_path());
+    std::error_code filesystemError;
+    const auto exportDirectory = exportPath.parent_path();
+    if (!exportDirectory.empty()) std::filesystem::create_directories(exportDirectory, filesystemError);
+    if (filesystemError) return std::unexpected("Could not write PNG output: " + exportPath.string());
+
     const auto tempPath = exportPath.string() + ".tmp";
     if (!source.save(QString::fromStdString(tempPath), "PNG")) {
-        if (error) *error = "Could not write PNG output: " + exportPath.string();
+        return std::unexpected("Could not write PNG output: " + exportPath.string());
+    }
+    std::filesystem::remove(exportPath, filesystemError);
+    if (filesystemError) return std::unexpected("Could not write PNG output: " + exportPath.string());
+
+    std::filesystem::rename(tempPath, exportPath, filesystemError);
+    if (filesystemError) return std::unexpected("Could not write PNG output: " + exportPath.string());
+
+    return {};
+}
+
+bool RenderGraph::exportPagePng(const DocumentModel& document, const std::filesystem::path& pageImagePath, const std::filesystem::path& exportPath, std::string* error) const
+{
+    const auto result = exportPagePngResult(document, pageImagePath, exportPath);
+    if (!result) {
+        if (error) *error = result.error();
         return false;
     }
-    std::filesystem::remove(exportPath);
-    std::filesystem::rename(tempPath, exportPath);
     return true;
 }
 
