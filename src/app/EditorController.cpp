@@ -1,5 +1,6 @@
 #include "app/EditorController.h"
 
+#include "app/TextBoxEditingService.h"
 #include "fonts/FontResolver.h"
 #include "render/RenderGraph.h"
 
@@ -17,25 +18,12 @@
 #include <QUrl>
 
 #include <algorithm>
-#include <cctype>
 #include <utility>
 
 namespace textfx {
 namespace {
 QString toQString(const std::string& value) { return QString::fromStdString(value); }
 std::string toStdString(const QString& value) { return value.toStdString(); }
-
-std::string normalizeHexColor(QString color, const std::string& fallback)
-{
-    color = color.trimmed();
-    if (color.startsWith(QLatin1Char('#'))) color.remove(0, 1);
-    if (color.size() == 6) color += QStringLiteral("ff");
-    if (color.size() != 8) return fallback;
-    for (const auto ch : color) {
-        if (!std::isxdigit(static_cast<unsigned char>(ch.toLatin1()))) return fallback;
-    }
-    return color.toLower().toStdString();
-}
 
 QVariantList pointsToVariantList(const std::vector<Point>& points);
 
@@ -122,23 +110,6 @@ Point pointFromJson(const QJsonValue& value, Point fallback = {})
 {
     const auto array = value.toArray();
     return array.size() >= 2 ? Point{array.at(0).toDouble(), array.at(1).toDouble()} : fallback;
-}
-
-Point clampedUnitPoint(double x, double y)
-{
-    return {std::clamp(x, 0.0, 1.0), std::clamp(y, 0.0, 1.0)};
-}
-
-double distanceSquared(const Point& a, const Point& b)
-{
-    const double dx = a.x - b.x;
-    const double dy = a.y - b.y;
-    return dx * dx + dy * dy;
-}
-
-Point midpoint(const Point& a, const Point& b)
-{
-    return {(a.x + b.x) * 0.5, (a.y + b.y) * 0.5};
 }
 
 std::vector<Point> pointsFromJson(const QJsonValue& value)
@@ -467,8 +438,7 @@ void EditorController::updateSelectedText(const QString& text)
 void EditorController::setSelectedFontFamily(const QString& family)
 {
     if (auto* box = selectedBox()) {
-        const auto value = family.trimmed();
-        if (!value.isEmpty()) box->style.fontFamily = toStdString(value);
+        TextBoxEditingService::setFontFamily(*box, family);
         markDocumentChanged();
     }
 }
@@ -476,7 +446,7 @@ void EditorController::setSelectedFontFamily(const QString& family)
 void EditorController::setSelectedFontSize(int size)
 {
     if (auto* box = selectedBox()) {
-        box->style.fontSize = std::clamp(size, 1, 512);
+        TextBoxEditingService::setFontSize(*box, size);
         markDocumentChanged();
     }
 }
@@ -484,7 +454,7 @@ void EditorController::setSelectedFontSize(int size)
 void EditorController::setSelectedTextColor(const QString& color)
 {
     if (auto* box = selectedBox()) {
-        box->style.textColor = normalizeHexColor(color, box->style.textColor);
+        TextBoxEditingService::setTextColor(*box, color);
         markDocumentChanged();
     }
 }
@@ -492,7 +462,7 @@ void EditorController::setSelectedTextColor(const QString& color)
 void EditorController::setSelectedBold(bool enabled)
 {
     if (auto* box = selectedBox()) {
-        box->style.bold = enabled;
+        TextBoxEditingService::setBold(*box, enabled);
         markDocumentChanged();
     }
 }
@@ -500,7 +470,7 @@ void EditorController::setSelectedBold(bool enabled)
 void EditorController::setSelectedItalic(bool enabled)
 {
     if (auto* box = selectedBox()) {
-        box->style.italic = enabled;
+        TextBoxEditingService::setItalic(*box, enabled);
         markDocumentChanged();
     }
 }
@@ -508,7 +478,7 @@ void EditorController::setSelectedItalic(bool enabled)
 void EditorController::setSelectedUppercase(bool enabled)
 {
     if (auto* box = selectedBox()) {
-        box->style.uppercase = enabled;
+        TextBoxEditingService::setUppercase(*box, enabled);
         markDocumentChanged();
     }
 }
@@ -516,7 +486,7 @@ void EditorController::setSelectedUppercase(bool enabled)
 void EditorController::setSelectedAlignment(int alignment)
 {
     if (auto* box = selectedBox()) {
-        box->style.alignment = static_cast<TextAlignment>(std::clamp(alignment, 0, 2));
+        TextBoxEditingService::setAlignment(*box, alignment);
         markDocumentChanged();
     }
 }
@@ -524,7 +494,7 @@ void EditorController::setSelectedAlignment(int alignment)
 void EditorController::setSelectedLineSpacing(int spacing)
 {
     if (auto* box = selectedBox()) {
-        box->style.lineSpacing = std::clamp(spacing, -100, 300);
+        TextBoxEditingService::setLineSpacing(*box, spacing);
         markDocumentChanged();
     }
 }
@@ -532,7 +502,7 @@ void EditorController::setSelectedLineSpacing(int spacing)
 void EditorController::setSelectedLetterSpacing(int spacing)
 {
     if (auto* box = selectedBox()) {
-        box->style.letterSpacing = std::clamp(spacing, -100, 300);
+        TextBoxEditingService::setLetterSpacing(*box, spacing);
         markDocumentChanged();
     }
 }
@@ -540,8 +510,7 @@ void EditorController::setSelectedLetterSpacing(int spacing)
 void EditorController::moveSelected(double dx, double dy)
 {
     if (auto* box = selectedBox()) {
-        box->bounds.x += dx;
-        box->bounds.y += dy;
+        TextBoxEditingService::move(*box, dx, dy);
         markDocumentChanged();
     }
 }
@@ -549,8 +518,7 @@ void EditorController::moveSelected(double dx, double dy)
 void EditorController::resizeSelected(double dw, double dh)
 {
     if (auto* box = selectedBox()) {
-        box->bounds.w = std::max(12.0, box->bounds.w + dw);
-        box->bounds.h = std::max(12.0, box->bounds.h + dh);
+        TextBoxEditingService::resize(*box, dw, dh);
         markDocumentChanged();
     }
 }
@@ -558,10 +526,7 @@ void EditorController::resizeSelected(double dw, double dh)
 void EditorController::setSelectedBounds(double x, double y, double w, double h)
 {
     if (auto* box = selectedBox()) {
-        box->bounds.x = x;
-        box->bounds.y = y;
-        box->bounds.w = std::max(12.0, w);
-        box->bounds.h = std::max(12.0, h);
+        TextBoxEditingService::setBounds(*box, x, y, w, h);
         markDocumentChanged();
     }
 }
@@ -569,7 +534,7 @@ void EditorController::setSelectedBounds(double x, double y, double w, double h)
 void EditorController::rotateSelected(double degrees)
 {
     if (auto* box = selectedBox()) {
-        box->rotationDegrees += degrees;
+        TextBoxEditingService::rotate(*box, degrees);
         markDocumentChanged();
     }
 }
@@ -577,7 +542,7 @@ void EditorController::rotateSelected(double degrees)
 void EditorController::setSelectedRotation(double degrees)
 {
     if (auto* box = selectedBox()) {
-        box->rotationDegrees = degrees;
+        TextBoxEditingService::setRotation(*box, degrees);
         markDocumentChanged();
     }
 }
@@ -585,7 +550,7 @@ void EditorController::setSelectedRotation(double degrees)
 void EditorController::setSelectedOutlineEnabled(bool enabled)
 {
     if (auto* box = selectedBox()) {
-        box->effects.outlineEnabled = enabled;
+        TextBoxEditingService::setOutlineEnabled(*box, enabled);
         markDocumentChanged();
     }
 }
@@ -593,7 +558,7 @@ void EditorController::setSelectedOutlineEnabled(bool enabled)
 void EditorController::setSelectedOutlineColor(const QString& color)
 {
     if (auto* box = selectedBox()) {
-        box->effects.outlineColor = normalizeHexColor(color, box->effects.outlineColor);
+        TextBoxEditingService::setOutlineColor(*box, color);
         markDocumentChanged();
     }
 }
@@ -601,7 +566,7 @@ void EditorController::setSelectedOutlineColor(const QString& color)
 void EditorController::setSelectedOutlineSize(int size)
 {
     if (auto* box = selectedBox()) {
-        box->effects.outlineSize = std::clamp(size, 0, 128);
+        TextBoxEditingService::setOutlineSize(*box, size);
         markDocumentChanged();
     }
 }
@@ -609,7 +574,7 @@ void EditorController::setSelectedOutlineSize(int size)
 void EditorController::setSelectedBlurEnabled(bool enabled)
 {
     if (auto* box = selectedBox()) {
-        box->effects.blurEnabled = enabled;
+        TextBoxEditingService::setBlurEnabled(*box, enabled);
         markDocumentChanged();
     }
 }
@@ -617,7 +582,7 @@ void EditorController::setSelectedBlurEnabled(bool enabled)
 void EditorController::setSelectedBlurSize(int size)
 {
     if (auto* box = selectedBox()) {
-        box->effects.blurSize = std::clamp(size, 0, 128);
+        TextBoxEditingService::setBlurSize(*box, size);
         markDocumentChanged();
     }
 }
@@ -625,7 +590,7 @@ void EditorController::setSelectedBlurSize(int size)
 void EditorController::setSelectedShadowEnabled(bool enabled)
 {
     if (auto* box = selectedBox()) {
-        box->effects.shadowEnabled = enabled;
+        TextBoxEditingService::setShadowEnabled(*box, enabled);
         markDocumentChanged();
     }
 }
@@ -633,7 +598,7 @@ void EditorController::setSelectedShadowEnabled(bool enabled)
 void EditorController::setSelectedShadowColor(const QString& color)
 {
     if (auto* box = selectedBox()) {
-        box->effects.shadowColor = normalizeHexColor(color, box->effects.shadowColor);
+        TextBoxEditingService::setShadowColor(*box, color);
         markDocumentChanged();
     }
 }
@@ -641,7 +606,7 @@ void EditorController::setSelectedShadowColor(const QString& color)
 void EditorController::setSelectedShadowOffsetX(int offset)
 {
     if (auto* box = selectedBox()) {
-        box->effects.shadowOffsetX = std::clamp(offset, -512, 512);
+        TextBoxEditingService::setShadowOffsetX(*box, offset);
         markDocumentChanged();
     }
 }
@@ -649,7 +614,7 @@ void EditorController::setSelectedShadowOffsetX(int offset)
 void EditorController::setSelectedShadowOffsetY(int offset)
 {
     if (auto* box = selectedBox()) {
-        box->effects.shadowOffsetY = std::clamp(offset, -512, 512);
+        TextBoxEditingService::setShadowOffsetY(*box, offset);
         markDocumentChanged();
     }
 }
@@ -657,7 +622,7 @@ void EditorController::setSelectedShadowOffsetY(int offset)
 void EditorController::setSelectedShadowBlurSize(int size)
 {
     if (auto* box = selectedBox()) {
-        box->effects.shadowBlurSize = std::clamp(size, 0, 128);
+        TextBoxEditingService::setShadowBlurSize(*box, size);
         markDocumentChanged();
     }
 }
@@ -665,7 +630,7 @@ void EditorController::setSelectedShadowBlurSize(int size)
 void EditorController::setSelectedGradientEnabled(bool enabled)
 {
     if (auto* box = selectedBox()) {
-        box->effects.gradientEnabled = enabled;
+        TextBoxEditingService::setGradientEnabled(*box, enabled);
         markDocumentChanged();
     }
 }
@@ -673,7 +638,7 @@ void EditorController::setSelectedGradientEnabled(bool enabled)
 void EditorController::setSelectedGradientDirection(int direction)
 {
     if (auto* box = selectedBox()) {
-        box->effects.gradientDirection = std::clamp(direction, 0, 1);
+        TextBoxEditingService::setGradientDirection(*box, direction);
         markDocumentChanged();
     }
 }
@@ -681,7 +646,7 @@ void EditorController::setSelectedGradientDirection(int direction)
 void EditorController::setSelectedGradientColorA(const QString& color)
 {
     if (auto* box = selectedBox()) {
-        box->effects.gradientColorA = normalizeHexColor(color, box->effects.gradientColorA);
+        TextBoxEditingService::setGradientColorA(*box, color);
         markDocumentChanged();
     }
 }
@@ -689,7 +654,7 @@ void EditorController::setSelectedGradientColorA(const QString& color)
 void EditorController::setSelectedGradientColorB(const QString& color)
 {
     if (auto* box = selectedBox()) {
-        box->effects.gradientColorB = normalizeHexColor(color, box->effects.gradientColorB);
+        TextBoxEditingService::setGradientColorB(*box, color);
         markDocumentChanged();
     }
 }
@@ -697,7 +662,7 @@ void EditorController::setSelectedGradientColorB(const QString& color)
 void EditorController::setSelectedPerspectiveEnabled(bool enabled)
 {
     if (auto* box = selectedBox()) {
-        box->effects.perspectiveEnabled = enabled;
+        TextBoxEditingService::setPerspectiveEnabled(*box, enabled);
         markDocumentChanged();
     }
 }
@@ -705,10 +670,7 @@ void EditorController::setSelectedPerspectiveEnabled(bool enabled)
 void EditorController::setSelectedPathEnabled(bool enabled)
 {
     if (auto* box = selectedBox()) {
-        box->effects.pathEnabled = enabled;
-        if (enabled && box->effects.pathPoints.size() < 3) {
-            box->effects.pathPoints = {{0.0, 0.5}, {0.5, 0.5}, {1.0, 0.5}};
-        }
+        TextBoxEditingService::setPathEnabled(*box, enabled);
         markDocumentChanged();
     }
 }
@@ -716,7 +678,7 @@ void EditorController::setSelectedPathEnabled(bool enabled)
 void EditorController::setSelectedPathMode(int mode)
 {
     if (auto* box = selectedBox()) {
-        box->effects.pathMode = std::clamp(mode, 0, 1);
+        TextBoxEditingService::setPathMode(*box, mode);
         markDocumentChanged();
     }
 }
@@ -724,10 +686,7 @@ void EditorController::setSelectedPathMode(int mode)
 void EditorController::resetSelectedPerspective()
 {
     if (auto* box = selectedBox()) {
-        box->effects.perspectiveNw = {};
-        box->effects.perspectiveNe = {};
-        box->effects.perspectiveSe = {};
-        box->effects.perspectiveSw = {};
+        TextBoxEditingService::resetPerspective(*box);
         markDocumentChanged();
     }
 }
@@ -735,7 +694,7 @@ void EditorController::resetSelectedPerspective()
 void EditorController::resetSelectedPath()
 {
     if (auto* box = selectedBox()) {
-        box->effects.pathPoints = {{0.0, 0.5}, {0.5, 0.5}, {1.0, 0.5}};
+        TextBoxEditingService::resetPath(*box);
         markDocumentChanged();
     }
 }
@@ -743,18 +702,7 @@ void EditorController::resetSelectedPath()
 void EditorController::addSelectedPathPoint()
 {
     if (auto* box = selectedBox()) {
-        box->effects.pathEnabled = true;
-        if (box->effects.pathPoints.size() < 3) box->effects.pathPoints = {{0.0, 0.5}, {0.5, 0.5}, {1.0, 0.5}};
-        std::size_t insertIndex = 1;
-        double longest = -1.0;
-        for (std::size_t i = 0; i + 1 < box->effects.pathPoints.size(); ++i) {
-            const double length = distanceSquared(box->effects.pathPoints[i], box->effects.pathPoints[i + 1]);
-            if (length > longest) {
-                longest = length;
-                insertIndex = i + 1;
-            }
-        }
-        box->effects.pathPoints.insert(box->effects.pathPoints.begin() + static_cast<std::ptrdiff_t>(insertIndex), midpoint(box->effects.pathPoints[insertIndex - 1], box->effects.pathPoints[insertIndex]));
+        TextBoxEditingService::addPathPoint(*box);
         markDocumentChanged();
     }
 }
@@ -762,16 +710,7 @@ void EditorController::addSelectedPathPoint()
 void EditorController::setPerspectiveHandle(const QString& corner, double x, double y)
 {
     if (auto* box = selectedBox()) {
-        box->effects.perspectiveEnabled = true;
-        const auto point = Point{x, y};
-        if (corner == QStringLiteral("ne")) box->effects.perspectiveNe = point;
-        else if (corner == QStringLiteral("se")) box->effects.perspectiveSe = point;
-        else if (corner == QStringLiteral("sw")) box->effects.perspectiveSw = point;
-        else if (corner == QStringLiteral("n")) { box->effects.perspectiveNw.y = y; box->effects.perspectiveNe.y = y; }
-        else if (corner == QStringLiteral("e")) { box->effects.perspectiveNe.x = x; box->effects.perspectiveSe.x = x; }
-        else if (corner == QStringLiteral("s")) { box->effects.perspectiveSw.y = y; box->effects.perspectiveSe.y = y; }
-        else if (corner == QStringLiteral("w")) { box->effects.perspectiveNw.x = x; box->effects.perspectiveSw.x = x; }
-        else box->effects.perspectiveNw = point;
+        TextBoxEditingService::setPerspectiveHandle(*box, corner, x, y);
         markDocumentChanged();
     }
 }
@@ -779,12 +718,7 @@ void EditorController::setPerspectiveHandle(const QString& corner, double x, dou
 void EditorController::setPathHandle(int index, double x, double y)
 {
     if (auto* box = selectedBox()) {
-        box->effects.pathEnabled = true;
-        if (box->effects.pathPoints.size() < 3) {
-            box->effects.pathPoints = {{0.0, 0.5}, {0.5, 0.5}, {1.0, 0.5}};
-        }
-        if (index >= 0 && index < static_cast<int>(box->effects.pathPoints.size())) {
-            box->effects.pathPoints[static_cast<std::size_t>(index)] = clampedUnitPoint(x, y);
+        if (TextBoxEditingService::setPathHandle(*box, index, x, y)) {
             markDocumentChanged();
         }
     }
