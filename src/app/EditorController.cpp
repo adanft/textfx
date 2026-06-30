@@ -1,12 +1,11 @@
 #include "app/EditorController.h"
 
+#include "app/EditorViewModels.h"
 #include "app/ProjectExportService.h"
 #include "app/TextBoxEditingService.h"
-#include "fonts/FontResolver.h"
 #include "render/RenderGraph.h"
 
 #include <QClipboard>
-#include <QFont>
 #include <QGuiApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -25,63 +24,6 @@ namespace textfx {
 namespace {
 QString toQString(const std::string& value) { return QString::fromStdString(value); }
 std::string toStdString(const QString& value) { return value.toStdString(); }
-
-QVariantList pointsToVariantList(const std::vector<Point>& points);
-
-QString resolvedFontFamily(const TextStyle& style)
-{
-    QFont font(toQString(style.fontFamily));
-    font.setPixelSize(std::max(1, style.fontSize));
-    font.setBold(style.bold);
-    font.setItalic(style.italic);
-    font.setLetterSpacing(QFont::AbsoluteSpacing, style.letterSpacing);
-    return resolveFont(font).font.family();
-}
-
-QVariantMap toMap(const TextBox& box, int index)
-{
-    return {
-        {"index", index},
-        {"text", toQString(box.text)},
-        {"x", box.bounds.x},
-        {"y", box.bounds.y},
-        {"w", box.bounds.w},
-        {"h", box.bounds.h},
-        {"rotation", box.rotationDegrees},
-        {"fontFamily", toQString(box.style.fontFamily)},
-        {"resolvedFontFamily", resolvedFontFamily(box.style)},
-        {"fontSize", box.style.fontSize},
-        {"color", toQString(box.style.textColor)},
-        {"lineSpacing", box.style.lineSpacing},
-        {"letterSpacing", box.style.letterSpacing},
-        {"bold", box.style.bold},
-        {"italic", box.style.italic},
-        {"uppercase", box.style.uppercase},
-        {"alignment", static_cast<int>(box.style.alignment)},
-        {"outline", box.effects.outlineEnabled},
-        {"outlineColor", toQString(box.effects.outlineColor)},
-        {"outlineSize", box.effects.outlineSize},
-        {"blur", box.effects.blurEnabled},
-        {"blurSize", box.effects.blurSize},
-        {"shadow", box.effects.shadowEnabled},
-        {"shadowColor", toQString(box.effects.shadowColor)},
-        {"shadowOffsetX", box.effects.shadowOffsetX},
-        {"shadowOffsetY", box.effects.shadowOffsetY},
-        {"shadowBlurSize", box.effects.shadowBlurSize},
-        {"gradient", box.effects.gradientEnabled},
-        {"gradientDirection", box.effects.gradientDirection},
-        {"gradientColorA", toQString(box.effects.gradientColorA)},
-        {"gradientColorB", toQString(box.effects.gradientColorB)},
-        {"perspective", box.effects.perspectiveEnabled},
-        {"perspectiveNw", QVariantList{box.effects.perspectiveNw.x, box.effects.perspectiveNw.y}},
-        {"perspectiveNe", QVariantList{box.effects.perspectiveNe.x, box.effects.perspectiveNe.y}},
-        {"perspectiveSe", QVariantList{box.effects.perspectiveSe.x, box.effects.perspectiveSe.y}},
-        {"perspectiveSw", QVariantList{box.effects.perspectiveSw.x, box.effects.perspectiveSw.y}},
-        {"path", box.effects.pathEnabled},
-        {"pathMode", box.effects.pathMode},
-        {"pathPoints", pointsToVariantList(box.effects.pathPoints)},
-    };
-}
 
 double numberFromJson(const QJsonObject& object, const char* key, double fallback)
 {
@@ -118,13 +60,6 @@ std::vector<Point> pointsFromJson(const QJsonValue& value)
     std::vector<Point> points;
     for (const auto& item : value.toArray()) points.push_back(pointFromJson(item));
     return points;
-}
-
-QVariantList pointsToVariantList(const std::vector<Point>& points)
-{
-    QVariantList result;
-    for (const auto& point : points) result.push_back(QVariantList{point.x, point.y});
-    return result;
 }
 
 TextBox boxFromClipboardJson(const QJsonObject& object)
@@ -179,21 +114,12 @@ EditorController::EditorController(QObject* parent) : QObject(parent) {}
 
 QVariantList EditorController::boxes() const
 {
-    QVariantList list;
-    int index = 0;
-    for (const auto& box : document_.textBoxes()) {
-        list.push_back(toMap(box, index++));
-    }
-    return list;
+    return EditorViewModels::textBoxList(document_.textBoxes());
 }
 
 QVariantList EditorController::layers() const
 {
-    QVariantList list;
-    for (int index = static_cast<int>(document_.textBoxes().size()) - 1; index >= 0; --index) {
-        list.push_back(toMap(document_.textBoxes()[static_cast<std::size_t>(index)], index));
-    }
-    return list;
+    return EditorViewModels::layerList(document_.textBoxes());
 }
 
 QString EditorController::currentPageName() const
@@ -216,11 +142,7 @@ QUrl EditorController::rawPageUrl() const
 
 QVariantList EditorController::presets() const
 {
-    QVariantList list;
-    for (const auto& preset : document_.presets()) {
-        list.push_back(QVariantMap{{"name", toQString(preset.name)}, {"fontFamily", toQString(preset.style.fontFamily)}, {"fontSize", preset.style.fontSize}, {"isDefault", ProjectStore::isDefaultTextPresetName(preset.name)}});
-    }
-    return list;
+    return EditorViewModels::presetList(document_.presets());
 }
 
 QStringList EditorController::pageTexts() const
@@ -763,7 +685,7 @@ void EditorController::moveLayer(int to)
 void EditorController::copySelected()
 {
     if (const auto* box = selectedBox()) {
-        auto map = toMap(*box, selectedIndex_);
+        auto map = EditorViewModels::textBoxMap(*box, selectedIndex_);
         QGuiApplication::clipboard()->setText(QJsonDocument::fromVariant(map).toJson(QJsonDocument::Compact));
         setNotification(QStringLiteral("Copied"));
     }

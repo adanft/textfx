@@ -30,6 +30,8 @@ qt_add_executable(textfx
 add_library(textfx_core
     src/app/EditorController.cpp
     src/app/EditorController.h
+    src/app/EditorViewModels.cpp
+    src/app/EditorViewModels.h
     src/app/ProjectExportService.cpp
     src/app/ProjectExportService.h
     src/app/TextBoxEditingService.cpp
