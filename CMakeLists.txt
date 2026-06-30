@@ -38,6 +38,8 @@ add_library(textfx_core
     src/app/TextBoxClipboardService.h
     src/app/TextBoxEditingService.cpp
     src/app/TextBoxEditingService.h
+    src/app/TextPresetService.cpp
+    src/app/TextPresetService.h
     src/core/DocumentModel.cpp
     src/core/DocumentModel.h
     src/fonts/FontResolver.cpp

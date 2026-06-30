@@ -4,6 +4,7 @@
 #include "app/ProjectExportService.h"
 #include "app/TextBoxClipboardService.h"
 #include "app/TextBoxEditingService.h"
+#include "app/TextPresetService.h"
 #include "render/RenderGraph.h"
 
 #include <QClipboard>
@@ -658,7 +659,7 @@ bool EditorController::applySelectedPreset()
         setNotification(QStringLiteral("Select a text preset first"));
         return false;
     }
-    selectedBox()->style = document_.presets().at(static_cast<std::size_t>(selectedPresetIndex_)).style;
+    if (!TextPresetService::applySelectedPreset(*selectedBox(), document_.presets(), selectedPresetIndex_)) return false;
     markDocumentChanged();
     return true;
 }
@@ -669,13 +670,9 @@ bool EditorController::addPreset(const QString& name)
         setNotification(QStringLiteral("Select a box before saving a preset"));
         return false;
     }
-    const auto cleanName = name.trimmed().toStdString();
-    if (cleanName.empty()) return false;
-    const TextPreset preset{cleanName, selectedBox()->style};
-    auto found = std::ranges::find_if(projectPresets_, [&](const TextPreset& item) { return item.name == cleanName; });
-    if (found == projectPresets_.end()) projectPresets_.push_back(preset);
-    else *found = preset;
-    return saveProjectPresets(cleanName);
+    std::string preferredName;
+    if (!TextPresetService::addPreset(projectPresets_, *selectedBox(), name, preferredName)) return false;
+    return saveProjectPresets(preferredName);
 }
 
 bool EditorController::updateSelectedPreset()
@@ -684,36 +681,21 @@ bool EditorController::updateSelectedPreset()
         setNotification(QStringLiteral("Select a box before updating a preset"));
         return false;
     }
-    if (selectedPresetIndex_ < 0 || selectedPresetIndex_ >= static_cast<int>(document_.presets().size())) return false;
-    const auto name = document_.presets().at(static_cast<std::size_t>(selectedPresetIndex_)).name;
-    const TextPreset preset{name, selectedBox()->style};
-    auto found = std::ranges::find_if(projectPresets_, [&](const TextPreset& item) { return item.name == name; });
-    if (found == projectPresets_.end()) projectPresets_.push_back(preset);
-    else *found = preset;
-    return saveProjectPresets(name);
+    std::string preferredName;
+    if (!TextPresetService::updateSelectedPreset(projectPresets_, document_.presets(), selectedPresetIndex_, *selectedBox(), preferredName)) return false;
+    return saveProjectPresets(preferredName);
 }
 
 bool EditorController::renameSelectedPreset(const QString& name)
 {
-    if (selectedPresetIndex_ < 0 || selectedPresetIndex_ >= static_cast<int>(document_.presets().size())) return false;
-    const auto oldName = document_.presets().at(static_cast<std::size_t>(selectedPresetIndex_)).name;
-    const auto newName = name.trimmed().toStdString();
-    if (newName.empty() || ProjectStore::isDefaultTextPresetName(oldName) || ProjectStore::isDefaultTextPresetName(newName)) return false;
-    if (std::ranges::any_of(document_.presets(), [&](const TextPreset& item) { return item.name == newName; })) return false;
-    auto found = std::ranges::find_if(projectPresets_, [&](const TextPreset& item) { return item.name == oldName; });
-    if (found == projectPresets_.end()) return false;
-    found->name = newName;
-    return saveProjectPresets(newName);
+    std::string preferredName;
+    if (!TextPresetService::renameSelectedPreset(projectPresets_, document_.presets(), selectedPresetIndex_, name, preferredName)) return false;
+    return saveProjectPresets(preferredName);
 }
 
 bool EditorController::deleteSelectedPreset()
 {
-    if (selectedPresetIndex_ < 0 || selectedPresetIndex_ >= static_cast<int>(document_.presets().size())) return false;
-    const auto name = document_.presets().at(static_cast<std::size_t>(selectedPresetIndex_)).name;
-    if (ProjectStore::isDefaultTextPresetName(name)) return false;
-    const auto oldSize = projectPresets_.size();
-    std::erase_if(projectPresets_, [&](const TextPreset& item) { return item.name == name; });
-    if (projectPresets_.size() == oldSize) return false;
+    if (!TextPresetService::deleteSelectedPreset(projectPresets_, document_.presets(), selectedPresetIndex_)) return false;
     return saveProjectPresets();
 }
 
