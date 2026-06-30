@@ -16,6 +16,7 @@
 #include <QVector>
 
 #include <algorithm>
+#include <chrono>
 #include <expected>
 #include <filesystem>
 #include <system_error>
@@ -195,8 +196,13 @@ void drawTextBox(QPainter& painter, const TextBox& box)
 
 } // namespace
 
-std::expected<void, std::string> RenderGraph::exportPagePngResult(const DocumentModel& document, const std::filesystem::path& pageImagePath, const std::filesystem::path& exportPath) const
+std::expected<RenderGraph::ExportResult, std::string> RenderGraph::exportPagePngTimed(const DocumentModel& document, const std::filesystem::path& pageImagePath, const std::filesystem::path& exportPath) const
 {
+    const auto startTime = std::chrono::steady_clock::now();
+    const auto exportResult = [&startTime] {
+        return ExportResult{ExportTiming{std::chrono::steady_clock::now() - startTime}};
+    };
+
     QImage source(QString::fromStdString(pageImagePath.string()));
     if (source.isNull()) {
         return std::unexpected("Could not load page image: " + pageImagePath.string());
@@ -222,6 +228,13 @@ std::expected<void, std::string> RenderGraph::exportPagePngResult(const Document
     std::filesystem::rename(tempPath, exportPath, filesystemError);
     if (filesystemError) return std::unexpected("Could not write PNG output: " + exportPath.string());
 
+    return exportResult();
+}
+
+std::expected<void, std::string> RenderGraph::exportPagePngResult(const DocumentModel& document, const std::filesystem::path& pageImagePath, const std::filesystem::path& exportPath) const
+{
+    const auto result = exportPagePngTimed(document, pageImagePath, exportPath);
+    if (!result) return std::unexpected(result.error());
     return {};
 }
 

@@ -114,6 +114,13 @@ int main(int argc, char** argv)
     const auto outPath = tempPath / "export.png";
     if (!page.save(QString::fromStdString(pagePath.string()), "PNG")) return 1;
 
+    const auto timedOutPath = tempPath / "timed-export.png";
+    const auto timedResult = graph.exportPagePngTimed(DocumentModel{}, pagePath, timedOutPath);
+    if (!timedResult || timedResult->timing.elapsed < RenderGraph::ExportTiming::Duration::zero() || !hasPngMagic(timedOutPath)) {
+        std::cerr << "Expected timed export to return non-negative timing data and write a PNG\n";
+        return 1;
+    }
+
     const auto parentConflict = tempPath / "parent-conflict";
     {
         std::ofstream conflict(parentConflict);
