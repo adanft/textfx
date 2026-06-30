@@ -63,6 +63,7 @@ public:
     QStringList pageTexts() const;
 
     Q_INVOKABLE bool actionEnabled(const QString& command) const;
+    Q_INVOKABLE void openProjectUrl(const QUrl& folderUrl);
     Q_INVOKABLE void openProject(const QString& folder);
     Q_INVOKABLE void newDocument();
     Q_INVOKABLE void save();

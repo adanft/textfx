@@ -28,6 +28,7 @@
 #include <QTextBlockFormat>
 #include <QTextDocument>
 #include <QTest>
+#include <QUrl>
 #include <qqml.h>
 
 #include <cmath>
@@ -427,6 +428,32 @@ private slots:
         QVERIFY(editor.currentPageUrl().isLocalFile());
         QCOMPARE(editor.boxes().size(), 0);
         QVERIFY(!editor.dirty());
+    }
+
+    void openProjectUrlUsesQtLocalFileConversion()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString projectPath = dir.filePath(QStringLiteral("project with spaces"));
+        QVERIFY(QDir().mkpath(projectPath));
+        touch(projectPath + QStringLiteral("/page1.png"));
+
+        EditorController editor;
+        editor.openProjectUrl(QUrl::fromLocalFile(projectPath));
+
+        QVERIFY(editor.hasProject());
+        QCOMPARE(editor.pageCount(), 1);
+        QCOMPARE(editor.currentPageName(), QStringLiteral("page1.png"));
+        QVERIFY(editor.currentPageUrl().isLocalFile());
+    }
+
+    void openProjectUrlRejectsNonLocalUrls()
+    {
+        EditorController editor;
+        editor.openProjectUrl(QUrl(QStringLiteral("https://example.invalid/project")));
+
+        QVERIFY(!editor.hasProject());
+        QCOMPARE(editor.notification(), QStringLiteral("Only local project folders can be opened."));
     }
 
     void navigationAutosavesAndReloadsCurrentPage()
@@ -2228,6 +2255,8 @@ private slots:
         QVERIFY(!source.contains(QStringLiteral("qsTr(\"Export\")")));
         QVERIFY(!source.contains(QStringLiteral("Editor.newDocument()")));
         QVERIFY(!source.contains(QStringLiteral("Editor.exportPng()")));
+        QVERIFY(!source.contains(QStringLiteral("localPathFromUrl")));
+        QVERIFY(source.contains(QStringLiteral("Editor.openProjectUrl(selectedFolder)")));
     }
 
     void qmlHasPageSelectorAndTypeXEffectControls()

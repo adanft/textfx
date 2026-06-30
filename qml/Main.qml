@@ -221,13 +221,6 @@ ApplicationWindow {
         toastTimer.restart()
     }
 
-    function localPathFromUrl(url) {
-        const value = decodeURIComponent(String(url))
-        if (value.startsWith("file://"))
-            return value.slice(7)
-        return value
-    }
-
     function selectedBox() {
         for (let i = 0; i < Editor.boxes.length; ++i) {
             if (Editor.boxes[i].index === Editor.selectedIndex)
@@ -1411,7 +1404,7 @@ ApplicationWindow {
     FolderDialog {
         id: openProjectDialog
         title: qsTr("Open Project")
-        onAccepted: Editor.openProject(window.localPathFromUrl(selectedFolder))
+        onAccepted: Editor.openProjectUrl(selectedFolder)
     }
 
     ColorDialog {

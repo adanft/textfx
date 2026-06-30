@@ -279,6 +279,16 @@ void EditorController::openProject(const QString& folder)
     setNotification(hasProject() ? QStringLiteral("Project opened") : QStringLiteral("No project open"));
 }
 
+void EditorController::openProjectUrl(const QUrl& folderUrl)
+{
+    const QString folder = folderUrl.toLocalFile();
+    if (folder.isEmpty()) {
+        setNotification(QStringLiteral("Only local project folders can be opened."));
+        return;
+    }
+    openProject(folder);
+}
+
 void EditorController::newDocument()
 {
     if (!autosaveCurrent()) return;
