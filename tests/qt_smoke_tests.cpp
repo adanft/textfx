@@ -1,4 +1,5 @@
 #include "app/EditorController.h"
+#include "app/TextBoxSelectionService.h"
 #include "core/EffectLimits.h"
 #include "fonts/FontResolver.h"
 #include "fonts/SfntNames.h"
@@ -244,6 +245,41 @@ private slots:
         editor.pasteBox();
 
         QCOMPARE(editor.boxes().at(2).toMap().value(QStringLiteral("text")).toString(), QStringLiteral("Plain text"));
+    }
+
+    void selectionServiceDuplicatesDeletesAndMovesLayers()
+    {
+        std::vector<TextBox> boxes(3);
+        boxes[0].text = "bottom";
+        boxes[1].text = "middle";
+        boxes[1].bounds = {10.0, 20.0, 100.0, 50.0};
+        boxes[2].text = "top";
+
+        QCOMPARE(TextBoxSelectionService::normalizedIndex(boxes, 1), 1);
+        QCOMPARE(TextBoxSelectionService::normalizedIndex(boxes, 3), -1);
+
+        int selectedIndex = 1;
+        QVERIFY(TextBoxSelectionService::duplicateSelected(boxes, selectedIndex));
+        QCOMPARE(boxes.size(), std::size_t{4});
+        QCOMPARE(selectedIndex, 3);
+        QVERIFY(boxes.at(3).text == "middle");
+        QCOMPARE(boxes.at(3).bounds.x, 26.0);
+        QCOMPARE(boxes.at(3).bounds.y, 36.0);
+
+        QVERIFY(TextBoxSelectionService::moveLayer(boxes, selectedIndex, -12));
+        QCOMPARE(selectedIndex, 0);
+        QVERIFY(boxes.at(0).text == "middle");
+
+        QVERIFY(TextBoxSelectionService::deleteSelected(boxes, selectedIndex));
+        QCOMPARE(boxes.size(), std::size_t{3});
+        QCOMPARE(selectedIndex, 0);
+        QVERIFY(boxes.at(0).text == "bottom");
+
+        selectedIndex = 99;
+        QVERIFY(!TextBoxSelectionService::duplicateSelected(boxes, selectedIndex));
+        QVERIFY(!TextBoxSelectionService::deleteSelected(boxes, selectedIndex));
+        QVERIFY(!TextBoxSelectionService::moveLayer(boxes, selectedIndex, 0));
+        QCOMPARE(selectedIndex, 99);
     }
 
     void openProjectLoadsFixtureImagesAndEmptyMissingData()

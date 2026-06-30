@@ -4,6 +4,7 @@
 #include "app/ProjectExportService.h"
 #include "app/TextBoxClipboardService.h"
 #include "app/TextBoxEditingService.h"
+#include "app/TextBoxSelectionService.h"
 #include "app/TextPresetService.h"
 #include "render/RenderGraph.h"
 
@@ -230,7 +231,7 @@ void EditorController::goToPage(int index)
 
 void EditorController::selectBox(int index)
 {
-    selectedIndex_ = index >= 0 && index < static_cast<int>(document_.textBoxes().size()) ? index : -1;
+    selectedIndex_ = TextBoxSelectionService::normalizedIndex(document_.textBoxes(), index);
     emit selectionChanged();
     emit stateChanged();
 }
@@ -451,12 +452,7 @@ bool EditorController::leftMouseButtonDown() const
 
 void EditorController::duplicateSelected()
 {
-    if (const auto* box = selectedBox()) {
-        auto copy = *box;
-        copy.bounds.x += 16.0;
-        copy.bounds.y += 16.0;
-        document_.addTextBox(std::move(copy));
-        selectedIndex_ = static_cast<int>(document_.textBoxes().size()) - 1;
+    if (TextBoxSelectionService::duplicateSelected(document_.textBoxes(), selectedIndex_)) {
         markDocumentChanged();
         emit selectionChanged();
     }
@@ -464,28 +460,18 @@ void EditorController::duplicateSelected()
 
 void EditorController::deleteSelected()
 {
-    if (!selectedBox()) {
-        return;
+    if (TextBoxSelectionService::deleteSelected(document_.textBoxes(), selectedIndex_)) {
+        markDocumentChanged();
+        emit selectionChanged();
     }
-    auto& boxes = document_.textBoxes();
-    boxes.erase(boxes.begin() + selectedIndex_);
-    selectedIndex_ = std::min(selectedIndex_, static_cast<int>(boxes.size()) - 1);
-    document_.setDirty(true);
-    markDocumentChanged();
-    emit selectionChanged();
 }
 
 void EditorController::moveLayer(int to)
 {
-    if (!selectedBox()) {
-        return;
+    if (TextBoxSelectionService::moveLayer(document_.textBoxes(), selectedIndex_, to)) {
+        markDocumentChanged();
+        emit selectionChanged();
     }
-    const int from = selectedIndex_;
-    to = std::clamp(to, 0, static_cast<int>(document_.textBoxes().size()) - 1);
-    document_.moveLayer(static_cast<std::size_t>(from), static_cast<std::size_t>(to));
-    selectedIndex_ = to;
-    markDocumentChanged();
-    emit selectionChanged();
 }
 
 void EditorController::copySelected()
