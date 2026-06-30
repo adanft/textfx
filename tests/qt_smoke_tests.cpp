@@ -236,6 +236,37 @@ private slots:
         QTRY_VERIFY(canvas->width() > shell->width());
         QCOMPARE(canvas->height(), shell->height());
 
+        const auto windowCoordinate = [&](const char* method, qreal value) {
+            QVariant result;
+            const bool invoked = QMetaObject::invokeMethod(window, method, Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, value));
+            return invoked ? result.toDouble() : std::numeric_limits<double>::quiet_NaN();
+        };
+        const auto expectedCreatedBox = [&](const QPointF& start, const QPointF& end) {
+            const QPointF topLeft(qMin(start.x(), end.x()), qMin(start.y(), end.y()));
+            return QVariantMap{
+                {QStringLiteral("x"), windowCoordinate("viewToDocumentX", topLeft.x())},
+                {QStringLiteral("y"), windowCoordinate("viewToDocumentY", topLeft.y())},
+                {QStringLiteral("w"), std::abs(windowCoordinate("viewToDocumentX", end.x()) - windowCoordinate("viewToDocumentX", start.x()))},
+                {QStringLiteral("h"), std::abs(windowCoordinate("viewToDocumentY", end.y()) - windowCoordinate("viewToDocumentY", start.y()))},
+            };
+        };
+        const auto assertBoxGeometry = [](const QVariantMap& actual, const QVariantMap& expected) {
+            const auto nearlyEqual = [](double a, double b) { return std::abs(a - b) <= 1.0; };
+            QVERIFY(nearlyEqual(actual.value(QStringLiteral("x")).toDouble(), expected.value(QStringLiteral("x")).toDouble()));
+            QVERIFY(nearlyEqual(actual.value(QStringLiteral("y")).toDouble(), expected.value(QStringLiteral("y")).toDouble()));
+            QVERIFY(nearlyEqual(actual.value(QStringLiteral("w")).toDouble(), expected.value(QStringLiteral("w")).toDouble()));
+            QVERIFY(nearlyEqual(actual.value(QStringLiteral("h")).toDouble(), expected.value(QStringLiteral("h")).toDouble()));
+        };
+        const auto ctrlDrag = [&](const QPointF& shellStart, const QPoint& delta) {
+            const QPoint start = shell->mapToScene(shellStart).toPoint();
+            const QPoint end = start + delta;
+            QTest::mousePress(window, Qt::LeftButton, Qt::ControlModifier, start);
+            QTest::mouseMove(window, end);
+            QTest::mouseRelease(window, Qt::LeftButton, Qt::ControlModifier, end);
+            const QPointF canvasStart(start.x(), shellStart.y());
+            return expectedCreatedBox(canvasStart, canvasStart + QPointF(delta));
+        };
+
         const QPoint panStart = shell->mapToScene(QPointF(80, 80)).toPoint();
         const QPoint panEnd = panStart + QPoint(32, 18);
         QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, panStart);
@@ -244,16 +275,19 @@ private slots:
         QTRY_VERIFY(window->property("panX").toReal() > 20.0);
         QTRY_VERIFY(window->property("panY").toReal() > 10.0);
 
-        const QPoint createStart = shell->mapToScene(QPointF(160, 140)).toPoint();
-        const QPoint createEnd = createStart + QPoint(80, 48);
-        QTest::mousePress(window, Qt::LeftButton, Qt::ControlModifier, createStart);
-        QTest::mouseMove(window, createEnd);
-        QTest::mouseRelease(window, Qt::LeftButton, Qt::ControlModifier, createEnd);
-
+        const QVariantMap downRight = ctrlDrag(QPointF(160, 140), QPoint(80, 48));
         QTRY_COMPARE(editor.boxes().size(), 1);
-        const auto box = editor.boxes().at(0).toMap();
-        QVERIFY(box.value(QStringLiteral("w")).toDouble() >= 79.0);
-        QVERIFY(box.value(QStringLiteral("h")).toDouble() >= 47.0);
+        assertBoxGeometry(editor.boxes().at(0).toMap(), downRight);
+
+        const QVariantMap upLeft = ctrlDrag(QPointF(300, 220), QPoint(-80, -48));
+        QTRY_COMPARE(editor.boxes().size(), 2);
+        assertBoxGeometry(editor.boxes().at(1).toMap(), upLeft);
+        QVERIFY(editor.boxes().at(1).toMap().value(QStringLiteral("x")).toDouble() < windowCoordinate("viewToDocumentX", shell->mapToScene(QPointF(300, 220)).x()));
+        QVERIFY(editor.boxes().at(1).toMap().value(QStringLiteral("y")).toDouble() < windowCoordinate("viewToDocumentY", 220.0));
+
+        ctrlDrag(QPointF(260, 180), QPoint(8, 8));
+        QCoreApplication::processEvents();
+        QCOMPARE(editor.boxes().size(), 2);
 
         canvas->forceActiveFocus();
         QTRY_VERIFY(canvas->hasActiveFocus());
@@ -265,7 +299,7 @@ private slots:
         canvas->forceActiveFocus();
         QTRY_VERIFY(canvas->hasActiveFocus());
         QTest::keyClick(window, Qt::Key_Delete);
-        QTRY_COMPARE(editor.boxes().size(), 0);
+        QTRY_COMPARE(editor.boxes().size(), 1);
 
         const qreal zoomBeforeWheel = window->property("zoom").toReal();
         const QPointF wheelPosition = shell->mapToScene(QPointF(220, 180));

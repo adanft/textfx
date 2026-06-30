@@ -75,6 +75,7 @@ qt_add_qml_module(textfx
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/CanvasInteractionState.qml
         qml/ColorButton.qml
         qml/CentralCanvasShell.qml
         qml/EditorChrome.qml

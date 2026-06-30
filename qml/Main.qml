@@ -17,15 +17,15 @@ ApplicationWindow {
     property real pageBaseScale: 1.0
     property real panX: 0
     property real panY: 0
-    property real pressX: 0
-    property real pressY: 0
-    property real pointerX: 0
-    property real pointerY: 0
-    property int dragMode: 0
-    property real createStartX: 0
-    property real createStartY: 0
-    property real createCurrentX: 0
-    property real createCurrentY: 0
+    property alias pressX: canvasInteraction.pressX
+    property alias pressY: canvasInteraction.pressY
+    property alias pointerX: canvasInteraction.pointerX
+    property alias pointerY: canvasInteraction.pointerY
+    property alias dragMode: canvasInteraction.dragMode
+    property alias createStartX: canvasInteraction.createStartX
+    property alias createStartY: canvasInteraction.createStartY
+    property alias createCurrentX: canvasInteraction.createCurrentX
+    property alias createCurrentY: canvasInteraction.createCurrentY
     property int sidePanelFocusedTextInputs: 0
     property var activeResizeDelegate: null
     property string activeResizeHandle: ""
@@ -122,6 +122,14 @@ ApplicationWindow {
         canvasHeight: canvas.height
         pageSourceWidth: pageImage.sourceSize.width
         pageSourceHeight: pageImage.sourceSize.height
+    }
+
+    CanvasInteractionState {
+        id: canvasInteraction
+        objectName: "canvasInteractionState"
+        idleMode: editorInteraction.dragModeIdle
+        panMode: editorInteraction.dragModePan
+        createMode: editorInteraction.dragModeCreate
     }
 
     function fitPageScale() { return viewportMetrics.fitPageScale() }
@@ -676,40 +684,20 @@ ApplicationWindow {
                     onCanvasPressed: (x, y, button, modifiers) => {
                         if (button === Qt.LeftButton)
                             Editor.endTextEdit()
-                        window.pressX = x
-                        window.pressY = y
-                        if (button === Qt.LeftButton && (modifiers & Qt.ControlModifier)) {
-                            window.dragMode = editorInteraction.dragModeCreate
-                            window.createStartX = x
-                            window.createStartY = y
-                            window.createCurrentX = x
-                            window.createCurrentY = y
-                        } else {
-                            window.dragMode = button === Qt.LeftButton || button === Qt.MiddleButton || button === Qt.RightButton ? editorInteraction.dragModePan : editorInteraction.dragModeIdle
-                        }
+                        canvasInteraction.beginPress(x, y, button, modifiers)
                     }
                     onCanvasPositionChanged: (x, y, pressed) => {
-                        window.pointerX = x
-                        window.pointerY = y
-                        if (!pressed) return
-                        const dx = x - window.pressX
-                        const dy = y - window.pressY
-                        if (window.dragMode === editorInteraction.dragModePan) { window.panX += dx; window.panY += dy }
-                        else if (window.dragMode === editorInteraction.dragModeCreate) { window.createCurrentX = x; window.createCurrentY = y }
-                        window.pressX = x
-                        window.pressY = y
+                        const update = canvasInteraction.updatePointer(x, y, pressed)
+                        if (update.panned) { window.panX += update.panDx; window.panY += update.panDy }
                     }
                     onCanvasReleased: (x, y, button, modifiers) => {
-                        if (window.dragMode === editorInteraction.dragModeCreate) {
-                            const left = Math.min(window.createStartX, window.createCurrentX)
-                            const top = Math.min(window.createStartY, window.createCurrentY)
-                            const right = Math.max(window.createStartX, window.createCurrentX)
-                            const bottom = Math.max(window.createStartY, window.createCurrentY)
-                            const w = (right - left) / window.viewDocScale()
-                            const h = (bottom - top) / window.viewDocScale()
-                            if (w >= editorLimits.minimumBoxSize && h >= editorLimits.minimumBoxSize) Editor.createTextBox(window.viewToDocumentX(left), window.viewToDocumentY(top), w, h)
+                        const release = canvasInteraction.endRelease()
+                        if (release.creating) {
+                            const rectangle = release.rectangle
+                            const w = rectangle.width / window.viewDocScale()
+                            const h = rectangle.height / window.viewDocScale()
+                            if (w >= editorLimits.minimumBoxSize && h >= editorLimits.minimumBoxSize) Editor.createTextBox(window.viewToDocumentX(rectangle.x), window.viewToDocumentY(rectangle.y), w, h)
                         }
-                        window.dragMode = editorInteraction.dragModeIdle
                     }
                     onCanvasWheel: (x, y, angleDeltaY) => window.zoomAt(x, y, angleDeltaY > 0 ? 1.1 : 1 / 1.1)
 
