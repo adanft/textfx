@@ -43,12 +43,19 @@ QFont qFontFor(const TextBox& box)
 
 QPainterPath textPathFor(const TextBox& box, const QFont& font, double inset, QStringList* lineTexts = nullptr, QVector<qreal>* lineXs = nullptr, QVector<qreal>* lineBaselines = nullptr)
 {
+    struct LaidOutLine {
+        QString text;
+        qreal x = 0.0;
+        qreal ascent = 0.0;
+        qreal height = 0.0;
+    };
+
     QPainterPath path;
+    QVector<LaidOutLine> lines;
     auto text = box.style.uppercase ? QString::fromStdString(box.text).toUpper() : QString::fromStdString(box.text);
     text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
     text.replace(u'\r', u'\n');
     const QStringList paragraphs = text.split(u'\n');
-    qreal y = inset;
     const qreal paintWidth = std::max<qreal>(1.0, box.bounds.w - inset * 2.0);
     for (const QString& paragraph : paragraphs) {
         QTextLayout layout(paragraph.isEmpty() ? QStringLiteral(" ") : paragraph, font);
@@ -63,16 +70,20 @@ QPainterPath textPathFor(const TextBox& box, const QFont& font, double inset, QS
             qreal x = inset;
             if (box.style.alignment == TextAlignment::Center) x = inset + (paintWidth - line.naturalTextWidth()) / 2.0;
             if (box.style.alignment == TextAlignment::Right) x = inset + paintWidth - line.naturalTextWidth();
-            line.setPosition({x, y});
-            const QString run = paragraph.mid(line.textStart(), line.textLength());
-            const qreal baseline = line.position().y() + line.ascent();
-            if (lineTexts) lineTexts->append(run);
-            if (lineXs) lineXs->append(x);
-            if (lineBaselines) lineBaselines->append(baseline);
-            path.addText(line.position().x(), baseline, font, run);
-            y += line.height() + box.style.lineSpacing;
+            lines.append({paragraph.mid(line.textStart(), line.textLength()), x, line.ascent(), line.height()});
         }
         layout.endLayout();
+    }
+    qreal blockHeight = 0.0;
+    for (qsizetype i = 0; i < lines.size(); ++i) blockHeight += lines.at(i).height + (i + 1 < lines.size() ? box.style.lineSpacing : 0.0);
+    qreal y = inset + std::max<qreal>(0.0, (box.bounds.h - inset * 2.0 - blockHeight) / 2.0);
+    for (const LaidOutLine& line : lines) {
+        const qreal baseline = y + line.ascent;
+        if (lineTexts) lineTexts->append(line.text);
+        if (lineXs) lineXs->append(line.x);
+        if (lineBaselines) lineBaselines->append(baseline);
+        path.addText(line.x, baseline, font, line.text);
+        y += line.height + box.style.lineSpacing;
     }
     path.setFillRule(Qt::WindingFill);
     return path;

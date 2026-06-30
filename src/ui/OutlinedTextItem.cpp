@@ -319,7 +319,7 @@ void OutlinedTextItem::paint(QPainter* painter)
     painter->setRenderHint(QPainter::Antialiasing, true);
 
     const bool usingPathText = pathEnabled_ && pathPoints_.size() > 1 && !isNeutralFlatPath(pathPoints_);
-    QPainterPath path = usingPathText ? pathText(font, layoutWidth, layoutHeight) : textPath(font, layoutWidth, inset);
+    QPainterPath path = usingPathText ? pathText(font, layoutWidth, layoutHeight) : textPath(font, layoutWidth, layoutHeight, inset);
     QRectF paintedBounds = path.boundingRect();
     if (outlineSize_ > 0) {
         QPainterPathStroker stroker;
@@ -449,14 +449,21 @@ QFont OutlinedTextItem::layoutFont() const
     return resolveFont(font).font;
 }
 
-QPainterPath OutlinedTextItem::textPath(const QFont& font, qreal layoutWidth, qreal inset, QStringList* lineTexts, QVector<qreal>* lineXs, QVector<qreal>* lineBaselines) const
+QPainterPath OutlinedTextItem::textPath(const QFont& font, qreal layoutWidth, qreal layoutHeight, qreal inset, QStringList* lineTexts, QVector<qreal>* lineXs, QVector<qreal>* lineBaselines) const
 {
+    struct LaidOutLine {
+        QString text;
+        qreal x = 0.0;
+        qreal ascent = 0.0;
+        qreal height = 0.0;
+    };
+
     QPainterPath path;
+    QVector<LaidOutLine> lines;
     QString text = text_;
     text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
     text.replace(u'\r', u'\n');
     const QStringList paragraphs = text.split(u'\n');
-    qreal y = inset;
     const qreal paintWidth = std::max<qreal>(1.0, layoutWidth - inset * 2.0);
     for (const QString& paragraph : paragraphs) {
         QTextLayout layout(paragraph.isEmpty() ? QStringLiteral(" ") : paragraph, font);
@@ -471,16 +478,20 @@ QPainterPath OutlinedTextItem::textPath(const QFont& font, qreal layoutWidth, qr
             qreal x = inset;
             if (horizontalAlignment_ == Qt::AlignHCenter) x = inset + (paintWidth - line.naturalTextWidth()) / 2.0;
             if (horizontalAlignment_ == Qt::AlignRight) x = inset + paintWidth - line.naturalTextWidth();
-            line.setPosition({x, y});
-            const QString run = paragraph.mid(line.textStart(), line.textLength());
-            const qreal baseline = line.position().y() + line.ascent();
-            if (lineTexts) lineTexts->append(run);
-            if (lineXs) lineXs->append(x);
-            if (lineBaselines) lineBaselines->append(baseline);
-            path.addText(line.position().x(), baseline, font, run);
-            y += line.height() + lineSpacing_;
+            lines.append({paragraph.mid(line.textStart(), line.textLength()), x, line.ascent(), line.height()});
         }
         layout.endLayout();
+    }
+    qreal blockHeight = 0.0;
+    for (qsizetype i = 0; i < lines.size(); ++i) blockHeight += lines.at(i).height + (i + 1 < lines.size() ? lineSpacing_ : 0.0);
+    qreal y = inset + std::max<qreal>(0.0, (layoutHeight - inset * 2.0 - blockHeight) / 2.0);
+    for (const LaidOutLine& line : lines) {
+        const qreal baseline = y + line.ascent;
+        if (lineTexts) lineTexts->append(line.text);
+        if (lineXs) lineXs->append(line.x);
+        if (lineBaselines) lineBaselines->append(baseline);
+        path.addText(line.x, baseline, font, line.text);
+        y += line.height + lineSpacing_;
     }
     path.setFillRule(Qt::WindingFill);
     return path;
@@ -495,8 +506,8 @@ QPainterPath OutlinedTextItem::pathText(const QFont& font, qreal layoutWidth, qr
     const bool smooth = pathMode_ == 1;
     const QVector<QPointF> guidePoints = layoutPathPoints(pathPoints_, layoutWidth, layoutHeight, smooth);
     const qreal guideLength = pathLength(guidePoints);
-    if (guideLength <= 0.0) return textPath(font, layoutWidth, inset);
-    textPath(font, guideLength, inset, &lines);
+    if (guideLength <= 0.0) return textPath(font, layoutWidth, layoutHeight, inset);
+    textPath(font, guideLength, 0.0, inset, &lines);
     const QFontMetricsF metrics(font);
     const qreal lineSpacing = pixelSize_ + lineSpacing_;
     const qreal firstLineOffset = -(lines.size() - 1) * lineSpacing * 0.5;
@@ -528,7 +539,7 @@ QStringList OutlinedTextItem::wrappedLinesForTesting() const
     QStringList lines;
     const qreal scale = std::max<qreal>(0.0001, renderScale_);
     const qreal inset = outlineSize_ > 0 ? outlineSize_ / 2.0 : 0.0;
-    textPath(layoutFont(), std::max<qreal>(1.0, width() / scale), inset, &lines);
+    textPath(layoutFont(), std::max<qreal>(1.0, width() / scale), std::max<qreal>(1.0, height() / scale), inset, &lines);
     return lines;
 }
 

@@ -119,8 +119,8 @@ int main(int argc, char** argv)
         return 1;
     }
     const auto firstTextY = firstNonBackgroundY(composed, background);
-    if (firstTextY < 30 || firstTextY > 50) {
-        std::cerr << "Export text does not match editor top-aligned document layout: y=" << firstTextY << '\n';
+    if (firstTextY < 50 || firstTextY > 70) {
+        std::cerr << "Export text is not vertically centered in its box: y=" << firstTextY << '\n';
         return 1;
     }
     const auto textBounds = nonBackgroundBounds(composed, background);

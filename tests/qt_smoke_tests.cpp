@@ -2539,6 +2539,26 @@ private slots:
         QVERIFY(redPixels(render(8)) > redPixels(render(1)));
     }
 
+    void outlinedTextItemCentersTextVertically()
+    {
+        const QColor background(Qt::transparent);
+        OutlinedTextItem item;
+        item.setWidth(180);
+        item.setHeight(100);
+        item.setText(QStringLiteral("Center"));
+        item.setPixelSize(32);
+        item.setColor(Qt::black);
+
+        QImage image(180, 100, QImage::Format_ARGB32_Premultiplied);
+        image.fill(background);
+        QPainter painter(&image);
+        item.paint(&painter);
+
+        const QRect bounds = visibleBounds(image, background);
+        QVERIFY(!bounds.isEmpty());
+        QVERIFY2(std::abs(bounds.center().y() - image.rect().center().y()) <= 4, qPrintable(QStringLiteral("bounds=%1,%2 %3x%4").arg(bounds.x()).arg(bounds.y()).arg(bounds.width()).arg(bounds.height())));
+    }
+
     void outlinedTextItemBlurSoftensRenderedText()
     {
         auto render = [](int blurSize) {
@@ -2870,7 +2890,7 @@ private slots:
         QVERIFY(code.contains(QStringLiteral("target.scale(scale, scale);")));
         QVERIFY(code.contains(QStringLiteral("const qreal paintWidth = std::max<qreal>(1.0, layoutWidth - inset * 2.0);")));
         QVERIFY(code.contains(QStringLiteral("line.setLineWidth(paintWidth);")));
-        QVERIFY(code.contains(QStringLiteral("qreal y = inset;")));
+        QVERIFY(code.contains(QStringLiteral("layoutHeight - inset * 2.0 - blockHeight")));
         QVERIFY(code.contains(QStringLiteral("qreal x = inset;")));
         QVERIFY(!code.contains(QStringLiteral("line.setLineWidth(layoutWidth);")));
     }

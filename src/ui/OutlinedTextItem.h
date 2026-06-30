@@ -129,7 +129,7 @@ signals:
 
 private:
     QFont layoutFont() const;
-    QPainterPath textPath(const QFont& font, qreal layoutWidth, qreal inset, QStringList* lineTexts = nullptr, QVector<qreal>* lineXs = nullptr, QVector<qreal>* lineBaselines = nullptr) const;
+    QPainterPath textPath(const QFont& font, qreal layoutWidth, qreal layoutHeight, qreal inset, QStringList* lineTexts = nullptr, QVector<qreal>* lineXs = nullptr, QVector<qreal>* lineBaselines = nullptr) const;
     QPainterPath pathText(const QFont& font, qreal layoutWidth, qreal layoutHeight) const;
     QString blurCacheKey(int radius, const QRect& sourceRect) const;
     QString text_;
