@@ -215,6 +215,32 @@ if(BUILD_TESTING)
         )
         list(APPEND TEXTFX_TEST_TARGETS textfx_qt_smoke_tests)
 
+        qt_add_executable(textfx_editor_controller_workflow_tests
+            tests/editor_controller_workflow_tests.cpp
+            tests/qt_test_helpers.cpp
+            tests/qt_test_helpers.h
+            src/ui/OutlinedTextItem.cpp
+            src/ui/OutlinedTextItem.h
+        )
+
+        target_link_libraries(textfx_editor_controller_workflow_tests
+            PRIVATE
+                textfx_core
+                Qt6::Test
+        )
+        target_compile_definitions(textfx_editor_controller_workflow_tests PRIVATE
+            TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
+            TEXTFX_TESTING=1
+        )
+
+        add_test(NAME textfx_editor_controller_workflow_tests COMMAND textfx_editor_controller_workflow_tests)
+        set_tests_properties(textfx_editor_controller_workflow_tests PROPERTIES
+            LABELS "controller;workflow"
+            TIMEOUT 90
+            ENVIRONMENT "${TEXTFX_QT_TEST_ENVIRONMENT}"
+        )
+        list(APPEND TEXTFX_TEST_TARGETS textfx_editor_controller_workflow_tests)
+
         qt_add_executable(textfx_qml_shell_smoke_tests
             tests/qml_shell_smoke_tests.cpp
             tests/qt_test_helpers.cpp
