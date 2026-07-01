@@ -244,6 +244,36 @@ if(BUILD_TESTING)
         )
         list(APPEND TEXTFX_TEST_TARGETS textfx_qml_shell_smoke_tests)
 
+        qt_add_executable(textfx_qml_text_box_delegate_smoke_tests
+            tests/qml_text_box_delegate_smoke_tests.cpp
+            tests/qt_test_helpers.cpp
+            tests/qt_test_helpers.h
+            src/ui/OutlinedTextItem.cpp
+            src/ui/OutlinedTextItem.h
+        )
+
+        target_link_libraries(textfx_qml_text_box_delegate_smoke_tests
+            PRIVATE
+                textfx_core
+                Qt6::Qml
+                Qt6::Quick
+                Qt6::QuickControls2
+                Qt6::QuickDialogs2
+                Qt6::Test
+        )
+        target_compile_definitions(textfx_qml_text_box_delegate_smoke_tests PRIVATE
+            TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
+            TEXTFX_TESTING=1
+        )
+
+        add_test(NAME textfx_qml_text_box_delegate_smoke_tests COMMAND textfx_qml_text_box_delegate_smoke_tests)
+        set_tests_properties(textfx_qml_text_box_delegate_smoke_tests PROPERTIES
+            LABELS "qml;smoke"
+            TIMEOUT 90
+            ENVIRONMENT "${TEXTFX_QT_TEST_ENVIRONMENT}"
+        )
+        list(APPEND TEXTFX_TEST_TARGETS textfx_qml_text_box_delegate_smoke_tests)
+
         qt_add_executable(textfx_outlined_text_item_tests
             tests/outlined_text_item_tests.cpp
             tests/qt_test_helpers.cpp

@@ -18,18 +18,13 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickItem>
-#include <QQuickTextDocument>
 #include <QQuickWindow>
 #include <QSignalSpy>
 #include <QTemporaryDir>
-#include <QTextBlock>
-#include <QTextBlockFormat>
-#include <QTextDocument>
 #include <QTest>
 #include <QUrl>
 
 #include <cmath>
-#include <limits>
 
 using namespace textfx;
 using namespace textfx::test;
@@ -138,70 +133,6 @@ private slots:
         editor.endTextEdit();
 
         QCOMPARE(documentChanged.count(), 1);
-    }
-
-    void qmlTextEditOverlayKeepsFocusAndTextAcrossTyping()
-    {
-        registerQmlTypes();
-
-        EditorController editor;
-        editor.newDocument();
-        editor.createTextBox(10, 20, 260, 90);
-        editor.setSelectedFontSize(20);
-        editor.setSelectedLineSpacing(7);
-        editor.beginTextEdit();
-
-        QQmlApplicationEngine engine;
-        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
-        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
-        QCOMPARE(engine.rootObjects().size(), 1);
-
-        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
-        QVERIFY(window);
-        QObject* textArea = nullptr;
-        QTRY_VERIFY(textArea = findVisualChildByName(window->contentItem(), QStringLiteral("boxTextArea")));
-        QTRY_VERIFY(textArea->property("visible").toBool());
-        QTRY_VERIFY(textArea->property("activeFocus").toBool());
-
-        auto* quickTextDocument = textArea->property("textDocument").value<QObject*>();
-        QVERIFY(quickTextDocument);
-        auto* documentWrapper = qobject_cast<QQuickTextDocument*>(quickTextDocument);
-        QVERIFY(documentWrapper);
-        auto* document = documentWrapper->textDocument();
-        QVERIFY(document);
-        const auto currentDocument = [&]() -> QTextDocument* {
-            auto* currentTextArea = findVisualChildByName(window->contentItem(), QStringLiteral("boxTextArea"));
-            if (!currentTextArea) return nullptr;
-            auto* currentQuickTextDocument = currentTextArea->property("textDocument").value<QObject*>();
-            auto* currentDocumentWrapper = qobject_cast<QQuickTextDocument*>(currentQuickTextDocument);
-            return currentDocumentWrapper ? currentDocumentWrapper->textDocument() : nullptr;
-        };
-        const auto lineSpacing = [&]() {
-            auto* current = currentDocument();
-            return current ? current->firstBlock().blockFormat().lineHeight() : std::numeric_limits<double>::quiet_NaN();
-        };
-        const auto lineSpacingType = [&]() {
-            auto* current = currentDocument();
-            return current ? current->firstBlock().blockFormat().lineHeightType() : -1;
-        };
-        QCOMPARE(lineSpacingType(), int(QTextBlockFormat::LineDistanceHeight));
-        QCOMPARE(lineSpacing(), 7.0);
-
-        typeText(window, u"abc");
-        QTRY_COMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(), QStringLiteral("abc"));
-        QVERIFY(editor.editingText());
-        QVERIFY(textArea->property("activeFocus").toBool());
-
-        typeText(window, u"def");
-        QTRY_COMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(), QStringLiteral("abcdef"));
-        QVERIFY(editor.editingText());
-        QVERIFY(textArea->property("activeFocus").toBool());
-
-        QVERIFY(window->setProperty("zoom", 2.0));
-        QTRY_COMPARE(lineSpacing(), 14.0);
-
-        editor.setSelectedLineSpacing(9);
-        QTRY_COMPARE(lineSpacing(), 18.0);
     }
 
     void copyPastePreservesCopiedBox()
@@ -658,39 +589,6 @@ private slots:
         QVERIFY(after.at(0).toList().at(0).toDouble() > before.at(0).toList().at(0).toDouble());
     }
 
-    void perspectiveUsesLiveClippedRendererWithoutPreviewArtifact()
-    {
-        QTemporaryDir dir;
-        QVERIFY(dir.isValid());
-        touch(dir.filePath(QStringLiteral("page1.png")), {160, 80});
-
-        EditorController editor;
-        editor.openProject(dir.path());
-        editor.createTextBox(4, 4, 120, 40);
-        editor.updateSelectedText(QStringLiteral("Perspective"));
-        editor.setSelectedPerspectiveEnabled(true);
-
-        QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
-        QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = qmlSource();
-
-        const qsizetype delegateStart = source.indexOf(QStringLiteral("Rectangle {\n    id: boxDelegate"));
-        const qsizetype textPerspectiveStart = source.indexOf(QStringLiteral("id: boxTextPerspective"), delegateStart);
-        const qsizetype textAreaStart = source.indexOf(QStringLiteral("id: boxTextArea"), textPerspectiveStart);
-        const qsizetype mouseAreaStart = source.indexOf(QStringLiteral("MouseArea {"), textAreaStart);
-        QVERIFY(delegateStart >= 0);
-        QVERIFY(textPerspectiveStart > delegateStart);
-        QVERIFY(textAreaStart > textPerspectiveStart);
-        QVERIFY(mouseAreaStart > textAreaStart);
-        const QString delegateSource = source.mid(delegateStart, textAreaStart - delegateStart);
-        const QString textPerspectiveSource = source.mid(textPerspectiveStart, textAreaStart - textPerspectiveStart);
-        const QString textAreaSource = source.mid(textAreaStart, mouseAreaStart - textAreaStart);
-
-        QVERIFY(delegateSource.contains(QStringLiteral("property bool perspectiveActive: boxModel.perspective && !editingSelected")));
-        QVERIFY(textPerspectiveSource.contains(QStringLiteral("clip: true")));
-        QVERIFY(textAreaSource.contains(QStringLiteral("clip: true")));
-    }
-
     void blurUsesLiveRendererWithoutPreviewArtifact()
     {
         QTemporaryDir dir;
@@ -731,82 +629,6 @@ private slots:
         const QString source = qmlSource();
         QVERIFY(source.contains(QStringLiteral("shadowEnabled: modelData.shadow")));
         QVERIFY(source.contains(QStringLiteral("shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? modelData.shadowBlurSize : 0")));
-    }
-
-    void qmlBlurEnabledBoxKeepsOutlinedRendererVisibleUntilEditing()
-    {
-        registerQmlTypes();
-
-        QTemporaryDir dir;
-        QVERIFY(dir.isValid());
-        touch(dir.filePath(QStringLiteral("page1.png")), {160, 80});
-
-        EditorController editor;
-        editor.openProject(dir.path());
-        editor.createTextBox(4, 4, 120, 40);
-        editor.updateSelectedText(QStringLiteral("Blur"));
-        editor.setSelectedBlurEnabled(true);
-        editor.setSelectedBlurSize(6);
-
-        QQmlApplicationEngine engine;
-        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
-        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
-        QCOMPARE(engine.rootObjects().size(), 1);
-
-        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
-        QVERIFY(window);
-        QObject* outlinedText = nullptr;
-        QTRY_VERIFY(outlinedText = findVisualChildByName(window->contentItem(), QStringLiteral("boxOutlinedText")));
-        QTRY_VERIFY(outlinedText->property("visible").toBool());
-        QCOMPARE(outlinedText->property("blurSize").toInt(), 6);
-
-        QObject* textArea = nullptr;
-        QTRY_VERIFY(textArea = findVisualChildByName(window->contentItem(), QStringLiteral("boxTextArea")));
-        editor.beginTextEdit();
-        QTRY_VERIFY(textArea->property("visible").toBool());
-        QTRY_VERIFY(outlinedText->property("visible").toBool());
-    }
-
-    void qmlOutlinedRendererVisualSizeTracksZoom()
-    {
-        registerQmlTypes();
-
-        EditorController editor;
-        editor.newDocument();
-        editor.createTextBox(4, 4, 120, 40);
-        editor.updateSelectedText(QStringLiteral("Scale"));
-
-        QQmlApplicationEngine engine;
-        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
-        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
-        QCOMPARE(engine.rootObjects().size(), 1);
-
-        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
-        QVERIFY(window);
-        QObject* object = nullptr;
-        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("boxOutlinedText")));
-        auto* outlinedText = qobject_cast<QQuickItem*>(object);
-        QVERIFY(outlinedText);
-        auto* boxTextPerspective = outlinedText->parentItem();
-        QVERIFY(boxTextPerspective);
-
-        const auto nearlyEqual = [](qreal a, qreal b) { return std::abs(a - b) <= 0.5; };
-        const auto verifyGeometry = [&]() {
-            QVERIFY(nearlyEqual(outlinedText->width() * outlinedText->scale(), boxTextPerspective->width()));
-            QVERIFY(nearlyEqual(outlinedText->height() * outlinedText->scale(), boxTextPerspective->height()));
-            QVERIFY(outlinedText->property("renderScale").toReal() <= 1.0 + 0.001);
-        };
-
-        QTRY_VERIFY(boxTextPerspective->width() > 0);
-        verifyGeometry();
-
-        QVERIFY(window->setProperty("zoom", 2.0));
-        QTRY_VERIFY(nearlyEqual(outlinedText->property("renderScale").toReal(), 1.0));
-        verifyGeometry();
-
-        QVERIFY(window->setProperty("zoom", 0.5));
-        QTRY_VERIFY(outlinedText->property("renderScale").toReal() < 1.0);
-        verifyGeometry();
     }
 
     void liveInteractionDefersPreviewButRefreshesModel()
@@ -1066,177 +888,6 @@ private slots:
 
         const qsizetype handleZ = source.indexOf(QStringLiteral("z: 20"), handlesStart);
         QVERIFY(handleZ > handlesStart);
-    }
-
-    void qmlNestedInteractionHandlersUseStableEditorReference()
-    {
-        QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
-        QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = qmlSource();
-
-        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"));
-        const qsizetype pathStart = source.indexOf(QStringLiteral("model: pathHandlePlane.boxRef.boxModel.pathPoints"), resizeStart);
-        const qsizetype pathEnd = source.size();
-        const qsizetype rotateRectStart = source.indexOf(QStringLiteral("id: rotateHandle"), resizeStart);
-        const qsizetype rotateStart = source.indexOf(QStringLiteral("rotateHandle.rootWindow.beginRotateDrag(rotateHandle.boxRef"), resizeStart);
-        QVERIFY(resizeStart >= 0);
-        QVERIFY(rotateRectStart > resizeStart);
-        QVERIFY(rotateStart > resizeStart);
-        QVERIFY(pathStart > rotateStart);
-        QVERIFY(pathEnd > pathStart);
-
-        const QString resizeSource = source.mid(resizeStart, rotateStart - resizeStart);
-        const QString rotateSource = source.mid(rotateRectStart, pathStart - rotateRectStart);
-        const QString pathSource = source.mid(pathStart, pathEnd - pathStart);
-        const qsizetype boxDelegateStart = source.indexOf(QStringLiteral("Rectangle {\n    id: boxDelegate"));
-        const qsizetype boxDelegateEnd = source.size();
-        QVERIFY(boxDelegateStart >= 0);
-        QVERIFY(boxDelegateEnd > boxDelegateStart);
-        const QString boxDelegateSource = source.mid(boxDelegateStart, boxDelegateEnd - boxDelegateStart);
-
-        QVERIFY(resizeSource.contains(QStringLiteral("resizeHandle.editorRef.endInteraction()")));
-        QVERIFY(rotateSource.contains(QStringLiteral("rotateHandle.editorRef.endInteraction()")));
-        QVERIFY(source.contains(QStringLiteral("readonly property var editor: Editor")));
-        QVERIFY(boxDelegateSource.contains(QStringLiteral("readonly property var rootWindow: ApplicationWindow.window")));
-        QVERIFY(!boxDelegateSource.contains(QStringLiteral("readonly property var rootWindow: window")));
-        QVERIFY(!boxDelegateSource.contains(QStringLiteral("Editor.")));
-        QVERIFY(!boxDelegateSource.contains(QStringLiteral("window.")));
-        QVERIFY(!boxDelegateSource.contains(QStringLiteral("property var boxRef: boxDelegate")));
-        QVERIFY(resizeSource.contains(QStringLiteral("property var boxRef: parent")));
-        QVERIFY(resizeSource.contains(QStringLiteral("property var rootWindow: boxRef.rootWindow")));
-        QVERIFY(resizeSource.contains(QStringLiteral("property var editorRef: boxRef.editorRef")));
-        QVERIFY(rotateSource.contains(QStringLiteral("property var boxRef: parent")));
-        QVERIFY(pathSource.contains(QStringLiteral("property var boxRef: pathPlane.boxRef")));
-        QVERIFY(pathSource.contains(QStringLiteral("property var editorRef: boxRef.editorRef")));
-        QVERIFY(!resizeSource.contains(QStringLiteral("if (boxDelegate.perspectiveActive)")));
-        QVERIFY(!resizeSource.contains(QStringLiteral("boxDelegate.rootWindow.endResizeDrag")));
-        QVERIFY(!resizeSource.contains(QStringLiteral("boxDelegate.rootWindow.endPerspectiveDrag")));
-        QVERIFY(!rotateSource.contains(QStringLiteral("boxDelegate.rootWindow.endRotateDrag")));
-        QVERIFY(!resizeSource.contains(QStringLiteral("boxDelegate.")));
-        QVERIFY(!rotateSource.contains(QStringLiteral("boxDelegate.")));
-        QVERIFY(!pathSource.contains(QStringLiteral("boxDelegate.")));
-        QVERIFY(!pathSource.contains(QStringLiteral("onReleased: boxDelegate.editorRef")));
-        QVERIFY(!pathSource.contains(QStringLiteral("onCanceled: boxDelegate.editorRef")));
-        QVERIFY(!resizeSource.contains(QStringLiteral("Editor.endInteraction()")));
-        QVERIFY(!rotateSource.contains(QStringLiteral("Editor.endInteraction()")));
-        QVERIFY(!pathSource.contains(QStringLiteral("Editor.endInteraction()")));
-        QVERIFY(!resizeSource.contains(QStringLiteral("window.")));
-        QVERIFY(!rotateSource.contains(QStringLiteral("window.")));
-        QVERIFY(!pathSource.contains(QStringLiteral("window.")));
-        QVERIFY(!source.contains(QStringLiteral("model: [{name: \"nw\"}, {name: \"n\"}")));
-    }
-
-    void qmlSelectionGeometryAndRotateHandleUseCurrentVisualBounds()
-    {
-        QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
-        QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = qmlSource();
-
-        QVERIFY(source.contains(QStringLiteral("property bool moveActive: rootWindow.dragMode === interaction.dragModeMove && rootWindow.activeMoveIndex === modelData.index")));
-        QVERIFY(source.contains(QStringLiteral("property bool resizeActive: rootWindow.dragMode === interaction.dragModeResize && rootWindow.activeResizeDelegate === boxDelegate")));
-        QVERIFY(source.contains(QStringLiteral("property real visualDocW: resizeActive ? rootWindow.resizeW : modelData.w")));
-        QVERIFY(source.contains(QStringLiteral("width: visualDocW * rootWindow.viewDocScale()")));
-        QVERIFY(source.contains(QStringLiteral("function documentToViewLength(value) { return value * viewDocScale() }")));
-        QVERIFY(source.contains(QStringLiteral("function handleSize() { return Math.max(1, documentToViewLength(editorLimits.minimumBoxSize)) }")));
-        QVERIFY(source.contains(QStringLiteral("border.width: perspectiveActive ? 0 : selected ? rootWindow.selectionLineWidth() : Math.max(1, rootWindow.documentToViewLength(1))")));
-        QVERIFY(!source.contains(QStringLiteral("activeResizeDelegate.x = documentToViewX(resizeX)")));
-        QVERIFY(!source.contains(QStringLiteral("activeMoveDelegate.x = documentToViewX(moveX)")));
-        QVERIFY(source.contains(QStringLiteral("function topMiddleVisualPoint(box, width, height)")));
-        QVERIFY(source.contains(QStringLiteral("const nw = perspectiveCorner(box, \"nw\", width, height)")));
-        QVERIFY(source.contains(QStringLiteral("const ne = perspectiveCorner(box, \"ne\", width, height)")));
-        QVERIFY(source.contains(QStringLiteral("return { x: (nw.x + ne.x) / 2, y: (nw.y + ne.y) / 2 }")));
-        QVERIFY(source.contains(QStringLiteral("rootWindow.rotateHandlePosition(boxRef.boxModel, boxRef.width, boxRef.height)")));
-    }
-
-    void qmlHasEightResizeHandlesAndAngleRotation()
-    {
-        QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
-        QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = qmlSource();
-
-        for (const QString& handle : {QStringLiteral("nw"), QStringLiteral("n"), QStringLiteral("ne"), QStringLiteral("e"), QStringLiteral("se"), QStringLiteral("s"), QStringLiteral("sw"), QStringLiteral("w")}) {
-            QVERIFY2(source.contains(QStringLiteral("name: \"") + handle + QStringLiteral("\"")), qPrintable(handle));
-        }
-        QVERIFY(source.contains(QStringLiteral("Math.atan2")));
-        QVERIFY(source.contains(QStringLiteral("BoxRotateInteractionState")));
-        QVERIFY(source.contains(QStringLiteral("window.editor.setSelectedBounds")));
-        QVERIFY(source.contains(QStringLiteral("rotateHandle.rootWindow.endRotateDrag(true)")));
-        QVERIFY(!source.contains(QStringLiteral("Editor.rotateSelected(degrees)")));
-    }
-
-    void qmlBoxRotateUsesTransientWindowDragAndStableEditor()
-    {
-        const QString source = readQmlFile(QStringLiteral("Main.qml"));
-        const QString rotateStateSource = readQmlFile(QStringLiteral("BoxRotateInteractionState.qml"));
-        const QString delegateSource = readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
-        QVERIFY(!source.isEmpty());
-        QVERIFY(!rotateStateSource.isEmpty());
-        QVERIFY(!delegateSource.isEmpty());
-
-        const qsizetype updateRotateStart = source.indexOf(QStringLiteral("function updateRotateDrag(canvasX, canvasY)"));
-        const qsizetype endRotateStart = source.indexOf(QStringLiteral("function endRotateDrag(commit)"));
-        const qsizetype beginMoveStart = source.indexOf(QStringLiteral("function beginMoveDrag"), endRotateStart);
-        QVERIFY(updateRotateStart >= 0);
-        QVERIFY(endRotateStart > updateRotateStart);
-        QVERIFY(beginMoveStart > endRotateStart);
-        const QString updateRotate = source.mid(updateRotateStart, endRotateStart - updateRotateStart);
-        const QString endRotate = source.mid(endRotateStart, beginMoveStart - endRotateStart);
-
-        QVERIFY(rotateStateSource.contains(QStringLiteral("function begin(delegate, documentX, documentY)")));
-        QVERIFY(rotateStateSource.contains(QStringLiteral("function update(documentX, documentY)")));
-        QVERIFY(rotateStateSource.contains(QStringLiteral("function cancelPreview()")));
-        QVERIFY(rotateStateSource.contains(QStringLiteral("function reset()")));
-        QVERIFY(source.contains(QStringLiteral("property alias activeRotateDelegate: boxRotateInteraction.activeRotateDelegate")));
-        QVERIFY(source.contains(QStringLiteral("property alias rotateDegrees: boxRotateInteraction.rotateDegrees")));
-        QVERIFY(source.contains(QStringLiteral("BoxRotateInteractionState")));
-        QVERIFY(source.contains(QStringLiteral("objectName: \"boxRotateInteractionState\"")));
-        QVERIFY(source.contains(QStringLiteral("boxRotateInteraction.begin(delegate, viewToDocumentX(canvasX), viewToDocumentY(canvasY))")));
-        QVERIFY(updateRotate.contains(QStringLiteral("boxRotateInteraction.update(viewToDocumentX(canvasX), viewToDocumentY(canvasY))")));
-        QVERIFY(endRotate.contains(QStringLiteral("window.editor.setSelectedRotation(boxRotateInteraction.rotateDegrees)")));
-        QVERIFY(endRotate.contains(QStringLiteral("boxRotateInteraction.cancelPreview()")));
-        QVERIFY(endRotate.contains(QStringLiteral("boxRotateInteraction.reset()")));
-        QVERIFY(!source.contains(QStringLiteral("function angleDeltaDegrees(from, to)")));
-        QVERIFY(!source.contains(QStringLiteral("activeRotateDelegate.rotation = rotateDegrees")));
-        QVERIFY(!updateRotate.contains(QStringLiteral("setSelectedRotation")));
-        QVERIFY(!delegateSource.contains(QStringLiteral("Editor.setSelectedRotation")));
-    }
-
-    void qmlPerspectiveAndRotateDragsCommitOnlyOnRelease()
-    {
-        QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
-        QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = qmlSource();
-
-        const qsizetype perspectiveUpdateStart = source.indexOf(QStringLiteral("function updatePerspectiveDrag(canvasX, canvasY)"));
-        const qsizetype perspectiveEndStart = source.indexOf(QStringLiteral("function endPerspectiveDrag(commit)"));
-        const qsizetype rotateStart = source.indexOf(QStringLiteral("function beginRotateDrag(delegate, canvasX, canvasY)"));
-        const qsizetype rotateUpdateStart = source.indexOf(QStringLiteral("function updateRotateDrag(canvasX, canvasY)"));
-        const qsizetype rotateEndStart = source.indexOf(QStringLiteral("function endRotateDrag(commit)"));
-        const qsizetype escapeStart = source.indexOf(QStringLiteral("function handleEscape()"));
-        QVERIFY(perspectiveUpdateStart >= 0);
-        QVERIFY(perspectiveEndStart > perspectiveUpdateStart);
-        QVERIFY(rotateStart > perspectiveEndStart);
-        QVERIFY(rotateUpdateStart > rotateStart);
-        QVERIFY(rotateEndStart > rotateUpdateStart);
-        QVERIFY(escapeStart > rotateEndStart);
-
-        const QString perspectiveUpdate = source.mid(perspectiveUpdateStart, perspectiveEndStart - perspectiveUpdateStart);
-        const QString perspectiveEnd = source.mid(perspectiveEndStart, rotateStart - perspectiveEndStart);
-        const QString rotateUpdate = source.mid(rotateUpdateStart, rotateEndStart - rotateUpdateStart);
-        const QString rotateEnd = source.mid(rotateEndStart, escapeStart - rotateEndStart);
-        const QString rotateStateSource = readQmlFile(QStringLiteral("BoxRotateInteractionState.qml"));
-
-        QVERIFY(source.contains(QStringLiteral("property var activePerspectiveDelegate: null")));
-        QVERIFY(source.contains(QStringLiteral("property alias activeRotateDelegate: boxRotateInteraction.activeRotateDelegate")));
-        QVERIFY(perspectiveUpdate.contains(QStringLiteral("perspectiveX = perspectiveStartX")));
-        QVERIFY(perspectiveUpdate.contains(QStringLiteral("++perspectiveRevision")));
-        QVERIFY(!perspectiveUpdate.contains(QStringLiteral("Editor.setPerspectiveHandle")));
-        QVERIFY(perspectiveEnd.contains(QStringLiteral("if (dragMode === editorInteraction.dragModePerspective && commit)")));
-        QVERIFY(perspectiveEnd.contains(QStringLiteral("window.editor.setPerspectiveHandle(activePerspectiveHandle, perspectiveX, perspectiveY)")));
-        QVERIFY(rotateStateSource.contains(QStringLiteral("activeRotateDelegate.rotation = rotateDegrees")));
-        QVERIFY(!rotateUpdate.contains(QStringLiteral("Editor.setSelectedRotation")));
-        QVERIFY(rotateEnd.contains(QStringLiteral("if (dragMode === editorInteraction.dragModeRotate && commit)")));
-        QVERIFY(rotateEnd.contains(QStringLiteral("window.editor.setSelectedRotation(boxRotateInteraction.rotateDegrees)")));
     }
 
     void qmlPerspectiveMidpointsAreDerivedAndAxisConstrained()
