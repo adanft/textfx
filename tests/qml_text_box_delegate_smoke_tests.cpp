@@ -347,13 +347,12 @@ private slots:
         const QString rotateUpdate = mainSource.mid(rotateUpdateStart, rotateEndStart - rotateUpdateStart);
         const QString rotateEnd = mainSource.mid(rotateEndStart, escapeStart - rotateEndStart);
 
-        QVERIFY(mainSource.contains(QStringLiteral("property var activePerspectiveDelegate: null")));
+        QVERIFY(mainSource.contains(QStringLiteral("property alias activePerspectiveDelegate: perspectiveInteraction.activePerspectiveDelegate")));
+        QVERIFY(mainSource.contains(QStringLiteral("objectName: \"perspectiveInteractionState\"")));
         QVERIFY(mainSource.contains(QStringLiteral("property alias activeRotateDelegate: boxRotateInteraction.activeRotateDelegate")));
-        QVERIFY(perspectiveUpdate.contains(QStringLiteral("perspectiveX = perspectiveStartX")));
-        QVERIFY(perspectiveUpdate.contains(QStringLiteral("++perspectiveRevision")));
         QVERIFY(!perspectiveUpdate.contains(QStringLiteral("Editor.setPerspectiveHandle")));
         QVERIFY(perspectiveEnd.contains(QStringLiteral("if (dragMode === editorInteraction.dragModePerspective && commit)")));
-        QVERIFY(perspectiveEnd.contains(QStringLiteral("window.editor.setPerspectiveHandle(activePerspectiveHandle, perspectiveX, perspectiveY)")));
+        QVERIFY(perspectiveEnd.contains(QStringLiteral("commitPerspectiveCorner(handles[i].name, handles[i].x, handles[i].y)")));
         QVERIFY(rotateStateSource.contains(QStringLiteral("activeRotateDelegate.rotation = rotateDegrees")));
         QVERIFY(!rotateUpdate.contains(QStringLiteral("Editor.setSelectedRotation")));
         QVERIFY(rotateEnd.contains(QStringLiteral("if (dragMode === editorInteraction.dragModeRotate && commit)")));

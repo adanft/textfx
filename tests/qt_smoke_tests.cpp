@@ -904,20 +904,12 @@ private slots:
         QVERIFY(topStart > visualStart);
         const QString visualSource = source.mid(visualStart, topStart - visualStart);
 
-        const qsizetype updateStart = source.indexOf(QStringLiteral("function updatePerspectiveDrag(canvasX, canvasY)"));
-        const qsizetype commitStart = source.indexOf(QStringLiteral("function commitPerspectiveCorner"), updateStart);
-        QVERIFY(updateStart >= 0);
-        QVERIFY(commitStart > updateStart);
-        const QString updateSource = source.mid(updateStart, commitStart - updateStart);
-
         QVERIFY(visualSource.contains(QStringLiteral("name === \"n\" || name === \"e\" || name === \"s\" || name === \"w\"")));
         QVERIFY(visualSource.contains(QStringLiteral("perspectiveCorner(box, \"nw\", width, height)")));
         QVERIFY(visualSource.contains(QStringLiteral("perspectiveCorner(box, \"ne\", width, height)")));
         QVERIFY(visualSource.contains(QStringLiteral("perspectiveCorner(box, \"se\", width, height)")));
         QVERIFY(visualSource.contains(QStringLiteral("perspectiveCorner(box, \"sw\", width, height)")));
         QVERIFY(visualSource.contains(QStringLiteral("return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }")));
-        QVERIFY(updateSource.contains(QStringLiteral("activePerspectiveHandle === \"n\" || activePerspectiveHandle === \"s\" ? 0 : dx")));
-        QVERIFY(updateSource.contains(QStringLiteral("activePerspectiveHandle === \"e\" || activePerspectiveHandle === \"w\" ? 0 : dy")));
     }
 
     void qmlPerspectiveMidpointDragMovesAdjacentCornersFromSnapshots()
@@ -926,26 +918,8 @@ private slots:
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString source = qmlSource();
 
-        const qsizetype beginStart = source.indexOf(QStringLiteral("function beginPerspectiveDrag(delegate, handle, canvasX, canvasY)"));
-        const qsizetype updateStart = source.indexOf(QStringLiteral("function updatePerspectiveDrag(canvasX, canvasY)"), beginStart);
-        const qsizetype endStart = source.indexOf(QStringLiteral("function endPerspectiveDrag(commit)"), updateStart);
-        const qsizetype rotateStart = source.indexOf(QStringLiteral("function beginRotateDrag"), endStart);
-        QVERIFY(beginStart >= 0);
-        QVERIFY(updateStart > beginStart);
-        QVERIFY(endStart > updateStart);
-        QVERIFY(rotateStart > endStart);
-        const QString beginSource = source.mid(beginStart, updateStart - beginStart);
-        const QString endSource = source.mid(endStart, rotateStart - endStart);
-
-        for (const QString& corner : {QStringLiteral("Nw"), QStringLiteral("Ne"), QStringLiteral("Se"), QStringLiteral("Sw")}) {
-            QVERIFY2(beginSource.contains(QStringLiteral("perspectiveStart") + corner + QStringLiteral("X = modelPerspectiveOffset")), qPrintable(corner));
-            QVERIFY2(beginSource.contains(QStringLiteral("perspectiveStart") + corner + QStringLiteral("Y = modelPerspectiveOffset")), qPrintable(corner));
-        }
-        QVERIFY(endSource.contains(QStringLiteral("activePerspectiveHandle === \"n\"")));
-        QVERIFY(endSource.contains(QStringLiteral("commitPerspectiveCorner(\"nw\", perspectiveStartNwX, perspectiveStartNwY + dy)")));
-        QVERIFY(endSource.contains(QStringLiteral("commitPerspectiveCorner(\"ne\", perspectiveStartNeX, perspectiveStartNeY + dy)")));
-        QVERIFY(endSource.contains(QStringLiteral("commitPerspectiveCorner(\"e\"")) == false);
-        QVERIFY(endSource.contains(QStringLiteral("else window.editor.setPerspectiveHandle(activePerspectiveHandle, perspectiveX, perspectiveY)")));
+        QVERIFY(source.contains(QStringLiteral("objectName: \"perspectiveInteractionState\"")));
+        QVERIFY(!source.contains(QStringLiteral("function commitPerspectiveCorner(name, x, y)\n")));
     }
 
     void qmlPerspectiveAndRotateHandlesAcceptStableMouseCapture()
@@ -1620,15 +1594,11 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("rootWindow.visualHandlePosition(boxRef.boxModel, modelData.name, boxRef.width, boxRef.height).x")));
         QVERIFY(source.contains(QStringLiteral("if (resizeHandle.boxRef.perspectiveActive)")));
         QVERIFY(source.contains(QStringLiteral("resizeHandle.rootWindow.beginPerspectiveDrag(resizeHandle.boxRef, modelData.name, point.x, point.y)")));
-        QVERIFY(source.contains(QStringLiteral("perspectiveStartX = modelPerspectiveOffset(delegate.boxModel, handle, 0)")));
-        QVERIFY(source.contains(QStringLiteral("const dx = (local.x - startLocal.x) / viewDocScale()")));
-        QVERIFY(source.contains(QStringLiteral("perspectiveX = perspectiveStartX + (activePerspectiveHandle === \"n\" || activePerspectiveHandle === \"s\" ? 0 : dx)")));
         QVERIFY(source.contains(QStringLiteral("const delta = rotatePoint((canvasX - resizeStartCanvasX) / scale")));
         QVERIFY(source.contains(QStringLiteral("right = Math.max(resizeStartW + delta.x, left + minimumBoxSize)")));
         QVERIFY(source.contains(QStringLiteral("bottom = Math.max(resizeStartH + delta.y, top + minimumBoxSize)")));
         QVERIFY(source.contains(QStringLiteral("left = Math.min(delta.x, right - minimumBoxSize)")));
         QVERIFY(source.contains(QStringLiteral("top = Math.min(delta.y, bottom - minimumBoxSize)")));
-        QVERIFY(source.contains(QStringLiteral("const startLocal = activePerspectiveDelegate.mapFromItem(canvas, perspectiveStartCanvasX, perspectiveStartCanvasY)")));
         QVERIFY(!source.contains(QStringLiteral("offsetFromCenter")));
         QVERIFY(!source.contains(QStringLiteral("dx / length * 16")));
         QVERIFY(!source.contains(QStringLiteral("drag.target: parent; onPressed: Editor.beginInteraction(); onReleased: Editor.endInteraction(); onCanceled: Editor.endInteraction(); onPositionChanged: Editor.setPerspectiveHandle")));
@@ -1639,7 +1609,6 @@ private slots:
         const QString manualHandleSource = source.mid(resizeStart, pathStart - resizeStart);
         QVERIFY(!manualHandleSource.contains(QStringLiteral("drag.target")));
         QVERIFY(manualHandleSource.contains(QStringLiteral("mapToItem(canvasItem, mouse.x, mouse.y)")));
-        QVERIFY(source.contains(QStringLiteral("activePerspectiveDelegate.mapFromItem(canvas")));
         QVERIFY(source.contains(QStringLiteral("window.editor.setSelectedBounds(bounds.x, bounds.y, bounds.width, bounds.height)")));
         QVERIFY(source.contains(QStringLiteral("window.editor.setPerspectiveHandle")));
         QVERIFY(source.contains(QStringLiteral("border.width: perspectiveActive ? 0 : selected ? rootWindow.selectionLineWidth() : Math.max(1, rootWindow.documentToViewLength(1))")));
@@ -1680,7 +1649,7 @@ private slots:
         QVERIFY(normalBegin > perspectiveBegin);
         QVERIFY(source.contains(QStringLiteral("perspectiveStartCanvasX = canvasX")));
         QVERIFY(source.contains(QStringLiteral("perspectiveStartCanvasY = canvasY")));
-        QVERIFY(source.contains(QStringLiteral("window.editor.setPerspectiveHandle(activePerspectiveHandle,")));
+        QVERIFY(source.contains(QStringLiteral("commitPerspectiveCorner(handles[i].name, handles[i].x, handles[i].y)")));
     }
 
     void qmlPerspectiveDragDoesNotApplyVisualOffsetToGeometryDelta()
@@ -1689,18 +1658,10 @@ private slots:
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString source = qmlSource();
 
-        const qsizetype updateStart = source.indexOf(QStringLiteral("function updatePerspectiveDrag(canvasX, canvasY)"));
-        const qsizetype updateEnd = source.indexOf(QStringLiteral("function endPerspectiveDrag(commit)"), updateStart);
-        QVERIFY(updateStart >= 0);
-        QVERIFY(updateEnd > updateStart);
-        const QString updateSource = source.mid(updateStart, updateEnd - updateStart);
-
-        QVERIFY(updateSource.contains(QStringLiteral("canvasX - perspectiveStartCanvasX")) == false);
-        QVERIFY(updateSource.contains(QStringLiteral("const dx = (local.x - startLocal.x) / viewDocScale()")));
-        QVERIFY(updateSource.contains(QStringLiteral("perspectiveX = perspectiveStartX + (activePerspectiveHandle === \"n\" || activePerspectiveHandle === \"s\" ? 0 : dx)")));
-        QVERIFY(!updateSource.contains(QStringLiteral("visualHandlePosition")));
-        QVERIFY(!updateSource.contains(QStringLiteral("offsetFromCenter")));
-        QVERIFY(!updateSource.contains(QStringLiteral("perspectiveHandleOffset")));
+        QVERIFY(!source.contains(QStringLiteral("canvasX - perspectiveStartCanvasX")));
+        QVERIFY(!source.contains(QStringLiteral("visualHandlePosition(box, activePerspectiveHandle")));
+        QVERIFY(!source.contains(QStringLiteral("offsetFromCenter(activePerspectiveHandle")));
+        QVERIFY(!source.contains(QStringLiteral("perspectiveHandleOffset(activePerspectiveHandle")));
     }
 
     void qmlNormalResizePathRemainsSeparateFromPerspectiveDrag()

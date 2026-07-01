@@ -40,23 +40,23 @@ ApplicationWindow {
     property alias resizeY: boxResizeInteraction.resizeY
     property alias resizeW: boxResizeInteraction.resizeW
     property alias resizeH: boxResizeInteraction.resizeH
-    property var activePerspectiveDelegate: null
-    property string activePerspectiveHandle: ""
-    property real perspectiveStartCanvasX: 0
-     property real perspectiveStartCanvasY: 0
-     property real perspectiveStartX: 0
-     property real perspectiveStartY: 0
-     property real perspectiveX: 0
-     property real perspectiveY: 0
-     property int perspectiveRevision: 0
-      property real perspectiveStartNwX: 0
-      property real perspectiveStartNwY: 0
-      property real perspectiveStartNeX: 0
-      property real perspectiveStartNeY: 0
-      property real perspectiveStartSeX: 0
-      property real perspectiveStartSeY: 0
-      property real perspectiveStartSwX: 0
-      property real perspectiveStartSwY: 0
+    property alias activePerspectiveDelegate: perspectiveInteraction.activePerspectiveDelegate
+    property alias activePerspectiveHandle: perspectiveInteraction.activePerspectiveHandle
+    property alias perspectiveStartCanvasX: perspectiveInteraction.perspectiveStartCanvasX
+    property alias perspectiveStartCanvasY: perspectiveInteraction.perspectiveStartCanvasY
+    property alias perspectiveStartX: perspectiveInteraction.perspectiveStartX
+    property alias perspectiveStartY: perspectiveInteraction.perspectiveStartY
+    property alias perspectiveX: perspectiveInteraction.perspectiveX
+    property alias perspectiveY: perspectiveInteraction.perspectiveY
+    property alias perspectiveRevision: perspectiveInteraction.perspectiveRevision
+    property alias perspectiveStartNwX: perspectiveInteraction.perspectiveStartNwX
+    property alias perspectiveStartNwY: perspectiveInteraction.perspectiveStartNwY
+    property alias perspectiveStartNeX: perspectiveInteraction.perspectiveStartNeX
+    property alias perspectiveStartNeY: perspectiveInteraction.perspectiveStartNeY
+    property alias perspectiveStartSeX: perspectiveInteraction.perspectiveStartSeX
+    property alias perspectiveStartSeY: perspectiveInteraction.perspectiveStartSeY
+    property alias perspectiveStartSwX: perspectiveInteraction.perspectiveStartSwX
+    property alias perspectiveStartSwY: perspectiveInteraction.perspectiveStartSwY
        property alias activeRotateDelegate: boxRotateInteraction.activeRotateDelegate
        property alias rotateStartRotation: boxRotateInteraction.rotateStartRotation
        property alias rotateStartAngle: boxRotateInteraction.rotateStartAngle
@@ -150,6 +150,12 @@ ApplicationWindow {
         objectName: "boxRotateInteractionState"
     }
 
+    PerspectiveInteractionState {
+        id: perspectiveInteraction
+        objectName: "perspectiveInteractionState"
+        documentScale: window.viewDocScale()
+    }
+
     PerspectiveGeometry {
         id: perspectiveGeometry
         objectName: "perspectiveGeometry"
@@ -160,8 +166,7 @@ ApplicationWindow {
                                && !!window.activePerspectiveDelegate
                                && window.activePerspectiveDelegate.boxModel
                                && window.activePerspectiveDelegate.boxModel.index === Editor.selectedIndex
-        activePerspectiveBoxIndex: window.activePerspectiveDelegate && window.activePerspectiveDelegate.boxModel
-                                   ? window.activePerspectiveDelegate.boxModel.index : -1
+        activePerspectiveBoxIndex: perspectiveInteraction.activePerspectiveBoxIndex
         activePerspectiveHandle: window.activePerspectiveHandle
         perspectiveStartX: window.perspectiveStartX
         perspectiveStartY: window.perspectiveStartY
@@ -284,35 +289,14 @@ ApplicationWindow {
     }
 
     function beginPerspectiveDrag(delegate, handle, canvasX, canvasY) {
-        activePerspectiveDelegate = delegate
-        activePerspectiveHandle = handle
         dragMode = editorInteraction.dragModePerspective
-        perspectiveStartCanvasX = canvasX
-        perspectiveStartCanvasY = canvasY
-        perspectiveStartNwX = modelPerspectiveOffset(delegate.boxModel, "nw", 0)
-        perspectiveStartNwY = modelPerspectiveOffset(delegate.boxModel, "nw", 1)
-        perspectiveStartNeX = modelPerspectiveOffset(delegate.boxModel, "ne", 0)
-        perspectiveStartNeY = modelPerspectiveOffset(delegate.boxModel, "ne", 1)
-        perspectiveStartSeX = modelPerspectiveOffset(delegate.boxModel, "se", 0)
-        perspectiveStartSeY = modelPerspectiveOffset(delegate.boxModel, "se", 1)
-        perspectiveStartSwX = modelPerspectiveOffset(delegate.boxModel, "sw", 0)
-        perspectiveStartSwY = modelPerspectiveOffset(delegate.boxModel, "sw", 1)
-        perspectiveStartX = modelPerspectiveOffset(delegate.boxModel, handle, 0)
-        perspectiveStartY = modelPerspectiveOffset(delegate.boxModel, handle, 1)
-        perspectiveX = perspectiveStartX
-        perspectiveY = perspectiveStartY
+        perspectiveInteraction.begin(delegate, handle, canvasX, canvasY)
     }
 
     function updatePerspectiveDrag(canvasX, canvasY) {
         if (dragMode !== editorInteraction.dragModePerspective || !activePerspectiveDelegate)
             return
-        const startLocal = activePerspectiveDelegate.mapFromItem(canvas, perspectiveStartCanvasX, perspectiveStartCanvasY)
-        const local = activePerspectiveDelegate.mapFromItem(canvas, canvasX, canvasY)
-        const dx = (local.x - startLocal.x) / viewDocScale()
-        const dy = (local.y - startLocal.y) / viewDocScale()
-        perspectiveX = perspectiveStartX + (activePerspectiveHandle === "n" || activePerspectiveHandle === "s" ? 0 : dx)
-        perspectiveY = perspectiveStartY + (activePerspectiveHandle === "e" || activePerspectiveHandle === "w" ? 0 : dy)
-        ++perspectiveRevision
+        perspectiveInteraction.update(canvas, canvasX, canvasY)
     }
 
     function commitPerspectiveCorner(name, x, y) {
@@ -321,16 +305,11 @@ ApplicationWindow {
 
     function endPerspectiveDrag(commit) {
         if (dragMode === editorInteraction.dragModePerspective && commit) {
-            const dx = perspectiveX - perspectiveStartX
-            const dy = perspectiveY - perspectiveStartY
-            if (activePerspectiveHandle === "n") { commitPerspectiveCorner("nw", perspectiveStartNwX, perspectiveStartNwY + dy); commitPerspectiveCorner("ne", perspectiveStartNeX, perspectiveStartNeY + dy) }
-            else if (activePerspectiveHandle === "e") { commitPerspectiveCorner("ne", perspectiveStartNeX + dx, perspectiveStartNeY); commitPerspectiveCorner("se", perspectiveStartSeX + dx, perspectiveStartSeY) }
-            else if (activePerspectiveHandle === "s") { commitPerspectiveCorner("sw", perspectiveStartSwX, perspectiveStartSwY + dy); commitPerspectiveCorner("se", perspectiveStartSeX, perspectiveStartSeY + dy) }
-            else if (activePerspectiveHandle === "w") { commitPerspectiveCorner("nw", perspectiveStartNwX + dx, perspectiveStartNwY); commitPerspectiveCorner("sw", perspectiveStartSwX + dx, perspectiveStartSwY) }
-            else window.editor.setPerspectiveHandle(activePerspectiveHandle, perspectiveX, perspectiveY)
+            const handles = perspectiveInteraction.commitHandles()
+            for (let i = 0; i < handles.length; ++i)
+                commitPerspectiveCorner(handles[i].name, handles[i].x, handles[i].y)
         }
-        activePerspectiveDelegate = null
-        activePerspectiveHandle = ""
+        perspectiveInteraction.reset()
         dragMode = editorInteraction.dragModeIdle
     }
 

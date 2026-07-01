@@ -522,6 +522,181 @@ private slots:
         QCOMPARE(otherCorner.toMap().value(QStringLiteral("y")).toDouble(), 5.0);
     }
 
+    void qmlPerspectiveInteractionStatePreviewsCancelsCommitsAndScopesSelectedBox()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(40, 50, 100, 60);
+        editor.setSelectedPerspectiveEnabled(true);
+        editor.createTextBox(200, 50, 100, 60);
+        editor.setSelectedPerspectiveEnabled(true);
+        editor.selectBox(0);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        const auto nearlyEqual = [](double a, double b) { return std::abs(a - b) <= 0.001; };
+        const auto collectDelegates = [](auto&& self, QQuickItem* item, QList<QObject*>& results) -> void {
+            if (!item) return;
+            if (item->objectName() == QStringLiteral("textBoxDelegate")) results.append(item);
+            for (QQuickItem* child : item->childItems()) self(self, child, results);
+        };
+        const auto modelIndex = [](QObject* delegate) {
+            return delegate->property("boxModel").toMap().value(QStringLiteral("index")).toInt();
+        };
+        const auto pointValue = [](const QVariantMap& box, const QString& name, int axis) {
+            return box.value(QStringLiteral("perspective") + name.left(1).toUpper() + name.mid(1)).toList().at(axis).toDouble();
+        };
+        const auto invokeLayoutCorner = [](QObject* geometry, const QVariantMap& box, const QString& name) {
+            QVariant result;
+            const bool invoked = QMetaObject::invokeMethod(geometry, "perspectiveLayoutCorner",
+                Q_RETURN_ARG(QVariant, result),
+                Q_ARG(QVariant, box),
+                Q_ARG(QVariant, name),
+                Q_ARG(QVariant, 100.0),
+                Q_ARG(QVariant, 60.0));
+            return invoked ? result.toMap() : QVariantMap{};
+        };
+
+        QList<QObject*> delegates;
+        collectDelegates(collectDelegates, window->contentItem(), delegates);
+        QTRY_COMPARE(delegates.size(), 2);
+        QObject* selectedDelegate = modelIndex(delegates.at(0)) == 0 ? delegates.at(0) : delegates.at(1);
+        QObject* otherDelegate = selectedDelegate == delegates.at(0) ? delegates.at(1) : delegates.at(0);
+        QCOMPARE(modelIndex(selectedDelegate), 0);
+        QCOMPARE(modelIndex(otherDelegate), 1);
+
+        auto* geometry = window->findChild<QObject*>(QStringLiteral("perspectiveGeometry"));
+        QVERIFY(geometry);
+        auto* perspectiveState = window->findChild<QObject*>(QStringLiteral("perspectiveInteractionState"));
+        QVERIFY(perspectiveState);
+
+        QVERIFY(QMetaObject::invokeMethod(window, "beginPerspectiveDrag",
+            Q_ARG(QVariant, QVariant::fromValue(selectedDelegate)),
+            Q_ARG(QVariant, QStringLiteral("ne")),
+            Q_ARG(QVariant, 0.0),
+            Q_ARG(QVariant, 0.0)));
+        QVERIFY(QMetaObject::invokeMethod(window, "updatePerspectiveDrag", Q_ARG(QVariant, 20.0), Q_ARG(QVariant, -10.0)));
+        QTRY_VERIFY(nearlyEqual(window->property("perspectiveX").toDouble(), 20.0));
+        QTRY_VERIFY(nearlyEqual(window->property("perspectiveY").toDouble(), -10.0));
+
+        QVariantMap selectedPreview = invokeLayoutCorner(geometry, editor.boxes().at(0).toMap(), QStringLiteral("ne"));
+        QVariantMap otherPreview = invokeLayoutCorner(geometry, editor.boxes().at(1).toMap(), QStringLiteral("ne"));
+        QCOMPARE(selectedPreview.value(QStringLiteral("x")).toDouble(), 120.0);
+        QCOMPARE(selectedPreview.value(QStringLiteral("y")).toDouble(), -10.0);
+        QCOMPARE(otherPreview.value(QStringLiteral("x")).toDouble(), 100.0);
+        QCOMPARE(otherPreview.value(QStringLiteral("y")).toDouble(), 0.0);
+        QCOMPARE(pointValue(editor.boxes().at(0).toMap(), QStringLiteral("ne"), 0), 0.0);
+        QCOMPARE(pointValue(editor.boxes().at(1).toMap(), QStringLiteral("ne"), 0), 0.0);
+
+        QVERIFY(QMetaObject::invokeMethod(window, "endPerspectiveDrag", Q_ARG(QVariant, false)));
+        QCOMPARE(pointValue(editor.boxes().at(0).toMap(), QStringLiteral("ne"), 0), 0.0);
+        QCOMPARE(pointValue(editor.boxes().at(0).toMap(), QStringLiteral("ne"), 1), 0.0);
+        QCOMPARE(perspectiveState->property("activePerspectiveBoxIndex").toInt(), -1);
+
+        QVERIFY(QMetaObject::invokeMethod(window, "beginPerspectiveDrag",
+            Q_ARG(QVariant, QVariant::fromValue(selectedDelegate)),
+            Q_ARG(QVariant, QStringLiteral("ne")),
+            Q_ARG(QVariant, 0.0),
+            Q_ARG(QVariant, 0.0)));
+        QVERIFY(QMetaObject::invokeMethod(window, "updatePerspectiveDrag", Q_ARG(QVariant, 20.0), Q_ARG(QVariant, -10.0)));
+        QVERIFY(QMetaObject::invokeMethod(window, "endPerspectiveDrag", Q_ARG(QVariant, true)));
+
+        QCOMPARE(pointValue(editor.boxes().at(0).toMap(), QStringLiteral("ne"), 0), 20.0);
+        QCOMPARE(pointValue(editor.boxes().at(0).toMap(), QStringLiteral("ne"), 1), -10.0);
+        QCOMPARE(pointValue(editor.boxes().at(1).toMap(), QStringLiteral("ne"), 0), 0.0);
+        QCOMPARE(pointValue(editor.boxes().at(1).toMap(), QStringLiteral("ne"), 1), 0.0);
+    }
+
+    void qmlPerspectiveMidpointDragConstrainsAxisAndCommitsAdjacentCorners()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(40, 50, 100, 60);
+        editor.setSelectedPerspectiveEnabled(true);
+        editor.setPerspectiveHandle(QStringLiteral("nw"), 10.0, 1.0);
+        editor.setPerspectiveHandle(QStringLiteral("ne"), 20.0, 2.0);
+        editor.setPerspectiveHandle(QStringLiteral("se"), 30.0, 3.0);
+        editor.setPerspectiveHandle(QStringLiteral("sw"), 40.0, 4.0);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        const auto nearlyEqual = [](double a, double b) { return std::abs(a - b) <= 0.001; };
+        const auto pointValue = [](const QVariantMap& box, const QString& name, int axis) {
+            return box.value(QStringLiteral("perspective") + name.left(1).toUpper() + name.mid(1)).toList().at(axis).toDouble();
+        };
+        const auto collectDelegates = [](auto&& self, QQuickItem* item, QList<QObject*>& results) -> void {
+            if (!item) return;
+            if (item->objectName() == QStringLiteral("textBoxDelegate")) results.append(item);
+            for (QQuickItem* child : item->childItems()) self(self, child, results);
+        };
+
+        QList<QObject*> delegates;
+        collectDelegates(collectDelegates, window->contentItem(), delegates);
+        QTRY_COMPARE(delegates.size(), 1);
+        QObject* delegate = delegates.constFirst();
+
+        QVERIFY(QMetaObject::invokeMethod(window, "beginPerspectiveDrag",
+            Q_ARG(QVariant, QVariant::fromValue(delegate)),
+            Q_ARG(QVariant, QStringLiteral("n")),
+            Q_ARG(QVariant, 0.0),
+            Q_ARG(QVariant, 0.0)));
+        QVERIFY(QMetaObject::invokeMethod(window, "updatePerspectiveDrag", Q_ARG(QVariant, 20.0), Q_ARG(QVariant, -10.0)));
+        QTRY_VERIFY(nearlyEqual(window->property("perspectiveX").toDouble(), 15.0));
+        QTRY_VERIFY(nearlyEqual(window->property("perspectiveY").toDouble(), -8.5));
+        QVERIFY(QMetaObject::invokeMethod(window, "endPerspectiveDrag", Q_ARG(QVariant, true)));
+
+        QVariantMap box = editor.boxes().at(0).toMap();
+        QCOMPARE(pointValue(box, QStringLiteral("nw"), 0), 10.0);
+        QCOMPARE(pointValue(box, QStringLiteral("nw"), 1), -9.0);
+        QCOMPARE(pointValue(box, QStringLiteral("ne"), 0), 20.0);
+        QCOMPARE(pointValue(box, QStringLiteral("ne"), 1), -8.0);
+        QCOMPARE(pointValue(box, QStringLiteral("se"), 0), 30.0);
+        QCOMPARE(pointValue(box, QStringLiteral("se"), 1), 3.0);
+        QCOMPARE(pointValue(box, QStringLiteral("sw"), 0), 40.0);
+        QCOMPARE(pointValue(box, QStringLiteral("sw"), 1), 4.0);
+
+        delegates.clear();
+        collectDelegates(collectDelegates, window->contentItem(), delegates);
+        QTRY_COMPARE(delegates.size(), 1);
+        delegate = delegates.constFirst();
+
+        QVERIFY(QMetaObject::invokeMethod(window, "beginPerspectiveDrag",
+            Q_ARG(QVariant, QVariant::fromValue(delegate)),
+            Q_ARG(QVariant, QStringLiteral("e")),
+            Q_ARG(QVariant, 0.0),
+            Q_ARG(QVariant, 0.0)));
+        QVERIFY(QMetaObject::invokeMethod(window, "updatePerspectiveDrag", Q_ARG(QVariant, 20.0), Q_ARG(QVariant, -10.0)));
+        QTRY_VERIFY(nearlyEqual(window->property("perspectiveX").toDouble(), 45.0));
+        QTRY_VERIFY(nearlyEqual(window->property("perspectiveY").toDouble(), -2.5));
+        QVERIFY(QMetaObject::invokeMethod(window, "endPerspectiveDrag", Q_ARG(QVariant, true)));
+
+        box = editor.boxes().at(0).toMap();
+        QCOMPARE(pointValue(box, QStringLiteral("ne"), 0), 40.0);
+        QCOMPARE(pointValue(box, QStringLiteral("ne"), 1), -8.0);
+        QCOMPARE(pointValue(box, QStringLiteral("se"), 0), 50.0);
+        QCOMPARE(pointValue(box, QStringLiteral("se"), 1), 3.0);
+        QCOMPARE(pointValue(box, QStringLiteral("nw"), 0), 10.0);
+        QCOMPARE(pointValue(box, QStringLiteral("sw"), 0), 40.0);
+    }
+
     void qmlCtrlSpaceIgnoresFocusedSidePanelTextInputs()
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
