@@ -84,18 +84,23 @@ private slots:
     QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
-    QVERIFY(
-        source.contains(QStringLiteral("gradientEnabled: modelData.gradient")));
     QVERIFY(source.contains(
-        QStringLiteral("gradientDirection: modelData.gradientDirection")));
+        QStringLiteral("gradientEnabled: boxRef.effectiveBoxModel.gradient")));
     QVERIFY(source.contains(QStringLiteral(
-        "gradientColorA: rootWindow.qmlColor(modelData.gradientColorA)")));
+        "gradientDirection: boxRef.effectiveBoxModel.gradientDirection")));
     QVERIFY(source.contains(QStringLiteral(
-        "gradientColorB: rootWindow.qmlColor(modelData.gradientColorB)")));
-    QVERIFY(source.contains(QStringLiteral("pathEnabled: modelData.path")));
-    QVERIFY(source.contains(QStringLiteral("pathMode: modelData.pathMode")));
-    QVERIFY(
-        source.contains(QStringLiteral("pathPoints: modelData.pathPoints")));
+        "gradientColorA: rootWindow.qmlColor(boxRef.effectiveBoxModel."
+        "gradientColorA)")));
+    QVERIFY(source.contains(QStringLiteral(
+        "gradientColorB: rootWindow.qmlColor(boxRef.effectiveBoxModel."
+        "gradientColorB)")));
+    QVERIFY(source.contains(QStringLiteral(
+        "pathEnabled: boxRef.effectiveBoxModel.path && "
+        "!boxRef.editingSelected")));
+    QVERIFY(source.contains(
+        QStringLiteral("pathMode: boxRef.effectiveBoxModel.pathMode")));
+    QVERIFY(source.contains(
+        QStringLiteral("pathPoints: boxRef.effectiveBoxModel.pathPoints")));
     QVERIFY(source.contains(QStringLiteral("id: pathGuide")));
     QVERIFY(source.contains(
         QStringLiteral("visible: boxRef.selected && boxRef.boxModel.path && "
@@ -337,9 +342,10 @@ private slots:
     QVERIFY(!source.contains(QStringLiteral("import QtQuick.Effects")));
     QVERIFY(!source.contains(QStringLiteral("MultiEffect {")));
     QVERIFY(!source.contains(QStringLiteral("liveGpuBlurActive")));
-    QVERIFY(source.contains(
-        QStringLiteral("blurSize: modelData.blur && modelData.blurSize > 0 ? "
-                       "modelData.blurSize : 0")));
+    QVERIFY(source.contains(QStringLiteral(
+        "blurSize: boxRef.effectiveBoxModel.blur && "
+        "boxRef.effectiveBoxModel.blurSize > 0 ? "
+        "boxRef.effectiveBoxModel.blurSize : 0")));
   }
 
   void shadowUsesLiveRendererWithoutPreviewArtifact() {
@@ -357,10 +363,12 @@ private slots:
     QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
-    QVERIFY(source.contains(QStringLiteral("shadowEnabled: modelData.shadow")));
+    QVERIFY(source.contains(
+        QStringLiteral("shadowEnabled: boxRef.effectiveBoxModel.shadow")));
     QVERIFY(source.contains(QStringLiteral(
-        "shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? "
-        "modelData.shadowBlurSize : 0")));
+        "shadowBlurSize: boxRef.effectiveBoxModel.shadow && "
+        "boxRef.effectiveBoxModel.shadowBlurSize > 0 ? "
+        "boxRef.effectiveBoxModel.shadowBlurSize : 0")));
   }
 
   void qmlEditorNamedConstantsKeepLegacyValues() {
@@ -564,7 +572,7 @@ private slots:
                        "rootWindow.editor : null")));
     QVERIFY(delegateSource.contains(QStringLiteral(
         "property real visualDocX: moveActive ? rootWindow.moveX : "
-        "resizeActive ? rootWindow.resizeX : modelData.x")));
+        "resizeActive ? rootWindow.resizeX : effectiveBoxModel.x")));
     QVERIFY(delegateSource.contains(
         QStringLiteral("x: rootWindow.documentToViewX(visualDocX)")));
     QVERIFY(moveSource.contains(
@@ -827,6 +835,17 @@ private slots:
     QVERIFY(
         source.contains(QStringLiteral("Accessible.name: accessibleLabel")));
     QVERIFY(source.contains(QStringLiteral("ToolTip.text: accessibleLabel")));
+    const qsizetype fontFamilyOptionsStart = source.indexOf(
+        QStringLiteral("function fontFamilyOptions(selected)"));
+    const qsizetype fontFamilyAddStart =
+        source.indexOf(QStringLiteral("function add(value)"),
+                       fontFamilyOptionsStart);
+    const qsizetype fontFamilyOptionsDeclaration =
+        source.indexOf(QStringLiteral("const options = []"),
+                       fontFamilyOptionsStart);
+    QVERIFY(fontFamilyOptionsStart >= 0);
+    QVERIFY(fontFamilyOptionsDeclaration > fontFamilyOptionsStart);
+    QVERIFY(fontFamilyAddStart > fontFamilyOptionsDeclaration);
     const qsizetype propertiesStart = indexOfIgnoringWhitespace(
         source, QStringLiteral("Label { text: qsTr(\"Text Properties\"); "
                                "font.bold: true; enabled: "
@@ -1235,24 +1254,31 @@ private slots:
     QVERIFY(!source.contains(QStringLiteral("MultiEffect {")));
     QVERIFY(!source.contains(QStringLiteral("source: boxOutlinedText")));
     QVERIFY(source.contains(QStringLiteral(
-        "outlineSize: modelData.outline && modelData.outlineSize > 0 ? "
-        "modelData.outlineSize : 0")));
+        "outlineSize: boxRef.effectiveBoxModel.outline && "
+        "boxRef.effectiveBoxModel.outlineSize > 0 ? "
+        "boxRef.effectiveBoxModel.outlineSize : 0")));
+    QVERIFY(source.contains(QStringLiteral(
+        "blurSize: boxRef.effectiveBoxModel.blur && "
+        "boxRef.effectiveBoxModel.blurSize > 0 ? "
+        "boxRef.effectiveBoxModel.blurSize : 0")));
     QVERIFY(source.contains(
-        QStringLiteral("blurSize: modelData.blur && modelData.blurSize > 0 ? "
-                       "modelData.blurSize : 0")));
-    QVERIFY(source.contains(QStringLiteral("shadowEnabled: modelData.shadow")));
+        QStringLiteral("shadowEnabled: boxRef.effectiveBoxModel.shadow")));
     QVERIFY(source.contains(QStringLiteral(
-        "shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? "
-        "modelData.shadowBlurSize : 0")));
-    QVERIFY(
-        source.contains(QStringLiteral("gradientEnabled: modelData.gradient")));
-    QVERIFY(source.contains(QStringLiteral("pathEnabled: modelData.path")));
-    QVERIFY(
-        source.contains(QStringLiteral("pathPoints: modelData.pathPoints")));
-    QVERIFY(
-        source.contains(QStringLiteral("lineSpacing: modelData.lineSpacing")));
+        "shadowBlurSize: boxRef.effectiveBoxModel.shadow && "
+        "boxRef.effectiveBoxModel.shadowBlurSize > 0 ? "
+        "boxRef.effectiveBoxModel.shadowBlurSize : 0")));
+    QVERIFY(source.contains(
+        QStringLiteral("gradientEnabled: boxRef.effectiveBoxModel.gradient")));
     QVERIFY(source.contains(QStringLiteral(
-        "outlineColor: rootWindow.qmlColor(modelData.outlineColor)")));
+        "pathEnabled: boxRef.effectiveBoxModel.path && "
+        "!boxRef.editingSelected")));
+    QVERIFY(source.contains(
+        QStringLiteral("pathPoints: boxRef.effectiveBoxModel.pathPoints")));
+    QVERIFY(source.contains(
+        QStringLiteral("lineSpacing: boxRef.effectiveBoxModel.lineSpacing")));
+    QVERIFY(source.contains(QStringLiteral(
+        "outlineColor: rootWindow.qmlColor(boxRef.effectiveBoxModel."
+        "outlineColor)")));
     QVERIFY(source.indexOf(QStringLiteral("id: boxOutlinedText")) <
             source.indexOf(QStringLiteral("TextArea {")));
     QVERIFY(source.contains(QStringLiteral("editorRef.beginInteraction()")));
@@ -1274,30 +1300,33 @@ private slots:
     QVERIFY(
         !rendererBlock.contains(QStringLiteral("effectsPreviewDisplayable")));
     QVERIFY(rendererBlock.contains(QStringLiteral(
-        "text: boxRef.selected && editorRef.editingText ? boxTextArea.text : "
-        "(modelData.uppercase ? String(modelData.text).toUpperCase() : "
-        "modelData.text)")));
+        "text: boxRef.editingSelected ? boxRef.livePreviewText : "
+        "boxRef.modelPreviewText()")));
     QVERIFY(rendererBlock.contains(
         QStringLiteral("renderScale: rootWindow.livePreviewScale()")));
     QVERIFY(rendererBlock.contains(QStringLiteral(
-        "outlineSize: modelData.outline && modelData.outlineSize > 0 ? "
-        "modelData.outlineSize : 0")));
-    QVERIFY(rendererBlock.contains(
-        QStringLiteral("blurSize: modelData.blur && modelData.blurSize > 0 ? "
-                       "modelData.blurSize : 0")));
-    QVERIFY(rendererBlock.contains(
-        QStringLiteral("shadowEnabled: modelData.shadow")));
+        "outlineSize: boxRef.effectiveBoxModel.outline && "
+        "boxRef.effectiveBoxModel.outlineSize > 0 ? "
+        "boxRef.effectiveBoxModel.outlineSize : 0")));
     QVERIFY(rendererBlock.contains(QStringLiteral(
-        "shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? "
-        "modelData.shadowBlurSize : 0")));
+        "blurSize: boxRef.effectiveBoxModel.blur && "
+        "boxRef.effectiveBoxModel.blurSize > 0 ? "
+        "boxRef.effectiveBoxModel.blurSize : 0")));
     QVERIFY(rendererBlock.contains(
-        QStringLiteral("gradientEnabled: modelData.gradient")));
+        QStringLiteral("shadowEnabled: boxRef.effectiveBoxModel.shadow")));
     QVERIFY(rendererBlock.contains(QStringLiteral(
-        "pathEnabled: modelData.path && !boxRef.editingSelected")));
+        "shadowBlurSize: boxRef.effectiveBoxModel.shadow && "
+        "boxRef.effectiveBoxModel.shadowBlurSize > 0 ? "
+        "boxRef.effectiveBoxModel.shadowBlurSize : 0")));
     QVERIFY(rendererBlock.contains(
-        QStringLiteral("pathPoints: modelData.pathPoints")));
+        QStringLiteral("gradientEnabled: boxRef.effectiveBoxModel.gradient")));
+    QVERIFY(rendererBlock.contains(QStringLiteral(
+        "pathEnabled: boxRef.effectiveBoxModel.path && "
+        "!boxRef.editingSelected")));
     QVERIFY(rendererBlock.contains(
-        QStringLiteral("lineSpacing: modelData.lineSpacing")));
+        QStringLiteral("pathPoints: boxRef.effectiveBoxModel.pathPoints")));
+    QVERIFY(rendererBlock.contains(
+        QStringLiteral("lineSpacing: boxRef.effectiveBoxModel.lineSpacing")));
 
     const QString editorBlock = source.mid(
         editor, source.indexOf(QStringLiteral("MouseArea {"), editor) - editor);
@@ -1309,7 +1338,9 @@ private slots:
     QVERIFY(editorBlock.contains(QStringLiteral(
         "selectionColor: Qt.alpha(rootWindow.palette.highlight, 0.35)")));
     QVERIFY(editorBlock.contains(
-        QStringLiteral("property real editLineSpacing: modelData.lineSpacing")));
+        QStringLiteral(
+            "property real editLineSpacing: "
+            "boxRef.effectiveBoxModel.lineSpacing")));
     QVERIFY(editorBlock.contains(
         QStringLiteral("scale: rootWindow.viewDocScale()")));
     QVERIFY(editorBlock.contains(
@@ -1328,10 +1359,32 @@ private slots:
     QVERIFY(editorBlock.contains(
         QStringLiteral("onEditLineSpacingChanged: applyLineSpacing()")));
     QVERIFY(editorBlock.contains(QStringLiteral("cursorDelegate: Rectangle")));
+    QVERIFY(editorBlock.contains(QStringLiteral("text: \"\"")));
+    QVERIFY(editorBlock.contains(
+        QStringLiteral("property bool userInputSyncPending: false")));
+    QVERIFY(editorBlock.contains(
+        QStringLiteral("property string livePreviewText: boxRef.livePreviewText")));
+    QVERIFY(editorBlock.contains(
+        QStringLiteral("property string pendingUserInputText: \"\"")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorBlock,
-        QStringLiteral("onTextChanged: { applyLineSpacing(); if (activeFocus "
-                       "&& editorRef) editorRef.updateSelectedText(text) }")));
+        QStringLiteral("function setLivePreviewText(nextText) { "
+                       "livePreviewText = nextText; "
+                       "boxRef.livePreviewText = nextText; }")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        editorBlock,
+        QStringLiteral("function syncTextFromModel() { const nextText = "
+                       "modelText(); if (activeFocus && "
+                       "userInputSyncPending) { setLivePreviewText(text); "
+                       "userInputSyncPending = false; pendingUserInputText "
+                       "= \"\"; return")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        editorBlock,
+        QStringLiteral("onTextChanged: { setLivePreviewText(text); "
+                       "applyLineSpacing(); if (activeFocus && editorRef && "
+                       "!syncingTextFromModel) { userInputSyncPending = true; "
+                       "pendingUserInputText = text; "
+                       "editorRef.updateSelectedText(text); } }")));
   }
 
   void qmlPerspectiveWarpsLiveOutlinedRenderer() {
@@ -1627,11 +1680,13 @@ private slots:
     QVERIFY(rendererBlock.contains(
         QStringLiteral("renderScale: rootWindow.livePreviewScale()")));
     QVERIFY(rendererBlock.contains(
-        QStringLiteral("pixelSize: Math.max(1, modelData.fontSize)")));
+        QStringLiteral(
+            "pixelSize: Math.max(1, boxRef.effectiveBoxModel.fontSize)")));
     QVERIFY(rendererBlock.contains(
-        QStringLiteral("letterSpacing: modelData.letterSpacing")));
+        QStringLiteral(
+            "letterSpacing: boxRef.effectiveBoxModel.letterSpacing")));
     QVERIFY(rendererBlock.contains(
-        QStringLiteral("lineSpacing: modelData.lineSpacing")));
+        QStringLiteral("lineSpacing: boxRef.effectiveBoxModel.lineSpacing")));
     QVERIFY(!rendererBlock.contains(
         QStringLiteral("modelData.fontSize * rootWindow.viewDocScale()")));
     QVERIFY(!rendererBlock.contains(

@@ -2,6 +2,7 @@
 #include "qt_test_helpers.h"
 
 #include <QMetaObject>
+#include <QFile>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickItem>
@@ -45,8 +46,11 @@ private slots:
         qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
     QVERIFY(window);
     QObject *textArea = nullptr;
+    QObject *outlinedText = nullptr;
     QTRY_VERIFY(textArea = findVisualChildByName(
                     window->contentItem(), QStringLiteral("boxTextArea")));
+    QTRY_VERIFY(outlinedText = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxOutlinedText")));
     QTRY_VERIFY(textArea->property("visible").toBool());
     QTRY_VERIFY(textArea->property("activeFocus").toBool());
 
@@ -83,12 +87,73 @@ private slots:
     QCOMPARE(lineSpacingType(), int(QTextBlockFormat::LineDistanceHeight));
     QCOMPARE(lineSpacing(), 7.0);
 
-    typeText(window, u"abc");
-    QTRY_COMPARE(
-        editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
-        QStringLiteral("abc"));
+    QTest::keyClick(window, Qt::Key_A);
+    QTest::qWait(20);
+    QCOMPARE(textArea->property("text").toString(), QStringLiteral("a"));
+    QCOMPARE(textArea->property("livePreviewText").toString(),
+             QStringLiteral("a"));
+    QCOMPARE(outlinedText->property("text").toString(), QStringLiteral("a"));
+    QCOMPARE(editor.selectedBoxViewModel()
+                 .toMap()
+                 .value(QStringLiteral("text"))
+                 .toString(),
+             QStringLiteral("a"));
+    QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
+             QStringLiteral("a"));
+
+    QTest::keyClick(window, Qt::Key_B);
+    QCOMPARE(textArea->property("text").toString(), QStringLiteral("ab"));
+    QCOMPARE(textArea->property("livePreviewText").toString(),
+             QStringLiteral("ab"));
+    QCOMPARE(outlinedText->property("text").toString(), QStringLiteral("ab"));
+
+    QTest::keyClick(window, Qt::Key_C);
+    QCOMPARE(textArea->property("text").toString(), QStringLiteral("abc"));
+    QCOMPARE(textArea->property("livePreviewText").toString(),
+             QStringLiteral("abc"));
+    QCOMPARE(outlinedText->property("text").toString(), QStringLiteral("abc"));
+    QTRY_COMPARE(editor.selectedBoxViewModel()
+                     .toMap()
+                     .value(QStringLiteral("text"))
+                     .toString(),
+                 QStringLiteral("abc"));
+    QTRY_COMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
+                 QStringLiteral("abc"));
     QVERIFY(editor.editingText());
     QVERIFY(textArea->property("activeFocus").toBool());
+
+    QTest::keyClick(window, Qt::Key_Backspace);
+    QTest::qWait(20);
+    QCOMPARE(textArea->property("text").toString(), QStringLiteral("ab"));
+    QCOMPARE(textArea->property("livePreviewText").toString(),
+             QStringLiteral("ab"));
+    QCOMPARE(outlinedText->property("text").toString(), QStringLiteral("ab"));
+    QCOMPARE(editor.selectedBoxViewModel()
+                 .toMap()
+                 .value(QStringLiteral("text"))
+                 .toString(),
+             QStringLiteral("ab"));
+
+    textArea->setProperty("cursorPosition", 1);
+    QTest::keyClick(window, Qt::Key_Delete);
+    QTest::qWait(20);
+    QCOMPARE(textArea->property("text").toString(), QStringLiteral("a"));
+    QCOMPARE(textArea->property("livePreviewText").toString(),
+             QStringLiteral("a"));
+    QCOMPARE(outlinedText->property("text").toString(), QStringLiteral("a"));
+    QCOMPARE(editor.selectedBoxViewModel()
+                 .toMap()
+                 .value(QStringLiteral("text"))
+                 .toString(),
+             QStringLiteral("a"));
+    QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
+             QStringLiteral("a"));
+
+    textArea->setProperty("cursorPosition", 1);
+    typeText(window, u"bc");
+    QCOMPARE(textArea->property("text").toString(), QStringLiteral("abc"));
+    QCOMPARE(outlinedText->property("text").toString(),
+             QStringLiteral("abc"));
 
     typeText(window, u"def");
     QTRY_COMPARE(
@@ -131,21 +196,134 @@ private slots:
     QTRY_VERIFY(textArea->property("visible").toBool());
     QTRY_VERIFY(textArea->property("activeFocus").toBool());
 
-    QVERIFY(textArea->setProperty("text", QStringLiteral("After")));
+    QTest::keyClick(window, Qt::Key_A, Qt::ControlModifier);
+    typeText(window, u"After");
     QTRY_COMPARE(outlinedText->property("text").toString(),
                  QStringLiteral("After"));
     QTRY_COMPARE(
         editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
         QStringLiteral("After"));
 
-    editor.endTextEdit();
-    QCoreApplication::processEvents();
+    QObject *canvas = nullptr;
+    QTRY_VERIFY(canvas = findVisualChildByName(window->contentItem(),
+                                               QStringLiteral("centralCanvas")));
+    QString previewTextWhenEditEnded;
+    const auto captureConnection = QObject::connect(
+        &editor, &EditorController::stateChanged, window, [&]() {
+          if (!editor.editingText() && previewTextWhenEditEnded.isEmpty()) {
+            if (auto *currentOutlinedText = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxOutlinedText"))) {
+              previewTextWhenEditEnded =
+                  currentOutlinedText->property("text").toString();
+            }
+          }
+        });
+
+    QVERIFY(QMetaObject::invokeMethod(canvas, "forceActiveFocus"));
+    QTRY_VERIFY(!editor.editingText());
+    QObject::disconnect(captureConnection);
 
     QVERIFY(!editor.editingText());
     QTRY_VERIFY(!textArea->property("visible").toBool());
     QCOMPARE(editor.selectedIndex(), 0);
+    QCOMPARE(previewTextWhenEditEnded, QStringLiteral("After"));
     QCOMPARE(outlinedText->property("text").toString(),
              QStringLiteral("After"));
+  }
+
+  void qmlCtrlSpaceWhileEditingRefreshesTextAreaAndPreview() {
+    registerQmlTypes();
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    touch(dir.filePath(QStringLiteral("page1.png")));
+    QFile texts(dir.filePath(QStringLiteral("Texts.txt")));
+    QVERIFY(texts.open(QIODevice::WriteOnly | QIODevice::Text));
+    QCOMPARE(texts.write("[page1.png]\nFirst page line\n"), 28);
+    texts.close();
+
+    EditorController editor;
+    editor.openProject(dir.path());
+    editor.createTextBox(10, 20, 260, 90);
+    editor.updateSelectedText(QStringLiteral("Before"));
+    editor.beginTextEdit();
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QObject *textArea = nullptr;
+    QObject *outlinedText = nullptr;
+    QTRY_VERIFY(textArea = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxTextArea")));
+    QTRY_VERIFY(outlinedText = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxOutlinedText")));
+    QTRY_VERIFY(textArea->property("visible").toBool());
+    QTRY_VERIFY(textArea->property("activeFocus").toBool());
+
+    QTest::keyClick(window, Qt::Key_Space, Qt::ControlModifier);
+
+    QTRY_COMPARE(textArea->property("text").toString(),
+                 QStringLiteral("First page line"));
+    QTRY_COMPARE(textArea->property("livePreviewText").toString(),
+                 QStringLiteral("First page line"));
+    QTRY_COMPARE(outlinedText->property("text").toString(),
+                 QStringLiteral("First page line"));
+    QTRY_COMPARE(editor.selectedBoxViewModel()
+                     .toMap()
+                     .value(QStringLiteral("text"))
+                     .toString(),
+                 QStringLiteral("First page line"));
+    QVERIFY(editor.editingText());
+    QVERIFY(textArea->property("activeFocus").toBool());
+  }
+
+  void qmlResizeWhileEditingKeepsEffectiveBoundsAfterInteractionEnds() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 120, 60);
+    editor.updateSelectedText(QStringLiteral("Resize me"));
+    editor.beginTextEdit();
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QObject *delegate = nullptr;
+    QObject *textArea = nullptr;
+    QTRY_VERIFY(delegate = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("textBoxDelegate")));
+    QTRY_VERIFY(textArea = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxTextArea")));
+    QTRY_VERIFY(textArea->property("visible").toBool());
+    QCOMPARE(delegate->property("width").toReal(), 120.0);
+    QCOMPARE(delegate->property("height").toReal(), 60.0);
+
+    editor.beginInteraction();
+    editor.setSelectedBounds(10, 20, 180, 95);
+    editor.endInteraction();
+
+    QTRY_COMPARE(delegate->property("width").toReal(), 180.0);
+    QTRY_COMPARE(delegate->property("height").toReal(), 95.0);
+    QCOMPARE(editor.selectedBoxViewModel().toMap().value(QStringLiteral("w"))
+                 .toDouble(),
+             180.0);
+    QCOMPARE(editor.selectedBoxViewModel().toMap().value(QStringLiteral("h"))
+                 .toDouble(),
+             95.0);
+    QVERIFY(editor.editingText());
   }
 
   void qmlTextEditOverlayUsesOutlinedLayoutMetrics() {
@@ -906,7 +1084,7 @@ private slots:
                        "rootWindow.activeResizeDelegate === boxDelegate")));
     QVERIFY(delegateSource.contains(
         QStringLiteral("property real visualDocW: resizeActive ? "
-                       "rootWindow.resizeW : modelData.w")));
+                       "rootWindow.resizeW : effectiveBoxModel.w")));
     QVERIFY(delegateSource.contains(
         QStringLiteral("width: visualDocW * rootWindow.viewDocScale()")));
     QVERIFY(sourceContainsIgnoringWhitespace(

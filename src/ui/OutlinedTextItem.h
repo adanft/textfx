@@ -142,6 +142,7 @@ public:
   qreal editLayoutPaintOffsetY() const;
 
 #ifdef TEXTFX_TESTING
+  int paintRequestRevisionForTesting() const { return paintRequestRevision_; }
   QStringList wrappedLinesForTesting() const;
   QPointF pathBaselinePointForTesting(qreal distance, qreal layoutWidth,
                                       qreal layoutHeight) const;
@@ -181,11 +182,15 @@ signals:
   void horizontalAlignmentChanged();
   void overflowChanged();
   void editLayoutMetricsChanged();
+#ifdef TEXTFX_TESTING
+  void paintRequestRevisionChangedForTesting();
+#endif
 
 private:
   QFont layoutFont() const;
   void updateOverflow();
   void notifyLayoutChanged();
+  void requestPaintRefresh();
   QPointF paintTranslationForCurrentLayout() const;
   QString blurCacheKey(int radius, const QRect &sourceRect) const;
   QString text_;
@@ -216,6 +221,9 @@ private:
   bool overflow_ = false;
   QString blurCacheKey_;
   QImage blurCacheImage_;
+#ifdef TEXTFX_TESTING
+  int paintRequestRevision_ = 0;
+#endif
 };
 
 } // namespace textfx

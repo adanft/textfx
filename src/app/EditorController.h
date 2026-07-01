@@ -162,6 +162,7 @@ private:
   bool editSelectedBoxIf(const std::function<bool(TextBox &)> &mutation);
   void editSelectedBox(const std::function<void(TextBox &)> &mutation);
   void markDocumentChanged();
+  bool flushPendingDocumentChanged();
   void setNotification(QString message);
   void clearProjectState();
   bool openProjectInternal(const QString &folder,

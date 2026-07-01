@@ -137,6 +137,34 @@ private slots:
     QCOMPARE(documentChanged.count(), 1);
   }
 
+  void activeTextEditingDefersDocumentChangedForStyleMutations() {
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 100, 50);
+    editor.beginTextEdit();
+
+    QSignalSpy documentChanged(&editor, &EditorController::documentChanged);
+    QSignalSpy selectedBoxChanged(&editor,
+                                  &EditorController::selectedBoxChanged);
+    QSignalSpy stateChanged(&editor, &EditorController::stateChanged);
+
+    editor.setSelectedFontSize(32);
+
+    QCOMPARE(documentChanged.count(), 0);
+    QCOMPARE(editor.selectedBoxViewModel()
+                 .toMap()
+                 .value(QStringLiteral("fontSize"))
+                 .toInt(),
+             32);
+    QVERIFY(editor.dirty());
+    QVERIFY(selectedBoxChanged.count() >= 1);
+    QVERIFY(stateChanged.count() >= 1);
+
+    editor.endTextEdit();
+
+    QCOMPARE(documentChanged.count(), 1);
+  }
+
   void copyPastePreservesCopiedBox() {
     EditorController editor;
 
@@ -591,14 +619,17 @@ private slots:
     editor.openProject(dir.path());
     editor.createTextBox(1, 2, 80, 40);
     QSignalSpy changed(&editor, &EditorController::documentChanged);
+    QSignalSpy selectedBoxChanged(&editor,
+                                  &EditorController::selectedBoxChanged);
 
     editor.beginInteraction();
     editor.moveSelected(5, 7);
 
-    QCOMPARE(changed.count(), 1);
+    QCOMPARE(changed.count(), 0);
+    QVERIFY(selectedBoxChanged.count() >= 1);
     editor.endInteraction();
 
-    QCOMPARE(changed.count(), 2);
+    QCOMPARE(changed.count(), 1);
   }
 
   void gradientPathInteractionDoesNotGeneratePreviewArtifact() {
@@ -613,14 +644,17 @@ private slots:
     editor.setSelectedGradientEnabled(true);
     editor.setSelectedPathEnabled(true);
     QSignalSpy changed(&editor, &EditorController::documentChanged);
+    QSignalSpy selectedBoxChanged(&editor,
+                                  &EditorController::selectedBoxChanged);
 
     editor.beginInteraction();
     editor.moveSelected(5, 7);
 
-    QCOMPARE(changed.count(), 1);
+    QCOMPARE(changed.count(), 0);
+    QVERIFY(selectedBoxChanged.count() >= 1);
     editor.endInteraction();
 
-    QCOMPARE(changed.count(), 2);
+    QCOMPARE(changed.count(), 1);
   }
 
   void transformChangesPersistOnSave() {

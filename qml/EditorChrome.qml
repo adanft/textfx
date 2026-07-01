@@ -308,7 +308,7 @@ Item {
 
     Shortcut {
         sequence: "Ctrl+Space"
-        enabled: editorChrome.editor && !editorChrome.editor.editingText && !editorChrome.sidePanelTextInputFocused
+        enabled: editorChrome.editor && !editorChrome.sidePanelTextInputFocused
         onActivated: editorChrome.editor.applyNextPageText()
     }
 

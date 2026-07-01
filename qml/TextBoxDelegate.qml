@@ -13,14 +13,22 @@ Rectangle {
     property bool selected: editorRef && modelData.index === editorRef.selectedIndex
     property bool editingSelected: selected && editorRef.editingText
     property var boxModel: modelData
+    readonly property var effectiveBoxModel: editingSelected && editorRef ? editorRef.selectedBox : boxModel
     property bool perspectiveActive: boxModel.perspective && !editingSelected
     property bool moveActive: rootWindow.dragMode === interaction.dragModeMove && rootWindow.activeMoveIndex === modelData.index
     property bool resizeActive: rootWindow.dragMode === interaction.dragModeResize && rootWindow.activeResizeDelegate === boxDelegate
-    property real visualDocX: moveActive ? rootWindow.moveX : resizeActive ? rootWindow.resizeX : modelData.x
-    property real visualDocY: moveActive ? rootWindow.moveY : resizeActive ? rootWindow.resizeY : modelData.y
-    property real visualDocW: resizeActive ? rootWindow.resizeW : modelData.w
-    property real visualDocH: resizeActive ? rootWindow.resizeH : modelData.h
+    property real visualDocX: moveActive ? rootWindow.moveX : resizeActive ? rootWindow.resizeX : effectiveBoxModel.x
+    property real visualDocY: moveActive ? rootWindow.moveY : resizeActive ? rootWindow.resizeY : effectiveBoxModel.y
+    property real visualDocW: resizeActive ? rootWindow.resizeW : effectiveBoxModel.w
+    property real visualDocH: resizeActive ? rootWindow.resizeH : effectiveBoxModel.h
+    property string livePreviewText: modelPreviewText()
     readonly property bool textOverflow: boxOutlinedText.overflow
+
+    function modelPreviewText() {
+        return effectiveBoxModel.uppercase ? String(effectiveBoxModel.text).toUpperCase() : effectiveBoxModel.text;
+    }
+
+    onEditingSelectedChanged: livePreviewText = modelPreviewText()
 
     objectName: "textBoxDelegate"
     x: rootWindow.documentToViewX(visualDocX)
@@ -109,30 +117,30 @@ Rectangle {
             height: boxRef.visualDocH * rootWindow.livePreviewScale()
             transformOrigin: Item.TopLeft
             scale: rootWindow.viewDocScale() / rootWindow.livePreviewScale()
-            text: boxRef.selected && editorRef.editingText ? boxTextArea.text : (modelData.uppercase ? String(modelData.text).toUpperCase() : modelData.text)
-            color: rootWindow.qmlColor(modelData.color)
-            fontFamily: modelData.fontFamily
-            pixelSize: Math.max(1, modelData.fontSize)
-            bold: modelData.bold
-            italic: modelData.italic
-            letterSpacing: modelData.letterSpacing
-            lineSpacing: modelData.lineSpacing
-            horizontalAlignment: modelData.alignment === 1 ? Text.AlignHCenter : modelData.alignment === 2 ? Text.AlignRight : Text.AlignLeft
-            outlineColor: rootWindow.qmlColor(modelData.outlineColor)
-            outlineSize: modelData.outline && modelData.outlineSize > 0 ? modelData.outlineSize : 0
-            blurSize: modelData.blur && modelData.blurSize > 0 ? modelData.blurSize : 0
-            shadowEnabled: modelData.shadow
-            shadowColor: rootWindow.qmlColor(modelData.shadowColor)
-            shadowOffsetX: modelData.shadowOffsetX
-            shadowOffsetY: modelData.shadowOffsetY
-            shadowBlurSize: modelData.shadow && modelData.shadowBlurSize > 0 ? modelData.shadowBlurSize : 0
-            gradientEnabled: modelData.gradient
-            gradientDirection: modelData.gradientDirection
-            gradientColorA: rootWindow.qmlColor(modelData.gradientColorA)
-            gradientColorB: rootWindow.qmlColor(modelData.gradientColorB)
-            pathEnabled: modelData.path && !boxRef.editingSelected
-            pathMode: modelData.pathMode
-            pathPoints: modelData.pathPoints
+            text: boxRef.editingSelected ? boxRef.livePreviewText : boxRef.modelPreviewText()
+            color: rootWindow.qmlColor(boxRef.effectiveBoxModel.color)
+            fontFamily: boxRef.effectiveBoxModel.fontFamily
+            pixelSize: Math.max(1, boxRef.effectiveBoxModel.fontSize)
+            bold: boxRef.effectiveBoxModel.bold
+            italic: boxRef.effectiveBoxModel.italic
+            letterSpacing: boxRef.effectiveBoxModel.letterSpacing
+            lineSpacing: boxRef.effectiveBoxModel.lineSpacing
+            horizontalAlignment: boxRef.effectiveBoxModel.alignment === 1 ? Text.AlignHCenter : boxRef.effectiveBoxModel.alignment === 2 ? Text.AlignRight : Text.AlignLeft
+            outlineColor: rootWindow.qmlColor(boxRef.effectiveBoxModel.outlineColor)
+            outlineSize: boxRef.effectiveBoxModel.outline && boxRef.effectiveBoxModel.outlineSize > 0 ? boxRef.effectiveBoxModel.outlineSize : 0
+            blurSize: boxRef.effectiveBoxModel.blur && boxRef.effectiveBoxModel.blurSize > 0 ? boxRef.effectiveBoxModel.blurSize : 0
+            shadowEnabled: boxRef.effectiveBoxModel.shadow
+            shadowColor: rootWindow.qmlColor(boxRef.effectiveBoxModel.shadowColor)
+            shadowOffsetX: boxRef.effectiveBoxModel.shadowOffsetX
+            shadowOffsetY: boxRef.effectiveBoxModel.shadowOffsetY
+            shadowBlurSize: boxRef.effectiveBoxModel.shadow && boxRef.effectiveBoxModel.shadowBlurSize > 0 ? boxRef.effectiveBoxModel.shadowBlurSize : 0
+            gradientEnabled: boxRef.effectiveBoxModel.gradient
+            gradientDirection: boxRef.effectiveBoxModel.gradientDirection
+            gradientColorA: rootWindow.qmlColor(boxRef.effectiveBoxModel.gradientColorA)
+            gradientColorB: rootWindow.qmlColor(boxRef.effectiveBoxModel.gradientColorB)
+            pathEnabled: boxRef.effectiveBoxModel.path && !boxRef.editingSelected
+            pathMode: boxRef.effectiveBoxModel.pathMode
+            pathPoints: boxRef.effectiveBoxModel.pathPoints
             renderScale: rootWindow.livePreviewScale()
         }
 
@@ -233,7 +241,7 @@ Rectangle {
         property var boxRef: parent
         property var rootWindow: boxRef.rootWindow
         property var editorRef: boxRef.editorRef
-        property real editLineSpacing: modelData.lineSpacing
+        property real editLineSpacing: boxRef.effectiveBoxModel.lineSpacing
         readonly property bool editLayoutAligned: boxOutlinedText.editLayoutMetricsValid
         readonly property real editLayoutTopPadding: editLayoutAligned ? boxOutlinedText.editLayoutTopPadding : 0
         readonly property real editLayoutLeftPadding: editLayoutAligned ? boxOutlinedText.editLayoutLeftPadding : 0
@@ -252,6 +260,49 @@ Rectangle {
             editorRef.applyTextLineSpacing(textDocument, editLineSpacing);
         }
 
+        property bool syncingTextFromModel: false
+        property bool userInputSyncPending: false
+        property string livePreviewText: boxRef.livePreviewText
+        property string pendingUserInputText: ""
+
+        function modelText() {
+            return boxRef.modelPreviewText();
+        }
+
+        function setLivePreviewText(nextText) {
+            livePreviewText = nextText;
+            boxRef.livePreviewText = nextText;
+        }
+
+        function syncTextFromModel() {
+            const nextText = modelText();
+            if (activeFocus && userInputSyncPending) {
+                setLivePreviewText(text);
+                userInputSyncPending = false;
+                pendingUserInputText = "";
+                return ;
+            }
+
+            userInputSyncPending = false;
+            pendingUserInputText = "";
+
+            if (text === nextText) {
+                setLivePreviewText(text);
+                return ;
+            }
+
+            const oldCursor = cursorPosition;
+            const oldSelectionStart = selectionStart;
+            const oldSelectionEnd = selectionEnd;
+            syncingTextFromModel = true;
+            text = nextText;
+            setLivePreviewText(nextText);
+            cursorPosition = Math.min(oldCursor, text.length);
+            select(Math.min(oldSelectionStart, text.length), Math.min(oldSelectionEnd, text.length));
+            syncingTextFromModel = false;
+            applyLineSpacing();
+        }
+
         objectName: "boxTextArea"
         z: 1
         x: editLayoutPaintOffsetX * rootWindow.viewDocScale()
@@ -262,18 +313,18 @@ Rectangle {
         scale: rootWindow.viewDocScale()
         clip: true
         visible: boxRef.selected && editorRef.editingText
-        text: modelData.uppercase ? String(modelData.text).toUpperCase() : modelData.text
+        text: ""
         color: "transparent"
         selectedTextColor: "transparent"
         selectionColor: Qt.alpha(rootWindow.palette.highlight, 0.35)
         placeholderTextColor: "transparent"
-        font.family: modelData.resolvedFontFamily
-        font.pixelSize: Math.round(Math.max(1, modelData.fontSize))
-        font.bold: modelData.bold
-        font.weight: modelData.bold ? Font.Bold : Font.Normal
-        font.italic: modelData.italic
-        font.letterSpacing: modelData.letterSpacing
-        horizontalAlignment: modelData.alignment === 1 ? TextEdit.AlignHCenter : modelData.alignment === 2 ? TextEdit.AlignRight : TextEdit.AlignLeft
+        font.family: boxRef.effectiveBoxModel.resolvedFontFamily
+        font.pixelSize: Math.round(Math.max(1, boxRef.effectiveBoxModel.fontSize))
+        font.bold: boxRef.effectiveBoxModel.bold
+        font.weight: boxRef.effectiveBoxModel.bold ? Font.Bold : Font.Normal
+        font.italic: boxRef.effectiveBoxModel.italic
+        font.letterSpacing: boxRef.effectiveBoxModel.letterSpacing
+        horizontalAlignment: boxRef.effectiveBoxModel.alignment === 1 ? TextEdit.AlignHCenter : boxRef.effectiveBoxModel.alignment === 2 ? TextEdit.AlignRight : TextEdit.AlignLeft
         padding: 0
         topPadding: editLayoutTopPadding
         leftPadding: editLayoutLeftPadding
@@ -285,11 +336,13 @@ Rectangle {
         selectByMouse: boxRef.selected && editorRef.editingText
         readOnly: !(boxRef.selected && editorRef.editingText)
         Component.onCompleted: {
+            syncTextFromModel();
             applyLineSpacing();
             Qt.callLater(focusForEdit);
         }
         onVisibleChanged: {
             if (visible) {
+                syncTextFromModel();
                 applyLineSpacing();
                 Qt.callLater(focusForEdit);
             }
@@ -307,10 +360,23 @@ Rectangle {
             }
         }
         onTextChanged: {
+            setLivePreviewText(text);
             applyLineSpacing();
-            if (activeFocus && editorRef)
+            if (activeFocus && editorRef && !syncingTextFromModel) {
+                userInputSyncPending = true;
+                pendingUserInputText = text;
                 editorRef.updateSelectedText(text);
+            }
 
+        }
+
+        Connections {
+            function onSelectedBoxChanged() {
+                if (boxTextArea.visible)
+                    boxTextArea.syncTextFromModel();
+            }
+
+            target: boxTextArea.editorRef
         }
 
         cursorDelegate: Rectangle {

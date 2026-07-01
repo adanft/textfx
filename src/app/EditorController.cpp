@@ -710,11 +710,8 @@ void EditorController::endInteraction() {
   if (interactionDepth_ <= 0)
     return;
   --interactionDepth_;
-  if (interactionDepth_ == 0 && pendingDocumentChanged_) {
-    pendingDocumentChanged_ = false;
-    emit documentChanged();
+  if (interactionDepth_ == 0 && flushPendingDocumentChanged())
     emit stateChanged();
-  }
 }
 
 void EditorController::beginTextEdit() {
@@ -727,8 +724,11 @@ void EditorController::beginTextEdit() {
 
 void EditorController::endTextEdit() {
   const bool wasEditing = editingText_;
-  if (wasEditing)
-    endInteraction();
+  if (wasEditing) {
+    if (interactionDepth_ > 0)
+      --interactionDepth_;
+    flushPendingDocumentChanged();
+  }
   editingText_ = false;
   emit stateChanged();
 }
@@ -804,7 +804,6 @@ void EditorController::markDocumentChanged() {
   document_.setDirty(true);
   if (interactionDepth_ > 0) {
     pendingDocumentChanged_ = true;
-    emit documentChanged();
     emit selectedBoxChanged();
     emit stateChanged();
     return;
@@ -812,6 +811,15 @@ void EditorController::markDocumentChanged() {
   emit documentChanged();
   emit selectedBoxChanged();
   emit stateChanged();
+}
+
+bool EditorController::flushPendingDocumentChanged() {
+  if (!pendingDocumentChanged_)
+    return false;
+  pendingDocumentChanged_ = false;
+  emit documentChanged();
+  emit selectedBoxChanged();
+  return true;
 }
 
 void EditorController::setNotification(QString message) {

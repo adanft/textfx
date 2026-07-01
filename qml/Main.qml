@@ -175,6 +175,8 @@ ApplicationWindow {
     }
 
     function fontFamilyOptions(selected) {
+        const options = [];
+
         function add(value) {
             const family = String(value || "").trim();
             if (family.length > 0 && options.indexOf(family) < 0)
@@ -182,7 +184,6 @@ ApplicationWindow {
 
         }
 
-        const options = [];
         add(selected);
         if (typeof Qt.fontFamilies === "function") {
             const families = Qt.fontFamilies();

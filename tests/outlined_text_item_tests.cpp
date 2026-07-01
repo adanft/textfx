@@ -9,6 +9,7 @@
 #include <QPainter>
 #include <QPointF>
 #include <QRect>
+#include <QSignalSpy>
 #include <QString>
 #include <QStringList>
 #include <QTemporaryDir>
@@ -81,6 +82,36 @@ private slots:
     item.setWidth(600);
     item.setHeight(120);
     QVERIFY(!item.overflow());
+  }
+
+  void textChangesRequestPaintRefresh() {
+    OutlinedTextItem item;
+    item.setWidth(180);
+    item.setHeight(80);
+
+    QSignalSpy textChanged(&item, &OutlinedTextItem::textChanged);
+    QSignalSpy paintRequested(
+        &item, &OutlinedTextItem::paintRequestRevisionChangedForTesting);
+    QSignalSpy layoutChanged(&item, &OutlinedTextItem::editLayoutMetricsChanged);
+
+    item.setText(QStringLiteral("Live"));
+
+    QCOMPARE(textChanged.count(), 1);
+    QCOMPARE(paintRequested.count(), 1);
+    QCOMPARE(layoutChanged.count(), 1);
+    QCOMPARE(item.paintRequestRevisionForTesting(), 1);
+
+    item.setText(QStringLiteral("Live"));
+    QCOMPARE(textChanged.count(), 1);
+    QCOMPARE(paintRequested.count(), 1);
+    QCOMPARE(layoutChanged.count(), 1);
+    QCOMPARE(item.paintRequestRevisionForTesting(), 1);
+
+    item.setText(QStringLiteral("Live!"));
+    QCOMPARE(textChanged.count(), 2);
+    QCOMPARE(paintRequested.count(), 2);
+    QCOMPARE(layoutChanged.count(), 2);
+    QCOMPARE(item.paintRequestRevisionForTesting(), 2);
   }
 
   void usesOutlineSizeWhenPainting() {

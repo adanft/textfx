@@ -31,7 +31,7 @@ private slots:
     QVERIFY(source.contains(QStringLiteral(
         "sidePanelTextInputFocused: window.sidePanelFocusedTextInputs > 0")));
     QVERIFY(source.contains(QStringLiteral(
-        "enabled: editorChrome.editor && !editorChrome.editor.editingText && "
+        "enabled: editorChrome.editor && "
         "!editorChrome.sidePanelTextInputFocused")));
     QVERIFY(source.contains(QStringLiteral(
         "onActiveFocusChanged: "

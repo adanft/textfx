@@ -11,6 +11,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPainterPathStroker>
+#include <QQuickWindow>
 #include <QRectF>
 
 #include <algorithm>
@@ -564,8 +565,18 @@ void OutlinedTextItem::updateOverflow() {
 
 void OutlinedTextItem::notifyLayoutChanged() {
   updateOverflow();
-  update();
+  requestPaintRefresh();
   emit editLayoutMetricsChanged();
+}
+
+void OutlinedTextItem::requestPaintRefresh() {
+  update();
+  if (auto *quickWindow = window())
+    quickWindow->update();
+#ifdef TEXTFX_TESTING
+  ++paintRequestRevision_;
+  emit paintRequestRevisionChangedForTesting();
+#endif
 }
 
 QPointF OutlinedTextItem::paintTranslationForCurrentLayout() const {
