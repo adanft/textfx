@@ -879,8 +879,8 @@ private slots:
     QVERIFY(propertiesSource.contains(
         QStringLiteral("model: "
                        "leftInspectorPanel.fontFamilyOptionsProvider("
-                       "leftInspectorPanel.selectedBox() ? "
-                       "leftInspectorPanel.selectedBox().fontFamily : \"\")")));
+                       "leftInspectorPanel.selectedBox ? "
+                       "leftInspectorPanel.selectedBox.fontFamily : \"\")")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral("ComboBox { id: fontFamilyCombo "
@@ -920,22 +920,22 @@ private slots:
         propertiesSource,
         QStringLiteral(
             "accessibleLabel: qsTr(\"Bold\"); checked: "
-            "leftInspectorPanel.selectedBox() ? "
-            "leftInspectorPanel.selectedBox().bold : false; onClicked: "
+            "leftInspectorPanel.selectedBox ? "
+            "leftInspectorPanel.selectedBox.bold : false; onClicked: "
             "leftInspectorPanel.editor.setSelectedBold(checked)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
             "text: String.fromCodePoint(983671); accessibleLabel: "
-            "qsTr(\"Italic\"); checked: leftInspectorPanel.selectedBox() ? "
-            "leftInspectorPanel.selectedBox().italic : false; onClicked: "
+            "qsTr(\"Italic\"); checked: leftInspectorPanel.selectedBox ? "
+            "leftInspectorPanel.selectedBox.italic : false; onClicked: "
             "leftInspectorPanel.editor.setSelectedItalic(checked)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
             "text: String.fromCodePoint(985910); accessibleLabel: "
-            "qsTr(\"Uppercase\"); checked: leftInspectorPanel.selectedBox() ? "
-            "leftInspectorPanel.selectedBox().uppercase : false; onClicked: "
+            "qsTr(\"Uppercase\"); checked: leftInspectorPanel.selectedBox ? "
+            "leftInspectorPanel.selectedBox.uppercase : false; onClicked: "
             "leftInspectorPanel.editor.setSelectedUppercase(checked)")));
     QVERIFY(!propertiesSource.contains(
         QStringLiteral("Label { text: qsTr(\"Bold\") }")));
@@ -966,24 +966,24 @@ private slots:
         propertiesSource,
         QStringLiteral(
             "text: String.fromCodePoint(983650); accessibleLabel: qsTr(\"Align "
-            "Left\"); checked: leftInspectorPanel.selectedBox() ? "
-            "leftInspectorPanel.selectedBox().alignment === 0 : false; "
+            "Left\"); checked: leftInspectorPanel.selectedBox ? "
+            "leftInspectorPanel.selectedBox.alignment === 0 : false; "
             "onClicked: "
             "leftInspectorPanel.editor.setSelectedAlignment(0)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
             "text: String.fromCodePoint(983648); accessibleLabel: qsTr(\"Align "
-            "Center\"); checked: leftInspectorPanel.selectedBox() ? "
-            "leftInspectorPanel.selectedBox().alignment === 1 : false; "
+            "Center\"); checked: leftInspectorPanel.selectedBox ? "
+            "leftInspectorPanel.selectedBox.alignment === 1 : false; "
             "onClicked: "
             "leftInspectorPanel.editor.setSelectedAlignment(1)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
             "text: String.fromCodePoint(983651); accessibleLabel: qsTr(\"Align "
-            "Right\"); checked: leftInspectorPanel.selectedBox() ? "
-            "leftInspectorPanel.selectedBox().alignment === 2 : false; "
+            "Right\"); checked: leftInspectorPanel.selectedBox ? "
+            "leftInspectorPanel.selectedBox.alignment === 2 : false; "
             "onClicked: "
             "leftInspectorPanel.editor.setSelectedAlignment(2)")));
     QVERIFY(!source.contains(

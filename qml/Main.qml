@@ -174,15 +174,6 @@ ApplicationWindow {
         window.setZoomAtCenter(displayScale / window.pageBaseScale);
     }
 
-    function selectedBox() {
-        for (let i = 0; i < Editor.boxes.length; ++i) {
-            if (Editor.boxes[i].index === Editor.selectedIndex)
-                return Editor.boxes[i];
-
-        }
-        return null;
-    }
-
     function fontFamilyOptions(selected) {
         function add(value) {
             const family = String(value || "").trim();
@@ -556,9 +547,7 @@ ApplicationWindow {
                     objectName: "leftInspectorPanel"
                     editor: window.editor
                     editorLimits: editorLimits
-                    selectedBoxProvider: () => {
-                        return window.selectedBox();
-                    }
+                    selectedBox: Editor.selectedBox
                     fontFamilyOptionsProvider: (selected) => {
                         return window.fontFamilyOptions(selected);
                     }
@@ -688,9 +677,7 @@ ApplicationWindow {
                     displayScale: viewportMetrics.viewDocScale()
                     minimumDisplayScale: window.pageBaseScale * viewportMetrics.minimumZoom
                     maximumDisplayScale: window.pageBaseScale * viewportMetrics.maximumZoom
-                    selectedBoxProvider: () => {
-                        return window.selectedBox();
-                    }
+                    selectedBox: Editor.selectedBox
                     qmlColorProvider: (hex) => {
                         return window.qmlColor(hex);
                     }

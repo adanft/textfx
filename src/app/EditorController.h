@@ -8,7 +8,9 @@
 #include <QString>
 #include <QStringList>
 #include <QUrl>
+#include <QVariant>
 #include <QVariantList>
+#include <QVariantMap>
 
 #include <filesystem>
 #include <functional>
@@ -24,6 +26,8 @@ class EditorController final : public QObject {
       bool rawVisible READ rawVisible WRITE setRawVisible NOTIFY stateChanged)
   Q_PROPERTY(bool editingText READ editingText NOTIFY stateChanged)
   Q_PROPERTY(int selectedIndex READ selectedIndex NOTIFY selectionChanged)
+  Q_PROPERTY(QVariant selectedBox READ selectedBoxViewModel NOTIFY
+                 selectedBoxChanged)
   Q_PROPERTY(QString notification READ notification NOTIFY notificationChanged)
   Q_PROPERTY(QStringList pages READ pages NOTIFY stateChanged)
   Q_PROPERTY(QStringList pageLabels READ pageLabels NOTIFY stateChanged)
@@ -62,6 +66,7 @@ public:
     return currentPageIndex_ >= 0 && currentPageIndex_ + 1 < pageCount();
   }
   QVariantList boxes() const;
+  QVariant selectedBoxViewModel() const;
   QVariantList layers() const;
   QVariantList presets() const;
   int selectedPresetIndex() const { return selectedPresetIndex_; }
@@ -147,6 +152,7 @@ signals:
   void stateChanged();
   void documentChanged();
   void selectionChanged();
+  void selectedBoxChanged();
   void notificationChanged();
   void pageTextsChanged();
 

@@ -68,6 +68,13 @@ QVariantList EditorController::boxes() const {
   return EditorViewModels::textBoxList(document_.textBoxes());
 }
 
+QVariant EditorController::selectedBoxViewModel() const {
+  const auto *box = selectedBox();
+  if (!box)
+    return {};
+  return EditorViewModels::textBoxMap(*box, selectedIndex_);
+}
+
 QVariantList EditorController::layers() const {
   return EditorViewModels::layerList(document_.textBoxes());
 }
@@ -155,6 +162,7 @@ bool EditorController::openProjectInternal(const QString &folder,
     return false;
   }
   emit selectionChanged();
+  emit selectedBoxChanged();
   emit pageTextsChanged();
   emit documentChanged();
   emit stateChanged();
@@ -223,6 +231,7 @@ void EditorController::newDocument() {
   selectedIndex_ = -1;
   selectedPresetIndex_ = document_.presets().empty() ? -1 : 0;
   emit selectionChanged();
+  emit selectedBoxChanged();
   emit pageTextsChanged();
   emit documentChanged();
   emit stateChanged();
@@ -316,9 +325,13 @@ void EditorController::goToPage(int index) {
 }
 
 void EditorController::selectBox(int index) {
-  selectedIndex_ =
+  const int normalizedIndex =
       TextBoxSelectionService::normalizedIndex(document_.textBoxes(), index);
+  if (normalizedIndex == selectedIndex_)
+    return;
+  selectedIndex_ = normalizedIndex;
   emit selectionChanged();
+  emit selectedBoxChanged();
   emit stateChanged();
 }
 
@@ -343,6 +356,7 @@ void EditorController::updateSelectedText(const QString &text) {
     if (editingText_) {
       document_.setDirty(true);
       pendingDocumentChanged_ = true;
+      emit selectedBoxChanged();
       emit stateChanged();
       return false;
     }
@@ -789,10 +803,12 @@ void EditorController::markDocumentChanged() {
   if (interactionDepth_ > 0) {
     pendingDocumentChanged_ = true;
     emit documentChanged();
+    emit selectedBoxChanged();
     emit stateChanged();
     return;
   }
   emit documentChanged();
+  emit selectedBoxChanged();
   emit stateChanged();
 }
 
@@ -825,6 +841,7 @@ void EditorController::clearProjectState() {
   selectedIndex_ = -1;
   selectedPresetIndex_ = -1;
   emit selectionChanged();
+  emit selectedBoxChanged();
   emit pageTextsChanged();
   emit documentChanged();
   emit stateChanged();
@@ -851,6 +868,7 @@ bool EditorController::loadPageAt(int index) {
   }
   reloadPresets();
   emit selectionChanged();
+  emit selectedBoxChanged();
   emit pageTextsChanged();
   emit documentChanged();
   emit stateChanged();

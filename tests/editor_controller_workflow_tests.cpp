@@ -711,6 +711,46 @@ private slots:
     QCOMPARE(editor.boxes().size(), 1);
   }
 
+  void selectedBoxViewModelTracksSelectionDirectly() {
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(1, 2, 80, 40);
+    editor.setSelectedFontFamily(QStringLiteral("TextFX Direct Selection"));
+    editor.createTextBox(3, 4, 90, 50);
+
+    QCOMPARE(editor.selectedIndex(), 1);
+    QCOMPARE(editor.selectedBoxViewModel()
+                 .toMap()
+                 .value(QStringLiteral("index"))
+                 .toInt(),
+             1);
+
+    editor.selectBox(0);
+
+    const QVariantMap selected = editor.property("selectedBox").toMap();
+    QCOMPARE(selected.value(QStringLiteral("index")).toInt(), 0);
+    QCOMPARE(selected.value(QStringLiteral("fontFamily")).toString(),
+             QStringLiteral("TextFX Direct Selection"));
+  }
+
+  void selectingAlreadySelectedBoxDoesNotEmitChanges() {
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(1, 2, 80, 40);
+    editor.createTextBox(3, 4, 90, 50);
+
+    QSignalSpy selectionChanged(&editor, &EditorController::selectionChanged);
+    QSignalSpy selectedBoxChanged(&editor,
+                                  &EditorController::selectedBoxChanged);
+    QSignalSpy stateChanged(&editor, &EditorController::stateChanged);
+
+    editor.selectBox(1);
+
+    QCOMPARE(selectionChanged.count(), 0);
+    QCOMPARE(selectedBoxChanged.count(), 0);
+    QCOMPARE(stateChanged.count(), 0);
+  }
+
   void textPropertiesUpdateSelectedBox() {
     EditorController editor;
     editor.newDocument();

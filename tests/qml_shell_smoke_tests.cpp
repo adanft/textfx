@@ -168,6 +168,10 @@ private slots:
     QVERIFY(mainSource.contains(
         QStringLiteral("objectName: \"leftInspectorPanel\"")));
     QVERIFY(source.contains(QStringLiteral("id: sidePanel")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        mainSource, QStringLiteral("selectedBox: Editor.selectedBox")));
+    QVERIFY(!mainSource.contains(QStringLiteral("selectedBoxProvider")));
+    QVERIFY(!mainSource.contains(QStringLiteral("function selectedBox()")));
     QVERIFY(mainSource.contains(QStringLiteral("CentralCanvasShell {")));
     QVERIFY(mainSource.contains(
         QStringLiteral("objectName: \"centralCanvasShell\"")));
@@ -431,8 +435,7 @@ private slots:
     QVERIFY(mainSource.contains(QStringLiteral("RightInspectorPanel {")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         mainSource,
-        QStringLiteral(
-            "selectedBoxProvider: () => { return window.selectedBox() }")));
+        QStringLiteral("selectedBox: Editor.selectedBox")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         mainSource,
         QStringLiteral(
@@ -857,9 +860,7 @@ private slots:
     QCOMPARE(leftInspector->property("editor").value<QObject *>(), &editor);
     QVERIFY(leftInspector->property("editorLimits").value<QObject *>());
 
-    QVariant selected;
-    QVERIFY(QMetaObject::invokeMethod(leftInspector, "selectedBox",
-                                      Q_RETURN_ARG(QVariant, selected)));
+    const QVariant selected = leftInspector->property("selectedBox");
     QCOMPARE(selected.toMap().value(QStringLiteral("fontFamily")).toString(),
              QStringLiteral("TextFX Inspector Test"));
 
@@ -1030,9 +1031,7 @@ private slots:
     QCOMPARE(rightInspector->property("minimumDisplayScale").toDouble(), 0.5);
     QCOMPARE(rightInspector->property("maximumDisplayScale").toDouble(), 6.0);
 
-    QVariant selected;
-    QVERIFY(QMetaObject::invokeMethod(rightInspector, "selectedBox",
-                                      Q_RETURN_ARG(QVariant, selected)));
+    const QVariant selected = rightInspector->property("selectedBox");
     QCOMPARE(selected.toMap().value(QStringLiteral("outlineColor")).toString(),
              QStringLiteral("112233ff"));
 
