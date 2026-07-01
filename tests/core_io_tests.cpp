@@ -290,8 +290,7 @@ TEST_CASE("Page text service applies selected texts and advances per-page "
   CHECK_FALSE(positions.contains("page2.png"));
 }
 
-TEST_CASE("Missing project presets returns built-in defaults without writing a "
-          "file") {
+TEST_CASE("Missing project presets returns no presets without writing a file") {
   const auto folder = makeTempDir("textfx-default-presets-");
   DocumentModel document;
   std::vector<TextPreset> projectPresets;
@@ -299,11 +298,9 @@ TEST_CASE("Missing project presets returns built-in defaults without writing a "
   REQUIRE(ProjectStore(folder).loadPresets(document, projectPresets));
 
   CHECK_FALSE(std::filesystem::exists(ProjectStore(folder).presetsPath()));
-  REQUIRE(document.presets().size() ==
-          ProjectStore::defaultTextPresets().size());
+  CHECK(document.presets().empty());
   CHECK(projectPresets.empty());
-  CHECK(document.presets().front().name == "Globo normal");
-  CHECK(document.presets().front().style.fontFamily == "Back Issues BB");
+  CHECK(ProjectStore::defaultTextPresets().empty());
   std::filesystem::remove_all(folder);
 }
 
@@ -330,18 +327,18 @@ TEST_CASE("Project presets persist as TextFX presets file") {
   std::filesystem::remove_all(folder);
 }
 
-TEST_CASE("Project preset overrides built-in preset by name") {
+TEST_CASE("Project presets load without built-in merging") {
   const auto folder = makeTempDir("textfx-override-presets-");
   ProjectStore store(folder);
   REQUIRE(store.savePresets(
-      {{"Globo normal", {.fontFamily = "Custom Bubble", .fontSize = 30}}}));
+      {{"Custom Bubble", {.fontFamily = "Custom Bubble", .fontSize = 30}}}));
 
   DocumentModel document;
   std::vector<TextPreset> projectPresets;
   REQUIRE(store.loadPresets(document, projectPresets));
 
-  CHECK(document.presets().size() == ProjectStore::defaultTextPresets().size());
-  CHECK(document.presets().front().name == "Globo normal");
+  REQUIRE(document.presets().size() == 1);
+  CHECK(document.presets().front().name == "Custom Bubble");
   CHECK(document.presets().front().style.fontFamily == "Custom Bubble");
   CHECK(document.presets().front().style.fontSize == 30);
   std::filesystem::remove_all(folder);

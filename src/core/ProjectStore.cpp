@@ -10,85 +10,6 @@ namespace textfx {
 namespace {
 const std::vector<std::string> legacyCleanedFolders{"cleaned", "clean", "pages",
                                                     "images"};
-const std::vector<TextPreset> defaultPresets{
-    {"Globo normal",
-     {.fontFamily = "Back Issues BB",
-      .fontSize = 20,
-      .alignment = TextAlignment::Center}},
-    {"Globo pensamientos",
-     {.fontFamily = "CCGrimNGritty",
-      .fontSize = 20,
-      .alignment = TextAlignment::Center}},
-    {"SFX suave",
-     {.fontFamily = "Gabriel Weiss' Friends Font",
-      .fontSize = 32,
-      .textColor = "ffffffff",
-      .uppercase = true,
-      .alignment = TextAlignment::Center}},
-    {"SFX comico",
-     {.fontFamily = "KG Life is Messy",
-      .fontSize = 32,
-      .textColor = "ffffffff",
-      .uppercase = true,
-      .alignment = TextAlignment::Center}},
-    {"Temblando",
-     {.fontFamily = "Komika Boo",
-      .fontSize = 24,
-      .alignment = TextAlignment::Center}},
-    {"Temblando 2",
-     {.fontFamily = "Wahroonga",
-      .fontSize = 24,
-      .alignment = TextAlignment::Center}},
-    {"Texto celular", {.fontFamily = "Tahoma", .fontSize = 18}},
-    {"Texto feliz",
-     {.fontFamily = "Cihuy",
-      .fontSize = 24,
-      .alignment = TextAlignment::Center}},
-    {"Fuera de paneles",
-     {.fontFamily = "Carlisle",
-      .fontSize = 22,
-      .alignment = TextAlignment::Center}},
-    {"Fuera de paneles final",
-     {.fontFamily = "Villain Team-Up",
-      .fontSize = 14,
-      .alignment = TextAlignment::Center}},
-    {"Fuera de globo",
-     {.fontFamily = "Kennebunkport",
-      .fontSize = 22,
-      .italic = true,
-      .alignment = TextAlignment::Center}},
-    {"Texto de cuadros",
-     {.fontFamily = "CCMarianChurchlandW00-Rg",
-      .fontSize = 20,
-      .alignment = TextAlignment::Center}},
-    {"Titulo del capitulo",
-     {.fontFamily = "AD Polaquita",
-      .fontSize = 26,
-      .uppercase = true,
-      .alignment = TextAlignment::Center}},
-    {"Texto fuerte",
-     {.fontFamily = "000 BeatDownBB [TeddyBear]",
-      .fontSize = 34,
-      .textColor = "ffffffff",
-      .uppercase = true,
-      .alignment = TextAlignment::Center}},
-    {"Texto fuerte 2",
-     {.fontFamily = "Fight to the Finish BB",
-      .fontSize = 34,
-      .textColor = "ffffffff",
-      .bold = true,
-      .uppercase = true,
-      .alignment = TextAlignment::Center}},
-    {"Texto pequeño",
-     {.fontFamily = "Go Boom!",
-      .fontSize = 16,
-      .alignment = TextAlignment::Center}},
-    {"Texto tenebroso",
-     {.fontFamily = "Monsterama",
-      .fontSize = 28,
-      .uppercase = true,
-      .alignment = TextAlignment::Center}},
-};
 
 int compareNumbers(std::string_view a, std::string_view b) {
   while (a.size() > 1 && a.front() == '0')
@@ -251,22 +172,12 @@ bool ProjectStore::loadPresets(DocumentModel &document,
                                std::vector<TextPreset> &projectPresets,
                                std::string *error) const {
   projectPresets.clear();
-  auto merged = defaultTextPresets();
   const auto path = presetsPath();
   if (std::filesystem::exists(path) &&
       !JsonSerializer::loadPresets(path, projectPresets, error))
     return false;
 
-  for (const auto &preset : projectPresets) {
-    auto found = std::ranges::find_if(merged, [&](const TextPreset &item) {
-      return item.name == preset.name;
-    });
-    if (found == merged.end())
-      merged.push_back(preset);
-    else
-      *found = preset;
-  }
-  document.presets() = std::move(merged);
+  document.presets() = projectPresets;
   return true;
 }
 
@@ -351,13 +262,11 @@ std::string ProjectStore::lower(std::string value) {
 }
 
 std::vector<TextPreset> ProjectStore::defaultTextPresets() {
-  return defaultPresets;
+  return {};
 }
 
-bool ProjectStore::isDefaultTextPresetName(const std::string &name) {
-  return std::ranges::any_of(defaultPresets, [&](const TextPreset &preset) {
-    return preset.name == name;
-  });
+bool ProjectStore::isDefaultTextPresetName(const std::string & /*name*/) {
+  return false;
 }
 
 } // namespace textfx

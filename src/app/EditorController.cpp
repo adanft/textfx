@@ -894,7 +894,7 @@ bool EditorController::reloadPresets(const std::string &preferredName) {
                       .at(static_cast<std::size_t>(selectedPresetIndex_))
                       .name;
   }
-  document_.presets() = ProjectStore::defaultTextPresets();
+  document_.presets().clear();
   if (store_) {
     std::string error;
     if (!store_->loadPresets(document_, projectPresets_, &error)) {

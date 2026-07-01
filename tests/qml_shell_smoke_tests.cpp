@@ -13,6 +13,8 @@
 #include <QUrl>
 #include <QVariantMap>
 
+#include <cmath>
+
 using namespace textfx;
 using namespace textfx::test;
 
@@ -449,6 +451,79 @@ private slots:
         QStringLiteral("contentWidth: availableWidth")));
     QVERIFY(rightPanelSource.contains(
         QStringLiteral("width: rightPanelScroll.availableWidth")));
+    QVERIFY(rightPanelSource.contains(
+        QStringLiteral("property real displayScale: 1")));
+    QVERIFY(rightPanelSource.contains(
+        QStringLiteral("property real minimumDisplayScale: 0.5")));
+    QVERIFY(rightPanelSource.contains(
+        QStringLiteral("property real maximumDisplayScale: 6")));
+    QVERIFY(rightPanelSource.contains(
+        QStringLiteral("readonly property real displayScaleSnapThreshold: "
+                       "0.1")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("readonly property string maximumDisplayScaleLabel: "
+                       "displayScaleLabel(maximumDisplayScale)")));
+    QVERIFY(rightPanelSource.contains(
+        QStringLiteral("signal zoomRequested(real displayScale)")));
+    QVERIFY(rightPanelSource.contains(
+        QStringLiteral("objectName: \"rightInspectorZoomLabel\"")));
+    QVERIFY(rightPanelSource.contains(
+        QStringLiteral("objectName: \"rightInspectorZoomSlider\"")));
+    QVERIFY(rightPanelSource.contains(
+        QStringLiteral("color: rightInspectorPanel.palette.mid")));
+    QVERIFY(rightPanelSource.contains(
+        QStringLiteral("color: rightInspectorPanel.palette.text")));
+    QVERIFY(!rightPanelSource.contains(QStringLiteral(
+        "color: Qt.alpha(rightInspectorPanel.palette.text, 0.75)")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("function displayScaleLabel(displayScale) { return "
+                       "Number(displayScale * 100).toLocaleString(Qt.locale(), "
+                       "\"f\", 1) + \"%\" }")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("text: rightInspectorPanel.displayScaleLabel("
+                       "rightInspectorPanel.displayScale)")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("Layout.preferredWidth: "
+                       "zoomLabelMetrics.advanceWidth("
+                       "rightInspectorPanel.maximumDisplayScaleLabel)")));
+    QVERIFY(!rightPanelSource.contains(QStringLiteral(
+        "zoomLabelMetrics.advanceWidth(\"600.0%\")")));
+    QVERIFY(rightPanelSource.contains(QStringLiteral("FontMetrics {")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("function detentedDisplayScale(displayScale) { return "
+                        "Math.abs(displayScale - 1) <= "
+                       "displayScaleSnapThreshold + 1e-9 ? 1 : displayScale }")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("from: rightInspectorPanel.minimumDisplayScale; to: "
+                       "rightInspectorPanel.maximumDisplayScale; value: "
+                       "rightInspectorPanel.displayScale; live: true")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("onMoved: { rightInspectorPanel.zoomRequested("
+                       "rightInspectorPanel.detentedDisplayScale(value)) }")));
+    QVERIFY(!rightPanelSource.contains(QStringLiteral("dragDisplayScale")));
+    QVERIFY(!rightPanelSource.contains(QStringLiteral("onPressedChanged")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        mainSource, QStringLiteral("function setDisplayScaleAtCenter(displayScale) "
+                                   "{ if (displayScale <= 0 || window.pageBaseScale "
+                                   "<= 0) return; window.setZoomAtCenter(displayScale "
+                                   "/ window.pageBaseScale) }")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        mainSource, QStringLiteral("displayScale: viewportMetrics.viewDocScale(); "
+                                   "minimumDisplayScale: window.pageBaseScale * "
+                                   "viewportMetrics.minimumZoom; maximumDisplayScale: "
+                                   "window.pageBaseScale * "
+                                   "viewportMetrics.maximumZoom")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        mainSource, QStringLiteral("onZoomRequested: (displayScale) => { return "
+                                   "window.setDisplayScaleAtCenter(displayScale) "
+                                   "}")));
     QVERIFY(!rightPanelSource.contains(
         QStringLiteral("width: Math.max(1, rightPanel.availableWidth)")));
 
@@ -486,6 +561,14 @@ private slots:
         QStringLiteral("contentItem: Label { text: layerDelegate.text")));
     QVERIFY(
         rightPanelSource.contains(QStringLiteral("elide: Text.ElideRight")));
+
+    const qsizetype zoomLabelStart = rightPanelSource.indexOf(
+        QStringLiteral("objectName: \"rightInspectorZoomLabel\""));
+    const qsizetype pageNameStart = rightPanelSource.indexOf(
+        QStringLiteral("rightInspectorPanel.editor.currentPageName"),
+        zoomLabelStart);
+    QVERIFY(zoomLabelStart >= 0);
+    QVERIFY(pageNameStart > zoomLabelStart);
 
     const qsizetype boxStart =
         rightPanelSource.indexOf(QStringLiteral("id: boxEffectsSection"));
@@ -918,8 +1001,12 @@ private slots:
   void qmlMainWiresRightInspectorPanelApi() {
     registerQmlTypes();
 
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    touch(dir.filePath(QStringLiteral("page1.png")));
+
     EditorController editor;
-    editor.newDocument();
+    editor.openProject(dir.path());
     editor.createTextBox(10, 20, 100, 50);
     editor.setSelectedOutlineColor(QStringLiteral("#112233"));
 
@@ -932,18 +1019,96 @@ private slots:
     auto *window =
         qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
     QVERIFY(window);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
 
     auto *rightInspector =
         window->findChild<QObject *>(QStringLiteral("rightInspectorPanel"));
     QVERIFY(rightInspector);
     QCOMPARE(rightInspector->property("editor").value<QObject *>(), &editor);
     QVERIFY(rightInspector->property("editorLimits").value<QObject *>());
+    QCOMPARE(rightInspector->property("displayScale").toDouble(), 1.0);
+    QCOMPARE(rightInspector->property("minimumDisplayScale").toDouble(), 0.5);
+    QCOMPARE(rightInspector->property("maximumDisplayScale").toDouble(), 6.0);
 
     QVariant selected;
     QVERIFY(QMetaObject::invokeMethod(rightInspector, "selectedBox",
                                       Q_RETURN_ARG(QVariant, selected)));
     QCOMPARE(selected.toMap().value(QStringLiteral("outlineColor")).toString(),
              QStringLiteral("112233ff"));
+
+    QVERIFY(window->setProperty("pageBaseScale", 0.25));
+    QVERIFY(window->setProperty("zoom", 2.0));
+    QTRY_COMPARE(rightInspector->property("displayScale").toDouble(), 0.5);
+    QCOMPARE(rightInspector->property("minimumDisplayScale").toDouble(), 0.125);
+    QCOMPARE(rightInspector->property("maximumDisplayScale").toDouble(), 1.5);
+
+    QObject *zoomLabelObject = nullptr;
+    QTRY_VERIFY(zoomLabelObject = findVisualChildByName(
+                    window->contentItem(),
+                    QStringLiteral("rightInspectorZoomLabel")));
+    auto *zoomLabel = qobject_cast<QQuickItem *>(zoomLabelObject);
+    QVERIFY(zoomLabel);
+    QTRY_VERIFY(zoomLabel->isVisible());
+    QCOMPARE(zoomLabel->property("text").toString(), QStringLiteral("50.0%"));
+    const double singleDigitLabelWidth = zoomLabel->width();
+    QVERIFY(singleDigitLabelWidth > 0.0);
+
+    QVERIFY(window->setProperty("zoom", 4.1));
+    QTRY_VERIFY(std::abs(rightInspector->property("displayScale").toDouble() -
+                         1.025) < 0.0001);
+    QCOMPARE(zoomLabel->property("text").toString(), QStringLiteral("102.5%"));
+    QVERIFY(!zoomLabel->property("text").toString().startsWith(
+        QLatin1Char('0')));
+    QCOMPARE(zoomLabel->width(), singleDigitLabelWidth);
+
+    QObject *sliderObject = nullptr;
+    QTRY_VERIFY(sliderObject = findVisualChildByName(
+                    window->contentItem(),
+                    QStringLiteral("rightInspectorZoomSlider")));
+    auto *slider = qobject_cast<QQuickItem *>(sliderObject);
+    QVERIFY(slider);
+    QTRY_VERIFY(slider->isVisible());
+    QVERIFY(slider->isEnabled());
+    QVERIFY(std::abs(slider->property("value").toDouble() - 1.025) < 0.0001);
+
+    QVariant snapped;
+    QVERIFY(QMetaObject::invokeMethod(
+        rightInspector, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
+        Q_ARG(QVariant, 0.9)));
+    QCOMPARE(snapped.toDouble(), 1.0);
+    QVERIFY(QMetaObject::invokeMethod(
+        rightInspector, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
+        Q_ARG(QVariant, 1.1)));
+    QCOMPARE(snapped.toDouble(), 1.0);
+    QVERIFY(QMetaObject::invokeMethod(
+        rightInspector, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
+        Q_ARG(QVariant, 1.05)));
+    QCOMPARE(snapped.toDouble(), 1.0);
+    QVERIFY(QMetaObject::invokeMethod(
+        rightInspector, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
+        Q_ARG(QVariant, 0.899)));
+    QCOMPARE(snapped.toDouble(), 0.899);
+    QVERIFY(QMetaObject::invokeMethod(
+        rightInspector, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
+        Q_ARG(QVariant, 1.101)));
+    QCOMPARE(snapped.toDouble(), 1.101);
+
+    QVERIFY(window->setProperty("pageBaseScale", 1.25));
+    QVERIFY(window->setProperty("zoom", 1.0));
+    QTRY_VERIFY(std::abs(rightInspector->property("displayScale").toDouble() -
+                         1.25) < 0.0001);
+    QCOMPARE(rightInspector->property("maximumDisplayScale").toDouble(), 7.5);
+    QCOMPARE(zoomLabel->property("text").toString(), QStringLiteral("125.0%"));
+    const double aboveSixHundredReservedWidth = zoomLabel->width();
+    QVERIFY(aboveSixHundredReservedWidth >= singleDigitLabelWidth);
+
+    QVERIFY(window->setProperty("zoom", 5.8));
+    QTRY_VERIFY(std::abs(rightInspector->property("displayScale").toDouble() -
+                         7.25) < 0.0001);
+    QCOMPARE(zoomLabel->property("text").toString(), QStringLiteral("725.0%"));
+    QVERIFY(!zoomLabel->property("text").toString().startsWith(
+        QLatin1Char('0')));
+    QCOMPARE(zoomLabel->width(), aboveSixHundredReservedWidth);
   }
 
   void qmlRightInspectorNavigationAndEffectsRouteThroughEditor() {

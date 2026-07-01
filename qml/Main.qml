@@ -160,6 +160,20 @@ ApplicationWindow {
         window.panY = reset.panY;
     }
 
+    function setZoomAtCenter(zoom) {
+        if (zoom <= 0 || zoom === window.zoom)
+            return ;
+
+        window.zoomAt(canvas.width / 2, canvas.height / 2, zoom / window.zoom);
+    }
+
+    function setDisplayScaleAtCenter(displayScale) {
+        if (displayScale <= 0 || window.pageBaseScale <= 0)
+            return ;
+
+        window.setZoomAtCenter(displayScale / window.pageBaseScale);
+    }
+
     function selectedBox() {
         for (let i = 0; i < Editor.boxes.length; ++i) {
             if (Editor.boxes[i].index === Editor.selectedIndex)
@@ -671,6 +685,9 @@ ApplicationWindow {
                     objectName: "rightInspectorPanel"
                     editor: window.editor
                     editorLimits: editorLimits
+                    displayScale: viewportMetrics.viewDocScale()
+                    minimumDisplayScale: window.pageBaseScale * viewportMetrics.minimumZoom
+                    maximumDisplayScale: window.pageBaseScale * viewportMetrics.maximumZoom
                     selectedBoxProvider: () => {
                         return window.selectedBox();
                     }
@@ -679,6 +696,9 @@ ApplicationWindow {
                     }
                     onColorDialogRequested: (hex, setter) => {
                         return window.openColorDialog(hex, setter);
+                    }
+                    onZoomRequested: (displayScale) => {
+                        return window.setDisplayScaleAtCenter(displayScale);
                     }
                 }
 

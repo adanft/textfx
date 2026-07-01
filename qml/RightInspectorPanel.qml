@@ -13,8 +13,22 @@ Pane {
     property var qmlColorProvider: function(hex) {
         return hex;
     }
+    property real displayScale: 1
+    property real minimumDisplayScale: 0.5
+    property real maximumDisplayScale: 6
+    readonly property real displayScaleSnapThreshold: 0.1
+    readonly property string maximumDisplayScaleLabel: displayScaleLabel(maximumDisplayScale)
 
     signal colorDialogRequested(string hex, string setter)
+    signal zoomRequested(real displayScale)
+
+    function detentedDisplayScale(displayScale) {
+        return Math.abs(displayScale - 1) <= displayScaleSnapThreshold + 1e-9 ? 1 : displayScale;
+    }
+
+    function displayScaleLabel(displayScale) {
+        return Number(displayScale * 100).toLocaleString(Qt.locale(), "f", 1) + "%";
+    }
 
     function selectedBox() {
         return selectedBoxProvider ? selectedBoxProvider() : null;
@@ -58,6 +72,44 @@ Pane {
                     ColumnLayout {
                         anchors.fill: parent
                         spacing: 6
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            spacing: 6
+
+                            Label {
+                                id: zoomLabel
+
+                                objectName: "rightInspectorZoomLabel"
+                                text: rightInspectorPanel.displayScaleLabel(rightInspectorPanel.displayScale)
+                                color: rightInspectorPanel.palette.text
+                                horizontalAlignment: Text.AlignRight
+                                Layout.preferredWidth: zoomLabelMetrics.advanceWidth(rightInspectorPanel.maximumDisplayScaleLabel)
+
+                                FontMetrics {
+                                    id: zoomLabelMetrics
+
+                                    font: zoomLabel.font
+                                }
+
+                            }
+
+                            Slider {
+                                objectName: "rightInspectorZoomSlider"
+
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                from: rightInspectorPanel.minimumDisplayScale
+                                to: rightInspectorPanel.maximumDisplayScale
+                                value: rightInspectorPanel.displayScale
+                                live: true
+                                onMoved: {
+                                    rightInspectorPanel.zoomRequested(rightInspectorPanel.detentedDisplayScale(value));
+                                }
+                            }
+
+                        }
 
                         Label {
                             text: rightInspectorPanel.editor.currentPageName.length > 0 ? rightInspectorPanel.editor.currentPageName : qsTr("No page")

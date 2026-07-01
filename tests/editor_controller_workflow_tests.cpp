@@ -5,10 +5,12 @@
 #include <QClipboard>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QFont>
 #include <QFontInfo>
 #include <QGuiApplication>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -17,6 +19,17 @@
 
 using namespace textfx;
 using namespace textfx::test;
+
+namespace {
+void writeJsonFile(const QString &path, const QJsonObject &object) {
+  QFileInfo info(path);
+  QDir().mkpath(info.absolutePath());
+  QFile file(path);
+  QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+  QCOMPARE(file.write(QJsonDocument(object).toJson()),
+           QJsonDocument(object).toJson().size());
+}
+} // namespace
 
 class EditorControllerWorkflowTests final : public QObject {
   Q_OBJECT
@@ -982,17 +995,11 @@ private slots:
 
     EditorController editor;
     editor.openProject(dir.path());
-    QVERIFY(editor.presets().size() >= 17);
-    QCOMPARE(editor.selectedPresetIndex(), 0);
+    QVERIFY(editor.presets().empty());
+    QCOMPARE(editor.selectedPresetIndex(), -1);
     editor.createTextBox(1, 2, 80, 40);
 
-    QVERIFY(editor.applySelectedPreset());
-    QCOMPARE(editor.boxes()
-                 .at(0)
-                 .toMap()
-                 .value(QStringLiteral("fontFamily"))
-                 .toString(),
-             QStringLiteral("Back Issues BB"));
+    QVERIFY(!editor.applySelectedPreset());
 
     editor.setSelectedFontFamily(QStringLiteral("Inter"));
     editor.setSelectedFontSize(31);
@@ -1024,47 +1031,63 @@ private slots:
                  .toString(),
              QStringLiteral("Caption"));
     QVERIFY(editor.deleteSelectedPreset());
-    QVERIFY(editor.presets()
-                .last()
-                .toMap()
-                .value(QStringLiteral("name"))
-                .toString() != QStringLiteral("Caption"));
+    QVERIFY(editor.presets().empty());
+    QCOMPARE(editor.selectedPresetIndex(), -1);
   }
 
-  void defaultPresetUpdateCreatesOverrideButCannotRenameOrDelete() {
+  void loadedUserPresetCanBeAppliedUpdatedRenamedAndDeleted() {
     QTemporaryDir dir;
     QVERIFY(dir.isValid());
     touch(dir.filePath(QStringLiteral("page1.png")));
+    writeJsonFile(
+        dir.filePath(QStringLiteral(".textfx/presets.json")),
+        QJsonObject{{QStringLiteral("format"),
+                     QStringLiteral("textfx.text-presets.v1")},
+                    {QStringLiteral("presets"),
+                     QJsonArray{QJsonObject{
+                         {QStringLiteral("name"), QStringLiteral("Narration")},
+                         {QStringLiteral("properties"),
+                          QJsonObject{{QStringLiteral("font_family"),
+                                       QStringLiteral("Inter")},
+                                      {QStringLiteral("font_size"), 24}}}}}}});
 
     EditorController editor;
     editor.openProject(dir.path());
     editor.createTextBox(1, 2, 80, 40);
     editor.selectPreset(0);
 
-    QVERIFY(!editor.renameSelectedPreset(QStringLiteral("Renamed default")));
-    QVERIFY(!editor.deleteSelectedPreset());
+    QVERIFY(editor.applySelectedPreset());
+    QCOMPARE(editor.boxes()
+                 .first()
+                 .toMap()
+                 .value(QStringLiteral("fontFamily"))
+                 .toString(),
+             QStringLiteral("Inter"));
     editor.setSelectedFontFamily(QStringLiteral("Custom Bubble"));
     QVERIFY(editor.updateSelectedPreset());
 
     QCOMPARE(editor.presets()
                  .first()
                  .toMap()
-                 .value(QStringLiteral("name"))
-                 .toString(),
-             QStringLiteral("Globo normal"));
+                  .value(QStringLiteral("name"))
+                  .toString(),
+             QStringLiteral("Narration"));
     QCOMPARE(editor.presets()
                  .first()
                  .toMap()
                  .value(QStringLiteral("fontFamily"))
                  .toString(),
              QStringLiteral("Custom Bubble"));
+    QVERIFY(editor.renameSelectedPreset(QStringLiteral("Caption")));
     const auto saved =
         readJson(dir.filePath(QStringLiteral(".textfx/presets.json")))
             .value(QStringLiteral("presets"))
             .toArray();
     QCOMPARE(saved.size(), 1);
     QCOMPARE(saved.at(0).toObject().value(QStringLiteral("name")).toString(),
-             QStringLiteral("Globo normal"));
+             QStringLiteral("Caption"));
+    QVERIFY(editor.deleteSelectedPreset());
+    QVERIFY(editor.presets().empty());
   }
 };
 
