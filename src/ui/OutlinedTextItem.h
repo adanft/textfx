@@ -57,10 +57,18 @@ class OutlinedTextItem : public QQuickPaintedItem {
   Q_PROPERTY(QVariantList pathPoints READ pathPoints WRITE setPathPoints NOTIFY
                  pathPointsChanged)
   Q_PROPERTY(qreal renderScale READ renderScale WRITE setRenderScale NOTIFY
-                  renderScaleChanged)
+                 renderScaleChanged)
   Q_PROPERTY(int horizontalAlignment READ horizontalAlignment WRITE
-                  setHorizontalAlignment NOTIFY horizontalAlignmentChanged)
+                 setHorizontalAlignment NOTIFY horizontalAlignmentChanged)
   Q_PROPERTY(bool overflow READ overflow NOTIFY overflowChanged)
+  Q_PROPERTY(bool editLayoutMetricsValid READ editLayoutMetricsValid NOTIFY
+                 editLayoutMetricsChanged)
+  Q_PROPERTY(qreal editLayoutTopPadding READ editLayoutTopPadding NOTIFY
+                 editLayoutMetricsChanged)
+  Q_PROPERTY(qreal editLayoutLeftPadding READ editLayoutLeftPadding NOTIFY
+                 editLayoutMetricsChanged)
+  Q_PROPERTY(qreal editLayoutRightPadding READ editLayoutRightPadding NOTIFY
+                 editLayoutMetricsChanged)
 
 public:
   explicit OutlinedTextItem(QQuickItem *parent = nullptr);
@@ -116,6 +124,10 @@ public:
   int horizontalAlignment() const { return horizontalAlignment_; }
   void setHorizontalAlignment(int value);
   bool overflow() const { return overflow_; }
+  bool editLayoutMetricsValid() const;
+  qreal editLayoutTopPadding() const;
+  qreal editLayoutLeftPadding() const;
+  qreal editLayoutRightPadding() const;
 
 #ifdef TEXTFX_TESTING
   QStringList wrappedLinesForTesting() const;
@@ -156,10 +168,12 @@ signals:
   void renderScaleChanged();
   void horizontalAlignmentChanged();
   void overflowChanged();
+  void editLayoutMetricsChanged();
 
 private:
   QFont layoutFont() const;
   void updateOverflow();
+  void notifyLayoutChanged();
   QString blurCacheKey(int radius, const QRect &sourceRect) const;
   QString text_;
   QString fontFamily_;

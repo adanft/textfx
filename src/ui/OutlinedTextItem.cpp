@@ -12,6 +12,8 @@
 #include <QPainterPath>
 #include <QPainterPathStroker>
 #include <QRectF>
+#include <QTextLayout>
+#include <QTextOption>
 
 #include <algorithm>
 #include <cmath>
@@ -28,6 +30,34 @@ QVector<QPointF> normalizedPathPoints(const QVariantList &points) {
   }
   return result;
 }
+
+qreal laidOutBlockHeight(const QString &sourceText, const QFont &font,
+                         qreal paintWidth, qreal lineSpacing) {
+  qreal blockHeight = 0.0;
+  int lineCount = 0;
+  QString text = sourceText;
+  text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
+  text.replace(u'\r', u'\n');
+  const QStringList paragraphs = text.split(u'\n');
+  for (const QString &paragraph : paragraphs) {
+    QTextLayout layout(paragraph.isEmpty() ? QStringLiteral(" ") : paragraph,
+                       font);
+    QTextOption option;
+    option.setWrapMode(QTextOption::WordWrap);
+    layout.setTextOption(option);
+    layout.beginLayout();
+    while (true) {
+      QTextLine line = layout.createLine();
+      if (!line.isValid())
+        break;
+      line.setLineWidth(paintWidth);
+      blockHeight += line.height();
+      ++lineCount;
+    }
+    layout.endLayout();
+  }
+  return blockHeight + std::max(0, lineCount - 1) * lineSpacing;
+}
 } // namespace
 
 OutlinedTextItem::OutlinedTextItem(QQuickItem *parent)
@@ -39,8 +69,7 @@ void OutlinedTextItem::setText(const QString &value) {
   if (text_ == value)
     return;
   text_ = value;
-  updateOverflow();
-  update();
+  notifyLayoutChanged();
   emit textChanged();
 }
 
@@ -48,8 +77,7 @@ void OutlinedTextItem::setFontFamily(const QString &value) {
   if (fontFamily_ == value)
     return;
   fontFamily_ = value;
-  updateOverflow();
-  update();
+  notifyLayoutChanged();
   emit fontFamilyChanged();
 }
 
@@ -58,8 +86,7 @@ void OutlinedTextItem::setPixelSize(qreal value) {
   if (qFuzzyCompare(pixelSize_, value))
     return;
   pixelSize_ = value;
-  updateOverflow();
-  update();
+  notifyLayoutChanged();
   emit pixelSizeChanged();
 }
 
@@ -67,8 +94,7 @@ void OutlinedTextItem::setBold(bool value) {
   if (bold_ == value)
     return;
   bold_ = value;
-  updateOverflow();
-  update();
+  notifyLayoutChanged();
   emit boldChanged();
 }
 
@@ -76,8 +102,7 @@ void OutlinedTextItem::setItalic(bool value) {
   if (italic_ == value)
     return;
   italic_ = value;
-  updateOverflow();
-  update();
+  notifyLayoutChanged();
   emit italicChanged();
 }
 
@@ -85,8 +110,7 @@ void OutlinedTextItem::setLetterSpacing(qreal value) {
   if (qFuzzyCompare(letterSpacing_, value))
     return;
   letterSpacing_ = value;
-  updateOverflow();
-  update();
+  notifyLayoutChanged();
   emit letterSpacingChanged();
 }
 
@@ -94,8 +118,7 @@ void OutlinedTextItem::setLineSpacing(qreal value) {
   if (qFuzzyCompare(lineSpacing_, value))
     return;
   lineSpacing_ = value;
-  updateOverflow();
-  update();
+  notifyLayoutChanged();
   emit lineSpacingChanged();
 }
 
@@ -120,8 +143,7 @@ void OutlinedTextItem::setOutlineSize(qreal value) {
   if (qFuzzyCompare(outlineSize_, value))
     return;
   outlineSize_ = value;
-  updateOverflow();
-  update();
+  notifyLayoutChanged();
   emit outlineSizeChanged();
 }
 
@@ -212,8 +234,7 @@ void OutlinedTextItem::setPathEnabled(bool value) {
   if (pathEnabled_ == value)
     return;
   pathEnabled_ = value;
-  updateOverflow();
-  update();
+  notifyLayoutChanged();
   emit pathEnabledChanged();
 }
 
@@ -222,8 +243,7 @@ void OutlinedTextItem::setPathMode(int value) {
   if (pathMode_ == value)
     return;
   pathMode_ = value;
-  updateOverflow();
-  update();
+  notifyLayoutChanged();
   emit pathModeChanged();
 }
 
@@ -231,8 +251,7 @@ void OutlinedTextItem::setPathPoints(const QVariantList &value) {
   if (pathPoints_ == value)
     return;
   pathPoints_ = value;
-  updateOverflow();
-  update();
+  notifyLayoutChanged();
   emit pathPointsChanged();
 }
 
@@ -241,8 +260,7 @@ void OutlinedTextItem::setRenderScale(qreal value) {
   if (qFuzzyCompare(renderScale_, value))
     return;
   renderScale_ = value;
-  updateOverflow();
-  update();
+  notifyLayoutChanged();
   emit renderScaleChanged();
 }
 
@@ -250,16 +268,46 @@ void OutlinedTextItem::setHorizontalAlignment(int value) {
   if (horizontalAlignment_ == value)
     return;
   horizontalAlignment_ = value;
-  updateOverflow();
-  update();
+  notifyLayoutChanged();
   emit horizontalAlignmentChanged();
 }
 
 void OutlinedTextItem::geometryChange(const QRectF &newGeometry,
                                       const QRectF &oldGeometry) {
   QQuickPaintedItem::geometryChange(newGeometry, oldGeometry);
-  if (newGeometry.size() != oldGeometry.size())
+  if (newGeometry.size() != oldGeometry.size()) {
     updateOverflow();
+    emit editLayoutMetricsChanged();
+  }
+}
+
+bool OutlinedTextItem::editLayoutMetricsValid() const {
+  const QVector<QPointF> normalizedPoints = normalizedPathPoints(pathPoints_);
+  return !(pathEnabled_ && normalizedPoints.size() > 1 &&
+           !isNeutralFlatPath(normalizedPoints));
+}
+
+qreal OutlinedTextItem::editLayoutTopPadding() const {
+  if (!editLayoutMetricsValid())
+    return 0.0;
+  const qreal scale = std::max<qreal>(0.0001, renderScale_);
+  const qreal layoutWidth = std::max<qreal>(1.0, width() / scale);
+  const qreal layoutHeight = std::max<qreal>(1.0, height() / scale);
+  const qreal inset = editLayoutLeftPadding();
+  const qreal paintWidth = std::max<qreal>(1.0, layoutWidth - inset * 2.0);
+  const qreal blockHeight =
+      laidOutBlockHeight(text_, layoutFont(), paintWidth, lineSpacing_);
+  return inset +
+         std::max<qreal>(0.0, (layoutHeight - inset * 2.0 - blockHeight) / 2.0);
+}
+
+qreal OutlinedTextItem::editLayoutLeftPadding() const {
+  return editLayoutMetricsValid() && outlineSize_ > 0 ? outlineSize_ / 2.0
+                                                      : 0.0;
+}
+
+qreal OutlinedTextItem::editLayoutRightPadding() const {
+  return editLayoutLeftPadding();
 }
 
 void OutlinedTextItem::paint(QPainter *painter) {
@@ -511,6 +559,12 @@ void OutlinedTextItem::updateOverflow() {
     return;
   overflow_ = hasOverflow;
   emit overflowChanged();
+}
+
+void OutlinedTextItem::notifyLayoutChanged() {
+  updateOverflow();
+  update();
+  emit editLayoutMetricsChanged();
 }
 
 #ifdef TEXTFX_TESTING

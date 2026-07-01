@@ -1314,6 +1314,17 @@ private slots:
     QVERIFY(editorBlock.contains(
         QStringLiteral("applyTextLineSpacing(textDocument, editLineSpacing)")));
     QVERIFY(editorBlock.contains(
+        QStringLiteral("readonly property bool editLayoutAligned: "
+                       "boxOutlinedText.editLayoutMetricsValid")));
+    QVERIFY(editorBlock.contains(
+        QStringLiteral("topPadding: editLayoutTopPadding")));
+    QVERIFY(editorBlock.contains(
+        QStringLiteral("leftPadding: editLayoutLeftPadding")));
+    QVERIFY(editorBlock.contains(
+        QStringLiteral("rightPadding: editLayoutRightPadding")));
+    QVERIFY(
+        editorBlock.contains(QStringLiteral("wrapMode: TextEdit.WordWrap")));
+    QVERIFY(editorBlock.contains(
         QStringLiteral("onEditLineSpacingChanged: applyLineSpacing()")));
     QVERIFY(editorBlock.contains(QStringLiteral("cursorDelegate: Rectangle")));
     QVERIFY(sourceContainsIgnoringWhitespace(

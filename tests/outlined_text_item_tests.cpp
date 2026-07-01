@@ -139,6 +139,49 @@ private slots:
                             .arg(bounds.height())));
   }
 
+  void exposesEditLayoutMetricsForNormalText() {
+    OutlinedTextItem item;
+    item.setWidth(180);
+    item.setHeight(100);
+    item.setText(QStringLiteral("Center"));
+    item.setPixelSize(32);
+    item.setOutlineSize(8);
+
+    QVERIFY(item.editLayoutMetricsValid());
+    QCOMPARE(item.editLayoutLeftPadding(), 4.0);
+    QCOMPARE(item.editLayoutRightPadding(), 4.0);
+    QVERIFY2(item.editLayoutTopPadding() > item.editLayoutLeftPadding(),
+             qPrintable(QStringLiteral("top=%1 left=%2")
+                            .arg(item.editLayoutTopPadding())
+                            .arg(item.editLayoutLeftPadding())));
+
+    const qreal shortBoxTopPadding = item.editLayoutTopPadding();
+    item.setHeight(160);
+    QVERIFY(item.editLayoutTopPadding() > shortBoxTopPadding);
+  }
+
+  void editLayoutMetricsUseWordWrapAndIgnoreCurvedPathText() {
+    OutlinedTextItem item;
+    item.setWidth(90);
+    item.setHeight(140);
+    item.setText(QStringLiteral("Alpha Beta Gamma"));
+    item.setPixelSize(20);
+
+    QVERIFY(item.editLayoutMetricsValid());
+    const qreal wrappedTopPadding = item.editLayoutTopPadding();
+
+    item.setWidth(600);
+    QVERIFY(item.editLayoutTopPadding() > wrappedTopPadding);
+
+    item.setPathEnabled(true);
+    item.setPathPoints(QVariantList{QVariantList{0.0, 0.8},
+                                    QVariantList{0.5, 0.2},
+                                    QVariantList{1.0, 0.8}});
+    QVERIFY(!item.editLayoutMetricsValid());
+    QCOMPARE(item.editLayoutTopPadding(), 0.0);
+    QCOMPARE(item.editLayoutLeftPadding(), 0.0);
+  }
+
   void blurSoftensRenderedText() {
     auto render = [](int blurSize) {
       OutlinedTextItem item;

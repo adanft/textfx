@@ -233,6 +233,10 @@ Rectangle {
         property var rootWindow: boxRef.rootWindow
         property var editorRef: boxRef.editorRef
         property real editLineSpacing: modelData.lineSpacing * rootWindow.viewDocScale()
+        readonly property bool editLayoutAligned: boxOutlinedText.editLayoutMetricsValid
+        readonly property real editLayoutTopPadding: editLayoutAligned ? rootWindow.documentToViewLength(boxOutlinedText.editLayoutTopPadding) : 0
+        readonly property real editLayoutLeftPadding: editLayoutAligned ? rootWindow.documentToViewLength(boxOutlinedText.editLayoutLeftPadding) : 0
+        readonly property real editLayoutRightPadding: editLayoutAligned ? rootWindow.documentToViewLength(boxOutlinedText.editLayoutRightPadding) : 0
 
         function focusForEdit() {
             if (boxRef.selected && editorRef.editingText && !activeFocus)
@@ -262,12 +266,12 @@ Rectangle {
         font.letterSpacing: modelData.letterSpacing * rootWindow.viewDocScale()
         horizontalAlignment: modelData.alignment === 1 ? TextEdit.AlignHCenter : modelData.alignment === 2 ? TextEdit.AlignRight : TextEdit.AlignLeft
         padding: 0
-        topPadding: 0
-        leftPadding: 0
-        rightPadding: 0
+        topPadding: editLayoutTopPadding
+        leftPadding: editLayoutLeftPadding
+        rightPadding: editLayoutRightPadding
         bottomPadding: 0
         background: null
-        wrapMode: TextEdit.Wrap
+        wrapMode: TextEdit.WordWrap
         selectByMouse: boxRef.selected && editorRef.editingText
         readOnly: !(boxRef.selected && editorRef.editingText)
         Component.onCompleted: {
