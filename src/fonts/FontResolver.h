@@ -6,12 +6,12 @@
 namespace textfx {
 
 struct ResolvedFont {
-    QFont font;
-    QString requestedFamily;
-    QString resolvedFamily;
-    bool requestedAvailable = false;
-    bool exactMatch = false;
-    bool fellBack = false;
+  QFont font;
+  QString requestedFamily;
+  QString resolvedFamily;
+  bool requestedAvailable = false;
+  bool exactMatch = false;
+  bool fellBack = false;
 };
 
 ResolvedFont resolveFont(QFont requested);

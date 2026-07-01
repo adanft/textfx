@@ -13,6 +13,7 @@ MenuItem {
 
         RowLayout {
             id: shortcutRow
+
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
@@ -25,12 +26,16 @@ MenuItem {
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
+
             Label {
                 text: shortcutMenuItem.shortcutLabel
                 visible: shortcutMenuItem.shortcutLabel.length > 0
                 enabled: shortcutMenuItem.enabled
                 color: shortcutMenuItem.palette.mid
             }
+
         }
+
     }
+
 }

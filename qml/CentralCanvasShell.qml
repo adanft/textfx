@@ -23,6 +23,7 @@ Item {
 
     Rectangle {
         id: canvas
+
         objectName: "centralCanvas"
         z: 0
         x: -canvasShell.x
@@ -31,27 +32,41 @@ Item {
         color: canvasShell.hostPalette.base
         clip: true
         focus: true
+        Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_Escape) {
+                canvasShell.escapePressed();
+                event.accepted = true;
+                return ;
+            }
+            if (canvasShell.editingText)
+                return ;
 
-        Keys.onPressed: event => {
-            if (event.key === Qt.Key_Escape) { canvasShell.escapePressed(); event.accepted = true; return }
-            if (canvasShell.editingText) return
-            if (event.key === Qt.Key_Delete) { canvasShell.deletePressed(); event.accepted = true }
+            if (event.key === Qt.Key_Delete) {
+                canvasShell.deletePressed();
+                event.accepted = true;
+            }
         }
 
         MouseArea {
             anchors.fill: parent
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-            onPressed: mouse => {
-                canvas.forceActiveFocus()
-                canvasShell.canvasPressed(mouse.x, mouse.y, mouse.button, mouse.modifiers)
+            onPressed: (mouse) => {
+                canvas.forceActiveFocus();
+                canvasShell.canvasPressed(mouse.x, mouse.y, mouse.button, mouse.modifiers);
             }
-            onPositionChanged: mouse => canvasShell.canvasPositionChanged(mouse.x, mouse.y, pressed)
-            onReleased: mouse => canvasShell.canvasReleased(mouse.x, mouse.y, mouse.button, mouse.modifiers)
-            onWheel: wheel => {
-                canvasShell.canvasWheel(wheel.x, wheel.y, wheel.angleDelta.y)
-                wheel.accepted = true
+            onPositionChanged: (mouse) => {
+                return canvasShell.canvasPositionChanged(mouse.x, mouse.y, pressed);
+            }
+            onReleased: (mouse) => {
+                return canvasShell.canvasReleased(mouse.x, mouse.y, mouse.button, mouse.modifiers);
+            }
+            onWheel: (wheel) => {
+                canvasShell.canvasWheel(wheel.x, wheel.y, wheel.angleDelta.y);
+                wheel.accepted = true;
             }
         }
+
     }
+
 }

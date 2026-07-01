@@ -10,61 +10,64 @@
 using namespace textfx;
 
 namespace {
-std::filesystem::path fixtures()
-{
-    return std::filesystem::path(TEXTFX_FIXTURE_DIR);
+std::filesystem::path fixtures() {
+  return std::filesystem::path(TEXTFX_FIXTURE_DIR);
 }
 
-std::string readText(const std::filesystem::path& path)
-{
-    std::ifstream input(path, std::ios::binary);
-    std::ostringstream output;
-    output << input.rdbuf();
-    return output.str();
+std::string readText(const std::filesystem::path &path) {
+  std::ifstream input(path, std::ios::binary);
+  std::ostringstream output;
+  output << input.rdbuf();
+  return output.str();
 }
 } // namespace
 
-int main()
-{
-    const auto pageFixture = fixtures() / "textfx-page.json";
-    const auto presetFixture = fixtures() / "textfx-presets.json";
+int main() {
+  const auto pageFixture = fixtures() / "textfx-page.json";
+  const auto presetFixture = fixtures() / "textfx-presets.json";
 
-    DocumentModel document;
-    std::string error;
-    if (!JsonSerializer::loadPage(pageFixture, document, &error)) {
-        std::cerr << "Page fixture failed to load: " << error << '\n';
-        return 1;
-    }
-    if (document.textBoxes().size() != 2 || document.textBoxes().front().text != "Hello TextFX") {
-        std::cerr << "Page fixture did not preserve expected text boxes\n";
-        return 1;
-    }
-    std::vector<TextPreset> presets;
-    if (!JsonSerializer::loadPresets(presetFixture, presets, &error) || presets.empty()) {
-        std::cerr << "Preset fixture failed to load: " << error << '\n';
-        return 1;
-    }
+  DocumentModel document;
+  std::string error;
+  if (!JsonSerializer::loadPage(pageFixture, document, &error)) {
+    std::cerr << "Page fixture failed to load: " << error << '\n';
+    return 1;
+  }
+  if (document.textBoxes().size() != 2 ||
+      document.textBoxes().front().text != "Hello TextFX") {
+    std::cerr << "Page fixture did not preserve expected text boxes\n";
+    return 1;
+  }
+  std::vector<TextPreset> presets;
+  if (!JsonSerializer::loadPresets(presetFixture, presets, &error) ||
+      presets.empty()) {
+    std::cerr << "Preset fixture failed to load: " << error << '\n';
+    return 1;
+  }
 
-    QTemporaryDir tempDir;
-    if (!tempDir.isValid()) {
-        std::cerr << "Failed to create temporary directory for serialization check\n";
-        return 1;
-    }
-    const auto output = std::filesystem::path(tempDir.path().toStdString()) / "serialization-check.json";
-    if (!JsonSerializer::savePage(output, "fixture.png", document, &error)) {
-        std::cerr << "Page fixture failed to save: " << error << '\n';
-        return 1;
-    }
+  QTemporaryDir tempDir;
+  if (!tempDir.isValid()) {
+    std::cerr
+        << "Failed to create temporary directory for serialization check\n";
+    return 1;
+  }
+  const auto output = std::filesystem::path(tempDir.path().toStdString()) /
+                      "serialization-check.json";
+  if (!JsonSerializer::savePage(output, "fixture.png", document, &error)) {
+    std::cerr << "Page fixture failed to save: " << error << '\n';
+    return 1;
+  }
 
-    const auto saved = readText(output);
-    if (saved.find("typebubblex_only") != std::string::npos || saved.find("mask_brush") != std::string::npos) {
-        std::cerr << "Unsupported fields leaked into saved page JSON\n";
-        return 1;
-    }
-    if (saved.find("path_inactive_points") != std::string::npos) {
-        std::cerr << "Obsolete TypeX path inactive points leaked into saved page JSON\n";
-        return 1;
-    }
+  const auto saved = readText(output);
+  if (saved.find("typebubblex_only") != std::string::npos ||
+      saved.find("mask_brush") != std::string::npos) {
+    std::cerr << "Unsupported fields leaked into saved page JSON\n";
+    return 1;
+  }
+  if (saved.find("path_inactive_points") != std::string::npos) {
+    std::cerr
+        << "Obsolete TypeX path inactive points leaked into saved page JSON\n";
+    return 1;
+  }
 
-    return 0;
+  return 0;
 }

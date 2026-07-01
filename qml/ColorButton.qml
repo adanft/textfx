@@ -9,10 +9,24 @@ Button {
     property string swatchText: "#000000"
 
     Layout.fillWidth: true
+
     contentItem: RowLayout {
         spacing: 8
 
-        Rectangle { width: 22; height: 16; radius: 3; color: colorButton.enabled ? colorButton.swatchColor : colorButton.palette.mid; border.color: colorButton.palette.mid }
-        Label { text: colorButton.swatchText; enabled: colorButton.enabled; Layout.fillWidth: true }
+        Rectangle {
+            width: 22
+            height: 16
+            radius: 3
+            color: colorButton.enabled ? colorButton.swatchColor : colorButton.palette.mid
+            border.color: colorButton.palette.mid
+        }
+
+        Label {
+            text: colorButton.swatchText
+            enabled: colorButton.enabled
+            Layout.fillWidth: true
+        }
+
     }
+
 }
