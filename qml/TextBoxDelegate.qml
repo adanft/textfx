@@ -4,6 +4,7 @@ import TextFX.Ui 1.0
 
 Rectangle {
     id: boxDelegate
+    objectName: "textBoxDelegate"
 
     required property var modelData
     required property var canvasItem
@@ -309,6 +310,7 @@ Rectangle {
         ]
         delegate: Rectangle {
             id: resizeHandle
+            objectName: "resizeHandle_" + modelData.name
 
             property var boxRef: parent
             property var rootWindow: boxRef.rootWindow

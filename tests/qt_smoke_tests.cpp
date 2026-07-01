@@ -370,6 +370,57 @@ private slots:
         QCOMPARE(window->property("panY").toDouble(), 18.0);
     }
 
+    void qmlBoxResizeInteractionStateCommitsVisibleBoundsAndClamps()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(40, 50, 100, 60);
+        editor.rotateSelected(30.0);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        QObject* boxObject = nullptr;
+        QTRY_VERIFY(boxObject = findVisualChildByName(window->contentItem(), QStringLiteral("textBoxDelegate")));
+
+        QVERIFY(QMetaObject::invokeMethod(window, "beginResizeDrag",
+            Q_ARG(QVariant, QVariant::fromValue(boxObject)),
+            Q_ARG(QVariant, QStringLiteral("e")),
+            Q_ARG(QVariant, 0.0),
+            Q_ARG(QVariant, 0.0)));
+        QVERIFY(QMetaObject::invokeMethod(window, "updateResizeDrag", Q_ARG(QVariant, 30.0), Q_ARG(QVariant, 0.0)));
+        QTRY_VERIFY(window->property("resizeW").toDouble() > 120.0);
+        QVERIFY(QMetaObject::invokeMethod(window, "endResizeDrag", Q_ARG(QVariant, true)));
+
+        QVariantMap grown = editor.boxes().at(0).toMap();
+        QVERIFY(grown.value(QStringLiteral("w")).toDouble() > 120.0);
+        QVERIFY(grown.value(QStringLiteral("x")).toDouble() > 30.0);
+        QVERIFY(grown.value(QStringLiteral("y")).toDouble() > 40.0);
+
+        boxObject = nullptr;
+        QTRY_VERIFY(boxObject = findVisualChildByName(window->contentItem(), QStringLiteral("textBoxDelegate")));
+        QVERIFY(QMetaObject::invokeMethod(window, "beginResizeDrag",
+            Q_ARG(QVariant, QVariant::fromValue(boxObject)),
+            Q_ARG(QVariant, QStringLiteral("e")),
+            Q_ARG(QVariant, 0.0),
+            Q_ARG(QVariant, 0.0)));
+        QVERIFY(QMetaObject::invokeMethod(window, "updateResizeDrag", Q_ARG(QVariant, -1000.0), Q_ARG(QVariant, 0.0)));
+        QTRY_COMPARE(window->property("resizeW").toDouble(), 12.0);
+        QVERIFY(QMetaObject::invokeMethod(window, "endResizeDrag", Q_ARG(QVariant, true)));
+
+        const QVariantMap clamped = editor.boxes().at(0).toMap();
+        QCOMPARE(clamped.value(QStringLiteral("w")).toDouble(), 12.0);
+        QCOMPARE(clamped.value(QStringLiteral("h")).toDouble(), 60.0);
+    }
+
     void copyPastePreservesCopiedBox()
     {
         EditorController editor;
@@ -1092,17 +1143,17 @@ private slots:
 
         QVERIFY(!resizeSource.contains(QStringLiteral("property real startX")));
         QVERIFY(!resizeSource.contains(QStringLiteral("property real startCanvasX")));
-        QVERIFY(source.contains(QStringLiteral("const delta = rotatePoint((canvasX - resizeStartCanvasX) / viewDocScale()")));
-        QVERIFY(source.contains(QStringLiteral("right = Math.max(resizeStartW + delta.x, left + editorLimits.minimumBoxSize)")));
-        QVERIFY(source.contains(QStringLiteral("bottom = Math.max(resizeStartH + delta.y, top + editorLimits.minimumBoxSize)")));
-        QVERIFY(source.contains(QStringLiteral("left = Math.min(delta.x, right - editorLimits.minimumBoxSize)")));
-        QVERIFY(source.contains(QStringLiteral("top = Math.min(delta.y, bottom - editorLimits.minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("const delta = rotatePoint((canvasX - resizeStartCanvasX) / scale")));
+        QVERIFY(source.contains(QStringLiteral("right = Math.max(resizeStartW + delta.x, left + minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("bottom = Math.max(resizeStartH + delta.y, top + minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("left = Math.min(delta.x, right - minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("top = Math.min(delta.y, bottom - minimumBoxSize)")));
         const qsizetype perspectiveBranch = resizeSource.indexOf(QStringLiteral("if (resizeHandle.boxRef.perspectiveActive)"));
         const qsizetype normalUpdate = resizeSource.indexOf(QStringLiteral("resizeHandle.rootWindow.updateResizeDrag(point.x, point.y)"));
         QVERIFY(perspectiveBranch >= 0);
         QVERIFY(normalUpdate > perspectiveBranch);
         QVERIFY(resizeSource.mid(perspectiveBranch, normalUpdate - perspectiveBranch).contains(QStringLiteral("return")));
-        QVERIFY(source.contains(QStringLiteral("window.editor.setSelectedBounds(resizeX, resizeY, resizeW, resizeH)")));
+        QVERIFY(source.contains(QStringLiteral("window.editor.setSelectedBounds(bounds.x, bounds.y, bounds.width, bounds.height)")));
         QVERIFY(!resizeSource.contains(QStringLiteral("startLocalX")));
         QVERIFY(!resizeSource.contains(QStringLiteral("startLocalY")));
     }
@@ -2843,11 +2894,11 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("perspectiveStartX = modelPerspectiveOffset(delegate.boxModel, handle, 0)")));
         QVERIFY(source.contains(QStringLiteral("const dx = (local.x - startLocal.x) / viewDocScale()")));
         QVERIFY(source.contains(QStringLiteral("perspectiveX = perspectiveStartX + (activePerspectiveHandle === \"n\" || activePerspectiveHandle === \"s\" ? 0 : dx)")));
-        QVERIFY(source.contains(QStringLiteral("const delta = rotatePoint((canvasX - resizeStartCanvasX) / viewDocScale()")));
-        QVERIFY(source.contains(QStringLiteral("right = Math.max(resizeStartW + delta.x, left + editorLimits.minimumBoxSize)")));
-        QVERIFY(source.contains(QStringLiteral("bottom = Math.max(resizeStartH + delta.y, top + editorLimits.minimumBoxSize)")));
-        QVERIFY(source.contains(QStringLiteral("left = Math.min(delta.x, right - editorLimits.minimumBoxSize)")));
-        QVERIFY(source.contains(QStringLiteral("top = Math.min(delta.y, bottom - editorLimits.minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("const delta = rotatePoint((canvasX - resizeStartCanvasX) / scale")));
+        QVERIFY(source.contains(QStringLiteral("right = Math.max(resizeStartW + delta.x, left + minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("bottom = Math.max(resizeStartH + delta.y, top + minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("left = Math.min(delta.x, right - minimumBoxSize)")));
+        QVERIFY(source.contains(QStringLiteral("top = Math.min(delta.y, bottom - minimumBoxSize)")));
         QVERIFY(source.contains(QStringLiteral("const startLocal = activePerspectiveDelegate.mapFromItem(canvas, perspectiveStartCanvasX, perspectiveStartCanvasY)")));
         QVERIFY(!source.contains(QStringLiteral("offsetFromCenter")));
         QVERIFY(!source.contains(QStringLiteral("dx / length * 16")));
@@ -2860,7 +2911,7 @@ private slots:
         QVERIFY(!manualHandleSource.contains(QStringLiteral("drag.target")));
         QVERIFY(manualHandleSource.contains(QStringLiteral("mapToItem(canvasItem, mouse.x, mouse.y)")));
         QVERIFY(source.contains(QStringLiteral("activePerspectiveDelegate.mapFromItem(canvas")));
-        QVERIFY(source.contains(QStringLiteral("window.editor.setSelectedBounds(resizeX, resizeY, resizeW, resizeH)")));
+        QVERIFY(source.contains(QStringLiteral("window.editor.setSelectedBounds(bounds.x, bounds.y, bounds.width, bounds.height)")));
         QVERIFY(source.contains(QStringLiteral("window.editor.setPerspectiveHandle")));
         QVERIFY(source.contains(QStringLiteral("border.width: perspectiveActive ? 0 : selected ? rootWindow.selectionLineWidth() : Math.max(1, rootWindow.documentToViewLength(1))")));
         QVERIFY(source.contains(QStringLiteral("id: perspectiveBorder")));

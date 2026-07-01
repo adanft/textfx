@@ -27,19 +27,19 @@ ApplicationWindow {
     property alias createCurrentX: canvasInteraction.createCurrentX
     property alias createCurrentY: canvasInteraction.createCurrentY
     property int sidePanelFocusedTextInputs: 0
-    property var activeResizeDelegate: null
-    property string activeResizeHandle: ""
-    property real resizeStartX: 0
-    property real resizeStartY: 0
-    property real resizeStartW: 0
-    property real resizeStartH: 0
-    property real resizeStartRotation: 0
-    property real resizeStartCanvasX: 0
-    property real resizeStartCanvasY: 0
-    property real resizeX: 0
-    property real resizeY: 0
-    property real resizeW: 0
-    property real resizeH: 0
+    property alias activeResizeDelegate: boxResizeInteraction.activeResizeDelegate
+    property alias activeResizeHandle: boxResizeInteraction.activeResizeHandle
+    property alias resizeStartX: boxResizeInteraction.resizeStartX
+    property alias resizeStartY: boxResizeInteraction.resizeStartY
+    property alias resizeStartW: boxResizeInteraction.resizeStartW
+    property alias resizeStartH: boxResizeInteraction.resizeStartH
+    property alias resizeStartRotation: boxResizeInteraction.resizeStartRotation
+    property alias resizeStartCanvasX: boxResizeInteraction.resizeStartCanvasX
+    property alias resizeStartCanvasY: boxResizeInteraction.resizeStartCanvasY
+    property alias resizeX: boxResizeInteraction.resizeX
+    property alias resizeY: boxResizeInteraction.resizeY
+    property alias resizeW: boxResizeInteraction.resizeW
+    property alias resizeH: boxResizeInteraction.resizeH
     property var activePerspectiveDelegate: null
     property string activePerspectiveHandle: ""
     property real perspectiveStartCanvasX: 0
@@ -130,6 +130,13 @@ ApplicationWindow {
         idleMode: editorInteraction.dragModeIdle
         panMode: editorInteraction.dragModePan
         createMode: editorInteraction.dragModeCreate
+    }
+
+    BoxResizeInteractionState {
+        id: boxResizeInteraction
+        objectName: "boxResizeInteractionState"
+        documentScale: window.viewDocScale()
+        minimumBoxSize: editorLimits.minimumBoxSize
     }
 
     function fitPageScale() { return viewportMetrics.fitPageScale() }
@@ -378,12 +385,6 @@ ApplicationWindow {
                             g / width, h / height, 0, 1)
     }
 
-    function rotatePoint(x, y, radians) {
-        const c = Math.cos(radians)
-        const s = Math.sin(radians)
-        return { x: x * c - y * s, y: x * s + y * c }
-    }
-
     function angleDegrees(cx, cy, x, y) {
         return Math.atan2(y - cy, x - cx) * 180 / Math.PI
     }
@@ -396,52 +397,22 @@ ApplicationWindow {
     }
 
     function beginResizeDrag(delegate, handle, canvasX, canvasY) {
-        activeResizeDelegate = delegate
-        activeResizeHandle = handle
         dragMode = editorInteraction.dragModeResize
-        resizeStartX = delegate.boxModel.x
-        resizeStartY = delegate.boxModel.y
-        resizeStartW = delegate.boxModel.w
-        resizeStartH = delegate.boxModel.h
-        resizeStartRotation = delegate.boxModel.rotation * Math.PI / 180
-        resizeStartCanvasX = canvasX
-        resizeStartCanvasY = canvasY
-        resizeX = resizeStartX
-        resizeY = resizeStartY
-        resizeW = resizeStartW
-        resizeH = resizeStartH
+        boxResizeInteraction.begin(delegate, handle, canvasX, canvasY)
     }
 
     function updateResizeDrag(canvasX, canvasY) {
         if (dragMode !== editorInteraction.dragModeResize || !activeResizeDelegate)
             return
-        const delta = rotatePoint((canvasX - resizeStartCanvasX) / viewDocScale(),
-                                  (canvasY - resizeStartCanvasY) / viewDocScale(),
-                                  -resizeStartRotation)
-        const pivotX = resizeStartW / 2
-        const pivotY = resizeStartH / 2
-        let left = 0
-        let top = 0
-        let right = resizeStartW
-        let bottom = resizeStartH
-        if (activeResizeHandle.indexOf("w") >= 0) left = Math.min(delta.x, right - editorLimits.minimumBoxSize)
-        else if (activeResizeHandle.indexOf("e") >= 0) right = Math.max(resizeStartW + delta.x, left + editorLimits.minimumBoxSize)
-        if (activeResizeHandle.indexOf("n") >= 0) top = Math.min(delta.y, bottom - editorLimits.minimumBoxSize)
-        else if (activeResizeHandle.indexOf("s") >= 0) bottom = Math.max(resizeStartH + delta.y, top + editorLimits.minimumBoxSize)
-        resizeW = right - left
-        resizeH = bottom - top
-        const newPivotX = resizeW / 2
-        const newPivotY = resizeH / 2
-        const moved = rotatePoint(left - pivotX + newPivotX, top - pivotY + newPivotY, resizeStartRotation)
-        resizeX = resizeStartX + pivotX + moved.x - newPivotX
-        resizeY = resizeStartY + pivotY + moved.y - newPivotY
+        boxResizeInteraction.update(canvasX, canvasY)
     }
 
     function endResizeDrag(commit) {
-        if (dragMode === editorInteraction.dragModeResize && commit)
-            window.editor.setSelectedBounds(resizeX, resizeY, resizeW, resizeH)
-        activeResizeDelegate = null
-        activeResizeHandle = ""
+        if (dragMode === editorInteraction.dragModeResize && commit) {
+            const bounds = boxResizeInteraction.bounds()
+            window.editor.setSelectedBounds(bounds.x, bounds.y, bounds.width, bounds.height)
+        }
+        boxResizeInteraction.reset()
         dragMode = editorInteraction.dragModeIdle
     }
 
