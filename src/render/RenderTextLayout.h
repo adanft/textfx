@@ -19,6 +19,10 @@ struct TextLayoutOptions {
   int horizontalAlignment = Qt::AlignLeft;
 };
 
+qreal textLayoutTabStopDistance(const QFont &font);
+qreal textLayoutBlockHeight(const TextLayoutOptions &options,
+                            const QFont &font);
+
 struct PathSample {
   QPointF point;
   QPointF tangent = {1.0, 0.0};
@@ -27,7 +31,8 @@ struct PathSample {
 QPainterPath textLayoutPath(const TextLayoutOptions &options, const QFont &font,
                             QStringList *lineTexts = nullptr,
                             QVector<qreal> *lineXs = nullptr,
-                            QVector<qreal> *lineBaselines = nullptr);
+                            QVector<qreal> *lineBaselines = nullptr,
+                            QVector<qreal> *lineTops = nullptr);
 QPainterPath pathTextLayoutPath(const TextLayoutOptions &options,
                                 const QFont &font,
                                 const QVector<QPointF> &normalizedPathPoints,

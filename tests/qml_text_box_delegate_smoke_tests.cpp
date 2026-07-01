@@ -98,10 +98,10 @@ private slots:
     QVERIFY(textArea->property("activeFocus").toBool());
 
     QVERIFY(window->setProperty("zoom", 2.0));
-    QTRY_COMPARE(lineSpacing(), 14.0);
+    QTRY_COMPARE(lineSpacing(), 7.0);
 
     editor.setSelectedLineSpacing(9);
-    QTRY_COMPARE(lineSpacing(), 18.0);
+    QTRY_COMPARE(lineSpacing(), 9.0);
   }
 
   void qmlTextEditPreviewUsesUpdatedModelWhenEditEnds() {
@@ -203,27 +203,37 @@ private slots:
       qreal height;
       int fontSize;
       int outlineSize;
+      int lineSpacing;
       qreal zoom;
       int alignment;
+      bool italic;
       bool expectWrapped;
     };
 
     const QList<Case> cases{
         {QStringLiteral("outline inset"), QStringLiteral("Outlined text"),
-         180, 100, 24, 8, 1.0, 0, false},
+         180, 100, 24, 8, 0, 1.0, 0, false, false},
         {QStringLiteral("multiline word wrap"),
-         QStringLiteral("Alpha Beta Gamma Delta"), 105, 140, 20, 4, 1.0, 0,
-         true},
+         QStringLiteral("Alpha Beta Gamma Delta"), 105, 140, 20, 4, 0, 1.0, 0,
+         false, true},
         {QStringLiteral("zoom render scale"), QStringLiteral("Zoomed text"),
-         190, 110, 22, 6, 1.75, 0, false},
+         190, 110, 22, 6, 0, 1.75, 0, false, false},
         {QStringLiteral("right alignment"), QStringLiteral("Right aligned"),
-         240, 110, 22, 4, 1.0, 2, false},
+         240, 110, 22, 4, 0, 1.0, 2, false, false},
+        {QStringLiteral("center alignment"), QStringLiteral("Centered"), 240,
+         110, 22, 4, 0, 1.0, 1, false, false},
+        {QStringLiteral("center wrapped line spacing"),
+         QStringLiteral("Alpha Beta Gamma Delta Epsilon Zeta"), 130, 190, 22, 6,
+         12, 1.25, 1, false, true},
+        {QStringLiteral("paint translation"), QStringLiteral("Italic fj"), 120,
+         70, 42, 18, 0, 1.0, 0, true, false},
     };
 
     const auto nearlyEqual = [](qreal a, qreal b, qreal tolerance = 0.75) {
       return std::abs(a - b) <= tolerance;
     };
 
+    bool sawPaintOffsetCase = false;
     for (const Case &testCase : cases) {
       EditorController editor;
       editor.newDocument();
@@ -232,7 +242,9 @@ private slots:
       editor.setSelectedFontSize(testCase.fontSize);
       editor.setSelectedOutlineEnabled(true);
       editor.setSelectedOutlineSize(testCase.outlineSize);
+      editor.setSelectedLineSpacing(testCase.lineSpacing);
       editor.setSelectedAlignment(testCase.alignment);
+      editor.setSelectedItalic(testCase.italic);
       editor.beginTextEdit();
 
       QQmlApplicationEngine engine;
@@ -270,19 +282,15 @@ private slots:
       QTRY_VERIFY(document->firstBlock().layout() &&
                   document->firstBlock().layout()->lineCount() > 0);
 
-      const qreal viewScale = textAreaItem->width() / testCase.width;
       const qreal expectedLeftPadding =
-          outlinedObject->property("editLayoutLeftPadding").toReal() *
-          viewScale;
+          outlinedObject->property("editLayoutLeftPadding").toReal();
       const qreal expectedRightPadding =
-          outlinedObject->property("editLayoutRightPadding").toReal() *
-          viewScale;
+          outlinedObject->property("editLayoutRightPadding").toReal();
       const qreal expectedTopPadding =
-          outlinedObject->property("editLayoutTopPadding").toReal() *
-          viewScale;
+          outlinedObject->property("editLayoutTopPadding").toReal();
       QVERIFY2(expectedLeftPadding > 0.0,
                qPrintable(testCase.name + QStringLiteral(" left padding")));
-      QVERIFY2(expectedTopPadding > expectedLeftPadding,
+      QVERIFY2(expectedTopPadding >= expectedLeftPadding,
                qPrintable(testCase.name + QStringLiteral(" top padding")));
       QVERIFY2(nearlyEqual(textAreaObject->property("leftPadding").toReal(),
                            expectedLeftPadding),
@@ -293,6 +301,22 @@ private slots:
       QVERIFY2(nearlyEqual(textAreaObject->property("topPadding").toReal(),
                            expectedTopPadding),
                qPrintable(testCase.name));
+      const qreal paintOffsetX =
+          outlinedObject->property("editLayoutPaintOffsetX").toReal();
+      const qreal paintOffsetY =
+          outlinedObject->property("editLayoutPaintOffsetY").toReal();
+      sawPaintOffsetCase = sawPaintOffsetCase || std::abs(paintOffsetX) > 0.1 ||
+                           std::abs(paintOffsetY) > 0.1;
+      QVERIFY2(nearlyEqual(textAreaItem->x(), paintOffsetX * testCase.zoom, 1.0),
+               qPrintable(QStringLiteral("%1 text area x=%2 expected=%3")
+                              .arg(testCase.name)
+                              .arg(textAreaItem->x())
+                              .arg(paintOffsetX * testCase.zoom)));
+      QVERIFY2(nearlyEqual(textAreaItem->y(), paintOffsetY * testCase.zoom, 1.0),
+               qPrintable(QStringLiteral("%1 text area y=%2 expected=%3")
+                              .arg(testCase.name)
+                              .arg(textAreaItem->y())
+                              .arg(paintOffsetY * testCase.zoom)));
 
       const qreal expectedTextWidth =
           textAreaItem->width() - expectedLeftPadding - expectedRightPadding;
@@ -302,16 +326,42 @@ private slots:
                               .arg(document->textWidth())
                               .arg(expectedTextWidth)));
       QVERIFY2(nearlyEqual(outlinedItem->width() * outlinedItem->scale(),
-                           textAreaItem->width()),
+                           textAreaItem->width() * textAreaItem->scale()),
                qPrintable(testCase.name));
       QVERIFY2(nearlyEqual(outlinedItem->height() * outlinedItem->scale(),
-                           textAreaItem->height()),
+                           textAreaItem->height() * textAreaItem->scale()),
                qPrintable(testCase.name));
 
       QTextLayout *layout = document->firstBlock().layout();
       QVERIFY(layout);
       if (testCase.expectWrapped)
         QVERIFY2(layout->lineCount() >= 2, qPrintable(testCase.name));
+
+      QList<qreal> documentLineTops;
+      for (QTextBlock block = document->begin(); block.isValid();
+           block = block.next()) {
+        QTextLayout *blockLayout = block.layout();
+        QVERIFY(blockLayout);
+        const QPointF blockPosition = blockLayout->position();
+        for (int i = 0; i < blockLayout->lineCount(); ++i) {
+          const QTextLine line = blockLayout->lineAt(i);
+          QVERIFY(line.isValid());
+          documentLineTops.append(expectedTopPadding + blockPosition.y() +
+                                  line.y());
+        }
+      }
+      const QVariantList previewLineTops =
+          outlinedObject->property("editLayoutLineTops").toList();
+      QCOMPARE(previewLineTops.size(), documentLineTops.size());
+      for (qsizetype i = 0; i < previewLineTops.size(); ++i) {
+        const qreal expectedLineTop = previewLineTops.at(i).toReal();
+        QVERIFY2(nearlyEqual(documentLineTops.at(i), expectedLineTop, 1.0),
+                 qPrintable(QStringLiteral("%1 line %2 y=%3 expected=%4")
+                                .arg(testCase.name)
+                                .arg(i)
+                                .arg(documentLineTops.at(i))
+                                .arg(expectedLineTop)));
+      }
 
       const QTextLine firstLine = layout->lineAt(0);
       QVERIFY(firstLine.isValid());
@@ -333,6 +383,26 @@ private slots:
                               .arg(testCase.name)
                               .arg(cursorRect.y())
                               .arg(expectedCursorY)));
+      const qreal visualCursorX =
+          textAreaItem->x() + cursorRect.x() * testCase.zoom;
+      const qreal visualCursorY =
+          textAreaItem->y() + cursorRect.y() * testCase.zoom;
+      QVERIFY2(nearlyEqual(visualCursorX,
+                           (paintOffsetX + expectedCursorX) * testCase.zoom,
+                           1.25),
+               qPrintable(QStringLiteral("%1 visual cursor x=%2 expected=%3")
+                              .arg(testCase.name)
+                              .arg(visualCursorX)
+                              .arg((paintOffsetX + expectedCursorX) *
+                                   testCase.zoom)));
+      QVERIFY2(nearlyEqual(visualCursorY,
+                           (paintOffsetY + expectedCursorY) * testCase.zoom,
+                           1.25),
+               qPrintable(QStringLiteral("%1 visual cursor y=%2 expected=%3")
+                              .arg(testCase.name)
+                              .arg(visualCursorY)
+                              .arg((paintOffsetY + expectedCursorY) *
+                                   testCase.zoom)));
 
       if (testCase.alignment == 2) {
         QCOMPARE(textAreaObject->property("horizontalAlignment").toInt(),
@@ -342,7 +412,242 @@ private slots:
         QVERIFY2(cursorRect.x() > expectedLeftPadding,
                  qPrintable(testCase.name));
       }
+      if (testCase.alignment == 1 && !testCase.expectWrapped) {
+        QCOMPARE(textAreaObject->property("horizontalAlignment").toInt(),
+                 int(Qt::AlignHCenter));
+        QCOMPARE(outlinedObject->property("horizontalAlignment").toInt(),
+                 int(Qt::AlignHCenter));
+        QVERIFY2(cursorRect.x() > expectedLeftPadding,
+                 qPrintable(testCase.name));
+        QVERIFY2(cursorRect.x() + firstLine.naturalTextWidth() <
+                     expectedLeftPadding + document->textWidth(),
+                 qPrintable(testCase.name));
+      }
     }
+    QVERIFY(sawPaintOffsetCase);
+  }
+
+  void qmlPathTextEditsWithFlatPreviewThenRestoresPathPreview() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 220, 110);
+    editor.updateSelectedText(QStringLiteral("Curved edit"));
+    editor.setSelectedFontSize(24);
+    editor.setSelectedPathEnabled(true);
+    editor.setPathHandle(1, 0.5, 0.1);
+    editor.beginTextEdit();
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QObject *textAreaObject = nullptr;
+    QObject *outlinedObject = nullptr;
+    QObject *pathGuideObject = nullptr;
+    QTRY_VERIFY(textAreaObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxTextArea")));
+    QTRY_VERIFY(outlinedObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxOutlinedText")));
+    QTRY_VERIFY(pathGuideObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("pathGuide")));
+
+    QTRY_VERIFY(textAreaObject->property("visible").toBool());
+    QCOMPARE(outlinedObject->property("pathEnabled").toBool(), false);
+    QCOMPARE(outlinedObject->property("editLayoutMetricsValid").toBool(), true);
+    QCOMPARE(pathGuideObject->property("visible").toBool(), true);
+
+    editor.endTextEdit();
+    QCoreApplication::processEvents();
+
+    QTRY_VERIFY(!textAreaObject->property("visible").toBool());
+    QCOMPARE(outlinedObject->property("pathEnabled").toBool(), true);
+    QCOMPARE(outlinedObject->property("editLayoutMetricsValid").toBool(), false);
+  }
+
+  void qmlTextEditTabStopMatchesOutlinedLayoutMetrics() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 260, 120);
+    editor.updateSelectedText(QStringLiteral("A\tB\tC"));
+    editor.setSelectedFontSize(22);
+    editor.beginTextEdit();
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QVERIFY(window->setProperty("zoom", 1.5));
+    QObject *textAreaObject = nullptr;
+    QObject *outlinedObject = nullptr;
+    QTRY_VERIFY(textAreaObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxTextArea")));
+    QTRY_VERIFY(outlinedObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxOutlinedText")));
+    QTRY_VERIFY(textAreaObject->property("visible").toBool());
+
+    const qreal expectedTabStop =
+        outlinedObject->property("editLayoutTabStopDistance").toReal();
+    QVERIFY2(std::abs(textAreaObject->property("tabStopDistance").toReal() -
+                      expectedTabStop) <= 0.5,
+             qPrintable(QStringLiteral("tab=%1 expected=%2")
+                            .arg(textAreaObject->property("tabStopDistance")
+                                     .toReal())
+                            .arg(expectedTabStop)));
+
+    auto *quickTextDocument =
+        textAreaObject->property("textDocument").value<QObject *>();
+    auto *documentWrapper = qobject_cast<QQuickTextDocument *>(quickTextDocument);
+    QVERIFY(documentWrapper);
+    QVERIFY(std::abs(documentWrapper->textDocument()
+                         ->defaultTextOption()
+                         .tabStopDistance() -
+                     expectedTabStop) <= 0.5);
+  }
+
+  void qmlWhitespaceAndAlignmentKeepEditPreviewMetricsInSync() {
+    registerQmlTypes();
+
+    struct Case {
+      QString name;
+      QString text;
+      int alignment;
+      int cursorPosition;
+    };
+    const QList<Case> cases{
+        {QStringLiteral("multiple trailing spaces"),
+         QStringLiteral("Alpha   Beta   "), 0, 16},
+        {QStringLiteral("explicit empty line"), QStringLiteral("Top\n\nBottom"),
+         0, 4},
+        {QStringLiteral("center whitespace"), QStringLiteral("  Centered  "), 1,
+         2},
+        {QStringLiteral("right whitespace"), QStringLiteral("  Right  "), 2, 2},
+        {QStringLiteral("long unbroken word"),
+         QStringLiteral("Supercalifragilisticexpialidocious"), 0, 34},
+    };
+
+    const auto nearlyEqual = [](qreal a, qreal b, qreal tolerance = 1.0) {
+      return std::abs(a - b) <= tolerance;
+    };
+
+    for (const Case &testCase : cases) {
+      EditorController editor;
+      editor.newDocument();
+      editor.createTextBox(10, 20, 210, 130);
+      editor.updateSelectedText(testCase.text);
+      editor.setSelectedFontSize(22);
+      editor.setSelectedOutlineEnabled(true);
+      editor.setSelectedOutlineSize(6);
+      editor.setSelectedAlignment(testCase.alignment);
+      editor.beginTextEdit();
+
+      QQmlApplicationEngine engine;
+      engine.rootContext()->setContextProperty(QStringLiteral("Editor"),
+                                               &editor);
+      engine.load(QUrl::fromLocalFile(
+          QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+      QCOMPARE(engine.rootObjects().size(), 1);
+
+      auto *window =
+          qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+      QVERIFY(window);
+      QObject *textAreaObject = nullptr;
+      QObject *outlinedObject = nullptr;
+      QTRY_VERIFY(textAreaObject = findVisualChildByName(
+                      window->contentItem(), QStringLiteral("boxTextArea")));
+      QTRY_VERIFY(outlinedObject = findVisualChildByName(
+                      window->contentItem(), QStringLiteral("boxOutlinedText")));
+      auto *textAreaItem = qobject_cast<QQuickItem *>(textAreaObject);
+      QVERIFY(textAreaItem);
+      QTRY_VERIFY(textAreaObject->property("visible").toBool());
+
+      auto *quickTextDocument =
+          textAreaObject->property("textDocument").value<QObject *>();
+      auto *documentWrapper =
+          qobject_cast<QQuickTextDocument *>(quickTextDocument);
+      QVERIFY(documentWrapper);
+      auto *document = documentWrapper->textDocument();
+      QVERIFY(document);
+      QTRY_VERIFY(document->firstBlock().layout() &&
+                  document->firstBlock().layout()->lineCount() > 0);
+
+      const qreal expectedLeftPadding =
+          outlinedObject->property("editLayoutLeftPadding").toReal();
+      const qreal expectedRightPadding =
+          outlinedObject->property("editLayoutRightPadding").toReal();
+      QVERIFY(nearlyEqual(textAreaObject->property("leftPadding").toReal(),
+                          expectedLeftPadding));
+      QVERIFY(nearlyEqual(textAreaObject->property("rightPadding").toReal(),
+                          expectedRightPadding));
+      QVERIFY(nearlyEqual(document->textWidth(),
+                          textAreaItem->width() - expectedLeftPadding -
+                              expectedRightPadding));
+      QCOMPARE(textAreaObject->property("horizontalAlignment").toInt(),
+               testCase.alignment == 1   ? int(Qt::AlignHCenter)
+               : testCase.alignment == 2 ? int(Qt::AlignRight)
+                                          : int(Qt::AlignLeft));
+
+      textAreaObject->setProperty("cursorPosition", testCase.cursorPosition);
+      const QRectF cursorRect =
+          textAreaObject->property("cursorRectangle").toRectF();
+      QVERIFY2(!cursorRect.isEmpty(), qPrintable(testCase.name));
+      QVERIFY2(std::isfinite(cursorRect.x()) && std::isfinite(cursorRect.y()),
+               qPrintable(testCase.name));
+    }
+  }
+
+  void qmlUppercaseEditPreviewAndModelStayInSync() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 220, 90);
+    editor.updateSelectedText(QStringLiteral("mixed"));
+    editor.setSelectedUppercase(true);
+    editor.beginTextEdit();
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QObject *textAreaObject = nullptr;
+    QObject *outlinedObject = nullptr;
+    QTRY_VERIFY(textAreaObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxTextArea")));
+    QTRY_VERIFY(outlinedObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxOutlinedText")));
+    QTRY_VERIFY(textAreaObject->property("visible").toBool());
+    QTRY_VERIFY(textAreaObject->property("activeFocus").toBool());
+    QCOMPARE(textAreaObject->property("text").toString(),
+             QStringLiteral("MIXED"));
+    QCOMPARE(outlinedObject->property("text").toString(),
+             QStringLiteral("MIXED"));
+
+    textAreaObject->setProperty("cursorPosition", 5);
+    typeText(window, u"X");
+    QTRY_COMPARE(outlinedObject->property("text").toString(),
+                 QStringLiteral("MIXEDX"));
+    QTRY_COMPARE(
+        editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
+        QStringLiteral("MIXEDX"));
   }
 
   void qmlPerspectiveUsesLiveClippedRendererWithoutPreviewArtifact() {

@@ -139,6 +139,99 @@ private slots:
                             .arg(bounds.height())));
   }
 
+  void paintsHorizontalAlignmentToVisibleGlyphBounds() {
+    const QColor background(Qt::transparent);
+    auto render = [&](int alignment) {
+      OutlinedTextItem item;
+      item.setWidth(260);
+      item.setHeight(90);
+      item.setText(QStringLiteral("Short"));
+      item.setPixelSize(34);
+      item.setColor(Qt::black);
+      item.setHorizontalAlignment(alignment);
+
+      QImage image(260, 90, QImage::Format_ARGB32_Premultiplied);
+      image.fill(background);
+      QPainter painter(&image);
+      item.paint(&painter);
+      return visibleBounds(image, background);
+    };
+
+    const QRect left = render(Qt::AlignLeft);
+    const QRect center = render(Qt::AlignHCenter);
+    const QRect right = render(Qt::AlignRight);
+    QVERIFY(!left.isEmpty());
+    QVERIFY(!center.isEmpty());
+    QVERIFY(!right.isEmpty());
+    QVERIFY2(center.left() > left.left() + 40,
+             qPrintable(QStringLiteral("left=%1 center=%2")
+                            .arg(left.left())
+                            .arg(center.left())));
+    QVERIFY2(right.left() > center.left() + 40,
+             qPrintable(QStringLiteral("center=%1 right=%2")
+                            .arg(center.left())
+                            .arg(right.left())));
+    QVERIFY2(std::abs(center.center().x() - 130) <= 8,
+             qPrintable(QStringLiteral("center=%1")
+                            .arg(center.center().x())));
+    QVERIFY2(right.right() <= 259 && right.right() > 230,
+             qPrintable(QStringLiteral("right=%1")
+                            .arg(right.right())));
+  }
+
+  void exportPaintsHorizontalAlignmentToVisibleGlyphBounds() {
+    const QColor background(240, 240, 240, 255);
+    auto render = [&](TextAlignment alignment, QRect *bounds) {
+      QTemporaryDir dir;
+      if (!dir.isValid())
+        return false;
+      const QString pagePath = dir.filePath(QStringLiteral("page.png"));
+      const QString exportPath = dir.filePath(QStringLiteral("export.png"));
+      QImage page(260, 90, QImage::Format_RGBA8888);
+      page.fill(background);
+      if (!page.save(pagePath, "PNG"))
+        return false;
+
+      DocumentModel document;
+      TextBox box;
+      box.text = "Short";
+      box.bounds = {0.0, 0.0, 260.0, 90.0};
+      box.style.fontSize = 34;
+      box.style.textColor = "000000ff";
+      box.style.alignment = alignment;
+      document.addTextBox(box);
+
+      std::string error;
+      const RenderGraph graph;
+      if (!graph.exportPagePng(document, pagePath.toStdString(),
+                               exportPath.toStdString(), &error))
+        return false;
+      const QImage exported(exportPath);
+      if (exported.isNull())
+        return false;
+      *bounds = visibleBounds(exported, background);
+      return true;
+    };
+
+    QRect left;
+    QRect center;
+    QRect right;
+    QVERIFY(render(TextAlignment::Left, &left));
+    QVERIFY(render(TextAlignment::Center, &center));
+    QVERIFY(render(TextAlignment::Right, &right));
+    QVERIFY(!left.isEmpty());
+    QVERIFY(!center.isEmpty());
+    QVERIFY(!right.isEmpty());
+    QVERIFY2(center.left() > left.left() + 40,
+             qPrintable(QStringLiteral("left=%1 center=%2")
+                            .arg(left.left())
+                            .arg(center.left())));
+    QVERIFY2(right.left() > center.left() + 40,
+             qPrintable(QStringLiteral("center=%1 right=%2")
+                            .arg(center.left())
+                            .arg(right.left())));
+  }
+
   void exposesEditLayoutMetricsForNormalText() {
     OutlinedTextItem item;
     item.setWidth(180);
@@ -158,6 +251,44 @@ private slots:
     const qreal shortBoxTopPadding = item.editLayoutTopPadding();
     item.setHeight(160);
     QVERIFY(item.editLayoutTopPadding() > shortBoxTopPadding);
+  }
+
+  void editLayoutExposesFinalPaintTranslation() {
+    const QColor background(Qt::transparent);
+    OutlinedTextItem item;
+    item.setWidth(120);
+    item.setHeight(70);
+    item.setText(QStringLiteral("Italic fj"));
+    item.setPixelSize(42);
+    item.setItalic(true);
+    item.setOutlineSize(18);
+    item.setColor(Qt::black);
+    item.setOutlineColor(Qt::black);
+
+    QVERIFY(item.editLayoutMetricsValid());
+    QVERIFY2(item.editLayoutPaintOffsetX() > 0.1 ||
+                 item.editLayoutPaintOffsetY() > 0.1,
+             qPrintable(QStringLiteral("offset=%1,%2")
+                            .arg(item.editLayoutPaintOffsetX())
+                            .arg(item.editLayoutPaintOffsetY())));
+
+    QImage image(120, 70, QImage::Format_ARGB32_Premultiplied);
+    image.fill(background);
+    QPainter painter(&image);
+    item.paint(&painter);
+
+    const QRect bounds = visibleBounds(image, background);
+    QVERIFY(!bounds.isEmpty());
+    if (item.editLayoutPaintOffsetX() > 0.1)
+      QVERIFY2(bounds.left() <= 6,
+               qPrintable(QStringLiteral("painted left=%1 offset=%2")
+                              .arg(bounds.left())
+                              .arg(item.editLayoutPaintOffsetX())));
+    if (item.editLayoutPaintOffsetY() > 0.1)
+      QVERIFY2(bounds.top() <= 6,
+               qPrintable(QStringLiteral("painted top=%1 offset=%2")
+                              .arg(bounds.top())
+                              .arg(item.editLayoutPaintOffsetY())));
   }
 
   void editLayoutMetricsUseWordWrapAndIgnoreCurvedPathText() {
@@ -582,11 +713,11 @@ private slots:
         layoutCode,
         QStringLiteral("const qreal paintWidth = std::max<qreal>(1.0, "
                        "options.width - options.inset * 2.0);")));
-    QVERIFY(
-        layoutCode.contains(QStringLiteral("line.setLineWidth(paintWidth);")));
+    QVERIFY(layoutCode.contains(
+        QStringLiteral("document->setTextWidth(paintWidth);")));
     QVERIFY(layoutCode.contains(
         QStringLiteral("options.height - options.inset * 2.0 - blockHeight")));
-    QVERIFY(layoutCode.contains(QStringLiteral("qreal x = options.inset;")));
+    QVERIFY(layoutCode.contains(QStringLiteral("options.inset + line.x()")));
     QVERIFY(!layoutCode.contains(
         QStringLiteral("line.setLineWidth(options.width);")));
   }

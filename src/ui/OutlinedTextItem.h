@@ -69,6 +69,14 @@ class OutlinedTextItem : public QQuickPaintedItem {
                  editLayoutMetricsChanged)
   Q_PROPERTY(qreal editLayoutRightPadding READ editLayoutRightPadding NOTIFY
                  editLayoutMetricsChanged)
+  Q_PROPERTY(qreal editLayoutTabStopDistance READ editLayoutTabStopDistance
+                 NOTIFY editLayoutMetricsChanged)
+  Q_PROPERTY(QVariantList editLayoutLineTops READ editLayoutLineTops NOTIFY
+                 editLayoutMetricsChanged)
+  Q_PROPERTY(qreal editLayoutPaintOffsetX READ editLayoutPaintOffsetX NOTIFY
+                 editLayoutMetricsChanged)
+  Q_PROPERTY(qreal editLayoutPaintOffsetY READ editLayoutPaintOffsetY NOTIFY
+                 editLayoutMetricsChanged)
 
 public:
   explicit OutlinedTextItem(QQuickItem *parent = nullptr);
@@ -128,6 +136,10 @@ public:
   qreal editLayoutTopPadding() const;
   qreal editLayoutLeftPadding() const;
   qreal editLayoutRightPadding() const;
+  qreal editLayoutTabStopDistance() const;
+  QVariantList editLayoutLineTops() const;
+  qreal editLayoutPaintOffsetX() const;
+  qreal editLayoutPaintOffsetY() const;
 
 #ifdef TEXTFX_TESTING
   QStringList wrappedLinesForTesting() const;
@@ -174,6 +186,7 @@ private:
   QFont layoutFont() const;
   void updateOverflow();
   void notifyLayoutChanged();
+  QPointF paintTranslationForCurrentLayout() const;
   QString blurCacheKey(int radius, const QRect &sourceRect) const;
   QString text_;
   QString fontFamily_;

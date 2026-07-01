@@ -130,7 +130,7 @@ Rectangle {
             gradientDirection: modelData.gradientDirection
             gradientColorA: rootWindow.qmlColor(modelData.gradientColorA)
             gradientColorB: rootWindow.qmlColor(modelData.gradientColorB)
-            pathEnabled: modelData.path
+            pathEnabled: modelData.path && !boxRef.editingSelected
             pathMode: modelData.pathMode
             pathPoints: modelData.pathPoints
             renderScale: rootWindow.livePreviewScale()
@@ -151,6 +151,7 @@ Rectangle {
         property int pathMode: boxRef.boxModel.pathMode
         property var pathPoints: boxRef.boxModel.pathPoints
 
+        objectName: "pathGuide"
         function guidePoint(point) {
             return Qt.point(rootWindow.pointValue(point, 0, 0.5) * width, rootWindow.pointValue(point, 1, 0.5) * height);
         }
@@ -232,11 +233,14 @@ Rectangle {
         property var boxRef: parent
         property var rootWindow: boxRef.rootWindow
         property var editorRef: boxRef.editorRef
-        property real editLineSpacing: modelData.lineSpacing * rootWindow.viewDocScale()
+        property real editLineSpacing: modelData.lineSpacing
         readonly property bool editLayoutAligned: boxOutlinedText.editLayoutMetricsValid
-        readonly property real editLayoutTopPadding: editLayoutAligned ? rootWindow.documentToViewLength(boxOutlinedText.editLayoutTopPadding) : 0
-        readonly property real editLayoutLeftPadding: editLayoutAligned ? rootWindow.documentToViewLength(boxOutlinedText.editLayoutLeftPadding) : 0
-        readonly property real editLayoutRightPadding: editLayoutAligned ? rootWindow.documentToViewLength(boxOutlinedText.editLayoutRightPadding) : 0
+        readonly property real editLayoutTopPadding: editLayoutAligned ? boxOutlinedText.editLayoutTopPadding : 0
+        readonly property real editLayoutLeftPadding: editLayoutAligned ? boxOutlinedText.editLayoutLeftPadding : 0
+        readonly property real editLayoutRightPadding: editLayoutAligned ? boxOutlinedText.editLayoutRightPadding : 0
+        readonly property real editLayoutTabStopDistance: boxOutlinedText.editLayoutTabStopDistance
+        readonly property real editLayoutPaintOffsetX: editLayoutAligned ? boxOutlinedText.editLayoutPaintOffsetX : 0
+        readonly property real editLayoutPaintOffsetY: editLayoutAligned ? boxOutlinedText.editLayoutPaintOffsetY : 0
 
         function focusForEdit() {
             if (boxRef.selected && editorRef.editingText && !activeFocus)
@@ -250,7 +254,12 @@ Rectangle {
 
         objectName: "boxTextArea"
         z: 1
-        anchors.fill: parent
+        x: editLayoutPaintOffsetX * rootWindow.viewDocScale()
+        y: editLayoutPaintOffsetY * rootWindow.viewDocScale()
+        width: boxRef.visualDocW
+        height: boxRef.visualDocH
+        transformOrigin: Item.TopLeft
+        scale: rootWindow.viewDocScale()
         clip: true
         visible: boxRef.selected && editorRef.editingText
         text: modelData.uppercase ? String(modelData.text).toUpperCase() : modelData.text
@@ -259,11 +268,11 @@ Rectangle {
         selectionColor: Qt.alpha(rootWindow.palette.highlight, 0.35)
         placeholderTextColor: "transparent"
         font.family: modelData.resolvedFontFamily
-        font.pixelSize: Math.max(1, modelData.fontSize * rootWindow.viewDocScale())
+        font.pixelSize: Math.round(Math.max(1, modelData.fontSize))
         font.bold: modelData.bold
         font.weight: modelData.bold ? Font.Bold : Font.Normal
         font.italic: modelData.italic
-        font.letterSpacing: modelData.letterSpacing * rootWindow.viewDocScale()
+        font.letterSpacing: modelData.letterSpacing
         horizontalAlignment: modelData.alignment === 1 ? TextEdit.AlignHCenter : modelData.alignment === 2 ? TextEdit.AlignRight : TextEdit.AlignLeft
         padding: 0
         topPadding: editLayoutTopPadding
@@ -272,6 +281,7 @@ Rectangle {
         bottomPadding: 0
         background: null
         wrapMode: TextEdit.WordWrap
+        tabStopDistance: editLayoutTabStopDistance
         selectByMouse: boxRef.selected && editorRef.editingText
         readOnly: !(boxRef.selected && editorRef.editingText)
         Component.onCompleted: {
@@ -304,7 +314,7 @@ Rectangle {
         }
 
         cursorDelegate: Rectangle {
-            width: 2
+            width: Math.max(1, 2 / boxTextArea.rootWindow.viewDocScale())
             color: boxTextArea.rootWindow.palette.highlight
 
             SequentialAnimation on opacity {

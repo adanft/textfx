@@ -1292,8 +1292,8 @@ private slots:
         "modelData.shadowBlurSize : 0")));
     QVERIFY(rendererBlock.contains(
         QStringLiteral("gradientEnabled: modelData.gradient")));
-    QVERIFY(
-        rendererBlock.contains(QStringLiteral("pathEnabled: modelData.path")));
+    QVERIFY(rendererBlock.contains(QStringLiteral(
+        "pathEnabled: modelData.path && !boxRef.editingSelected")));
     QVERIFY(rendererBlock.contains(
         QStringLiteral("pathPoints: modelData.pathPoints")));
     QVERIFY(rendererBlock.contains(
@@ -1309,8 +1309,9 @@ private slots:
     QVERIFY(editorBlock.contains(QStringLiteral(
         "selectionColor: Qt.alpha(rootWindow.palette.highlight, 0.35)")));
     QVERIFY(editorBlock.contains(
-        QStringLiteral("property real editLineSpacing: modelData.lineSpacing * "
-                       "rootWindow.viewDocScale()")));
+        QStringLiteral("property real editLineSpacing: modelData.lineSpacing")));
+    QVERIFY(editorBlock.contains(
+        QStringLiteral("scale: rootWindow.viewDocScale()")));
     QVERIFY(editorBlock.contains(
         QStringLiteral("applyTextLineSpacing(textDocument, editLineSpacing)")));
     QVERIFY(editorBlock.contains(

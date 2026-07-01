@@ -742,6 +742,8 @@ void EditorController::applyTextLineSpacing(QObject *quickTextDocument,
   if (!document)
     return;
 
+  document->setDocumentMargin(0.0);
+
   QTextCursor cursor(document);
   for (QTextBlock block = document->begin(); block.isValid();
        block = block.next()) {
