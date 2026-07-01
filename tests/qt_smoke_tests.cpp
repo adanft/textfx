@@ -1036,8 +1036,10 @@ private slots:
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString source = qmlSource();
 
-        const qsizetype boundsStart = source.indexOf(QStringLiteral("function perspectiveVisualBounds(box, width, height)"));
+        const qsizetype geometryStart = source.indexOf(QStringLiteral("QtObject {\n    id: geometry"));
+        const qsizetype boundsStart = source.indexOf(QStringLiteral("function perspectiveVisualBounds(box, width, height)"), geometryStart);
         const qsizetype marginStart = source.indexOf(QStringLiteral("function perspectiveMargin(box)"), boundsStart);
+        QVERIFY(geometryStart >= 0);
         QVERIFY(boundsStart >= 0);
         QVERIFY(marginStart > boundsStart);
         const QString hitHelpers = source.mid(boundsStart, marginStart - boundsStart);
@@ -1204,8 +1206,10 @@ private slots:
         QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
         const QString source = qmlSource();
 
-        const qsizetype visualStart = source.indexOf(QStringLiteral("function visualHandlePosition(box, name, width, height)"));
+        const qsizetype geometryStart = source.indexOf(QStringLiteral("QtObject {\n    id: geometry"));
+        const qsizetype visualStart = source.indexOf(QStringLiteral("function visualHandlePosition(box, name, width, height)"), geometryStart);
         const qsizetype topStart = source.indexOf(QStringLiteral("function topMiddleVisualPoint"), visualStart);
+        QVERIFY(geometryStart >= 0);
         QVERIFY(visualStart >= 0);
         QVERIFY(topStart > visualStart);
         const QString visualSource = source.mid(visualStart, topStart - visualStart);
@@ -2804,7 +2808,7 @@ private slots:
         QVERIFY(!source.contains(QStringLiteral("function offsetFromCenter(point, width, height)")));
         QVERIFY(source.contains(QStringLiteral("return perspectiveCorner(box, name, width, height)")));
         QVERIFY(source.contains(QStringLiteral("function rotateHandlePosition(box, width, height)")));
-        QVERIFY(source.contains(QStringLiteral("return { x: top.x, y: top.y - rotateHandleDistance() }")));
+        QVERIFY(source.contains(QStringLiteral("return { x: top.x, y: top.y - rotateHandleDistance }")));
 
         const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"));
         const qsizetype rotateUse = source.indexOf(QStringLiteral("rootWindow.rotateHandlePosition(boxRef.boxModel, boxRef.width, boxRef.height)"));

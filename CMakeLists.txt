@@ -82,6 +82,7 @@ qt_add_qml_module(textfx
         qml/CentralCanvasShell.qml
         qml/EditorChrome.qml
         qml/LeftInspectorPanel.qml
+        qml/PerspectiveGeometry.qml
         qml/RightInspectorPanel.qml
         qml/ShortcutMenuItem.qml
         qml/TextBoxDelegate.qml

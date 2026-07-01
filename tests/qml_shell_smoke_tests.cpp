@@ -290,6 +290,113 @@ private slots:
         QCOMPARE(moved.value(QStringLiteral("x")).toDouble(), original.value(QStringLiteral("x")).toDouble() + 25.0);
         QCOMPARE(moved.value(QStringLiteral("y")).toDouble(), original.value(QStringLiteral("y")).toDouble() - 10.0);
     }
+
+    void qmlPerspectiveGeometryCalculatesHandlesBoundsAndHitArea()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        auto* geometry = window->findChild<QObject*>(QStringLiteral("perspectiveGeometry"));
+        QVERIFY(geometry);
+        QVERIFY(geometry->setProperty("documentScale", 2.0));
+        QVERIFY(geometry->setProperty("handleSize", 12.0));
+
+        const QVariantMap box{
+            {QStringLiteral("index"), 0},
+            {QStringLiteral("perspective"), true},
+            {QStringLiteral("perspectiveNw"), QVariantList{10.0, -5.0}},
+            {QStringLiteral("perspectiveNe"), QVariantList{-20.0, 5.0}},
+            {QStringLiteral("perspectiveSe"), QVariantList{15.0, 10.0}},
+            {QStringLiteral("perspectiveSw"), QVariantList{-5.0, 20.0}},
+        };
+
+        QVariant northHandle;
+        QVERIFY(QMetaObject::invokeMethod(geometry, "visualHandlePosition",
+            Q_RETURN_ARG(QVariant, northHandle),
+            Q_ARG(QVariant, box),
+            Q_ARG(QVariant, QStringLiteral("n")),
+            Q_ARG(QVariant, 200.0),
+            Q_ARG(QVariant, 100.0)));
+        const QVariantMap north = northHandle.toMap();
+        QCOMPARE(north.value(QStringLiteral("x")).toDouble(), 90.0);
+        QCOMPARE(north.value(QStringLiteral("y")).toDouble(), 0.0);
+
+        QVariant boundsValue;
+        QVERIFY(QMetaObject::invokeMethod(geometry, "perspectiveVisualBounds",
+            Q_RETURN_ARG(QVariant, boundsValue),
+            Q_ARG(QVariant, box),
+            Q_ARG(QVariant, 200.0),
+            Q_ARG(QVariant, 100.0)));
+        const QVariantMap bounds = boundsValue.toMap();
+        QVERIFY(bounds.value(QStringLiteral("x")).toDouble() < 0.0);
+        QVERIFY(bounds.value(QStringLiteral("y")).toDouble() < 0.0);
+        QVERIFY(bounds.value(QStringLiteral("width")).toDouble() > 200.0);
+        QVERIFY(bounds.value(QStringLiteral("height")).toDouble() > 100.0);
+
+        const QVariantMap insidePoint{{QStringLiteral("x"), 100.0}, {QStringLiteral("y"), 50.0}};
+        QVariant inside;
+        QVERIFY(QMetaObject::invokeMethod(geometry, "pointInPerspectivePolygon",
+            Q_RETURN_ARG(QVariant, inside),
+            Q_ARG(QVariant, insidePoint),
+            Q_ARG(QVariant, box),
+            Q_ARG(QVariant, 200.0),
+            Q_ARG(QVariant, 100.0)));
+        QVERIFY(inside.toBool());
+
+        const QVariantMap outsidePoint{{QStringLiteral("x"), -30.0}, {QStringLiteral("y"), -30.0}};
+        QVariant outside;
+        QVERIFY(QMetaObject::invokeMethod(geometry, "pointInPerspectivePolygon",
+            Q_RETURN_ARG(QVariant, outside),
+            Q_ARG(QVariant, outsidePoint),
+            Q_ARG(QVariant, box),
+            Q_ARG(QVariant, 200.0),
+            Q_ARG(QVariant, 100.0)));
+        QVERIFY(!outside.toBool());
+
+        QVERIFY(geometry->setProperty("livePerspectiveActive", true));
+        QVERIFY(geometry->setProperty("activePerspectiveBoxIndex", 0));
+        QVERIFY(geometry->setProperty("activePerspectiveHandle", QStringLiteral("ne")));
+        QVERIFY(geometry->setProperty("perspectiveX", 42.0));
+        QVERIFY(geometry->setProperty("perspectiveY", -7.0));
+
+        const QVariantMap otherBox{
+            {QStringLiteral("index"), 1},
+            {QStringLiteral("perspective"), true},
+            {QStringLiteral("perspectiveNw"), QVariantList{10.0, -5.0}},
+            {QStringLiteral("perspectiveNe"), QVariantList{-20.0, 5.0}},
+            {QStringLiteral("perspectiveSe"), QVariantList{15.0, 10.0}},
+            {QStringLiteral("perspectiveSw"), QVariantList{-5.0, 20.0}},
+        };
+        QVariant selectedLiveCorner;
+        QVERIFY(QMetaObject::invokeMethod(geometry, "perspectiveLayoutCorner",
+            Q_RETURN_ARG(QVariant, selectedLiveCorner),
+            Q_ARG(QVariant, box),
+            Q_ARG(QVariant, QStringLiteral("ne")),
+            Q_ARG(QVariant, 100.0),
+            Q_ARG(QVariant, 50.0)));
+        QVariant otherCorner;
+        QVERIFY(QMetaObject::invokeMethod(geometry, "perspectiveLayoutCorner",
+            Q_RETURN_ARG(QVariant, otherCorner),
+            Q_ARG(QVariant, otherBox),
+            Q_ARG(QVariant, QStringLiteral("ne")),
+            Q_ARG(QVariant, 100.0),
+            Q_ARG(QVariant, 50.0)));
+        QCOMPARE(selectedLiveCorner.toMap().value(QStringLiteral("x")).toDouble(), 142.0);
+        QCOMPARE(selectedLiveCorner.toMap().value(QStringLiteral("y")).toDouble(), -7.0);
+        QCOMPARE(otherCorner.toMap().value(QStringLiteral("x")).toDouble(), 80.0);
+        QCOMPARE(otherCorner.toMap().value(QStringLiteral("y")).toDouble(), 5.0);
+    }
 };
 
 QTEST_MAIN(QmlShellSmokeTests)
