@@ -262,6 +262,7 @@ RenderGraph::exportPagePngTimed(const DocumentModel &document,
     return std::unexpected("Could not load page image: " +
                            pageImagePath.string());
   }
+  const bool sourceHasAlpha = source.hasAlphaChannel();
   source = source.convertToFormat(QImage::Format_ARGB32_Premultiplied);
 
   QPainter painter(&source);
@@ -278,7 +279,10 @@ RenderGraph::exportPagePngTimed(const DocumentModel &document,
                            exportPath.string());
 
   const auto tempPath = exportPath.string() + ".tmp";
-  if (!source.save(QString::fromStdString(tempPath), "PNG")) {
+  const QImage exportImage = sourceHasAlpha
+                                 ? source
+                                 : source.convertToFormat(QImage::Format_RGB888);
+  if (!exportImage.save(QString::fromStdString(tempPath), "PNG")) {
     return std::unexpected("Could not write PNG output: " +
                            exportPath.string());
   }

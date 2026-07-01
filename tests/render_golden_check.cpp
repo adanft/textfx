@@ -2,6 +2,7 @@
 #include "core/ProjectStore.h"
 #include "render/RenderGraph.h"
 
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -22,6 +23,19 @@ bool hasPngMagic(const std::filesystem::path &path) {
   input.read(magic, 8);
   return input.gcount() == 8 &&
          std::string(magic, 8) == std::string("\x89PNG\r\n\x1a\n", 8);
+}
+
+int pngColorType(const std::filesystem::path &path) {
+  std::ifstream input(path, std::ios::binary);
+  std::array<unsigned char, 26> header{};
+  input.read(reinterpret_cast<char *>(header.data()), header.size());
+  if (input.gcount() != static_cast<std::streamsize>(header.size()) ||
+      std::string(reinterpret_cast<const char *>(header.data()), 8) !=
+          std::string("\x89PNG\r\n\x1a\n", 8) ||
+      std::string(reinterpret_cast<const char *>(header.data() + 12), 4) !=
+          "IHDR")
+    return -1;
+  return header[25];
 }
 
 QImage exportedImage(const RenderGraph &graph, const DocumentModel &document,
@@ -136,6 +150,40 @@ int main(int argc, char **argv) {
       !hasPngMagic(timedOutPath)) {
     std::cerr << "Expected timed export to return non-negative timing data and "
                  "write a PNG\n";
+    return 1;
+  }
+
+  QImage rgbPage(64, 48, QImage::Format_RGB888);
+  rgbPage.fill(QColor(12, 34, 56));
+  const auto rgbPagePath = tempPath / "rgb-source.png";
+  const auto rgbOutPath = tempPath / "rgb-export.png";
+  if (!rgbPage.save(QString::fromStdString(rgbPagePath.string()), "PNG"))
+    return 1;
+  const auto rgbResult = graph.exportPagePngTimed(DocumentModel{}, rgbPagePath,
+                                                  rgbOutPath);
+  const QImage rgbExport(QString::fromStdString(rgbOutPath.string()));
+  if (!rgbResult || rgbExport.isNull() || rgbExport.hasAlphaChannel() ||
+      pngColorType(rgbOutPath) != 2 || rgbExport.size() != rgbPage.size() ||
+      rgbExport.pixelColor(0, 0) != rgbPage.pixelColor(0, 0)) {
+    std::cerr << "Expected RGB source export to remain RGB/no-alpha\n";
+    return 1;
+  }
+
+  QImage alphaPage(64, 48, QImage::Format_RGBA8888);
+  alphaPage.fill(QColor(12, 34, 56, 255));
+  alphaPage.setPixelColor(0, 0, QColor(12, 34, 56, 96));
+  const auto alphaPagePath = tempPath / "alpha-source.png";
+  const auto alphaOutPath = tempPath / "alpha-export.png";
+  if (!alphaPage.save(QString::fromStdString(alphaPagePath.string()), "PNG"))
+    return 1;
+  const auto alphaResult = graph.exportPagePngTimed(DocumentModel{},
+                                                    alphaPagePath, alphaOutPath);
+  const QImage alphaExport(QString::fromStdString(alphaOutPath.string()));
+  if (!alphaResult || alphaExport.isNull() || !alphaExport.hasAlphaChannel() ||
+      pngColorType(alphaOutPath) != 6 ||
+      alphaExport.pixelColor(0, 0).alpha() != 96 ||
+      alphaExport.size() != alphaPage.size()) {
+    std::cerr << "Expected alpha source export to preserve alpha\n";
     return 1;
   }
 
