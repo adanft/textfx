@@ -66,6 +66,7 @@ QString qmlSource()
 {
     return readQmlFile(QStringLiteral("Main.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("BoxMoveInteractionState.qml")) + QLatin1Char('\n')
+        + readQmlFile(QStringLiteral("BoxRotateInteractionState.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("BoxResizeInteractionState.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("CanvasInteractionState.qml")) + QLatin1Char('\n')
         + readQmlFile(QStringLiteral("ColorButton.qml")) + QLatin1Char('\n')

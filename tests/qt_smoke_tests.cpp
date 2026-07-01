@@ -1158,9 +1158,47 @@ private slots:
             QVERIFY2(source.contains(QStringLiteral("name: \"") + handle + QStringLiteral("\"")), qPrintable(handle));
         }
         QVERIFY(source.contains(QStringLiteral("Math.atan2")));
+        QVERIFY(source.contains(QStringLiteral("BoxRotateInteractionState")));
         QVERIFY(source.contains(QStringLiteral("window.editor.setSelectedBounds")));
         QVERIFY(source.contains(QStringLiteral("rotateHandle.rootWindow.endRotateDrag(true)")));
         QVERIFY(!source.contains(QStringLiteral("Editor.rotateSelected(degrees)")));
+    }
+
+    void qmlBoxRotateUsesTransientWindowDragAndStableEditor()
+    {
+        const QString source = readQmlFile(QStringLiteral("Main.qml"));
+        const QString rotateStateSource = readQmlFile(QStringLiteral("BoxRotateInteractionState.qml"));
+        const QString delegateSource = readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+        QVERIFY(!source.isEmpty());
+        QVERIFY(!rotateStateSource.isEmpty());
+        QVERIFY(!delegateSource.isEmpty());
+
+        const qsizetype updateRotateStart = source.indexOf(QStringLiteral("function updateRotateDrag(canvasX, canvasY)"));
+        const qsizetype endRotateStart = source.indexOf(QStringLiteral("function endRotateDrag(commit)"));
+        const qsizetype beginMoveStart = source.indexOf(QStringLiteral("function beginMoveDrag"), endRotateStart);
+        QVERIFY(updateRotateStart >= 0);
+        QVERIFY(endRotateStart > updateRotateStart);
+        QVERIFY(beginMoveStart > endRotateStart);
+        const QString updateRotate = source.mid(updateRotateStart, endRotateStart - updateRotateStart);
+        const QString endRotate = source.mid(endRotateStart, beginMoveStart - endRotateStart);
+
+        QVERIFY(rotateStateSource.contains(QStringLiteral("function begin(delegate, documentX, documentY)")));
+        QVERIFY(rotateStateSource.contains(QStringLiteral("function update(documentX, documentY)")));
+        QVERIFY(rotateStateSource.contains(QStringLiteral("function cancelPreview()")));
+        QVERIFY(rotateStateSource.contains(QStringLiteral("function reset()")));
+        QVERIFY(source.contains(QStringLiteral("property alias activeRotateDelegate: boxRotateInteraction.activeRotateDelegate")));
+        QVERIFY(source.contains(QStringLiteral("property alias rotateDegrees: boxRotateInteraction.rotateDegrees")));
+        QVERIFY(source.contains(QStringLiteral("BoxRotateInteractionState")));
+        QVERIFY(source.contains(QStringLiteral("objectName: \"boxRotateInteractionState\"")));
+        QVERIFY(source.contains(QStringLiteral("boxRotateInteraction.begin(delegate, viewToDocumentX(canvasX), viewToDocumentY(canvasY))")));
+        QVERIFY(updateRotate.contains(QStringLiteral("boxRotateInteraction.update(viewToDocumentX(canvasX), viewToDocumentY(canvasY))")));
+        QVERIFY(endRotate.contains(QStringLiteral("window.editor.setSelectedRotation(boxRotateInteraction.rotateDegrees)")));
+        QVERIFY(endRotate.contains(QStringLiteral("boxRotateInteraction.cancelPreview()")));
+        QVERIFY(endRotate.contains(QStringLiteral("boxRotateInteraction.reset()")));
+        QVERIFY(!source.contains(QStringLiteral("function angleDeltaDegrees(from, to)")));
+        QVERIFY(!source.contains(QStringLiteral("activeRotateDelegate.rotation = rotateDegrees")));
+        QVERIFY(!updateRotate.contains(QStringLiteral("setSelectedRotation")));
+        QVERIFY(!delegateSource.contains(QStringLiteral("Editor.setSelectedRotation")));
     }
 
     void qmlPerspectiveAndRotateDragsCommitOnlyOnRelease()
@@ -1186,18 +1224,19 @@ private slots:
         const QString perspectiveEnd = source.mid(perspectiveEndStart, rotateStart - perspectiveEndStart);
         const QString rotateUpdate = source.mid(rotateUpdateStart, rotateEndStart - rotateUpdateStart);
         const QString rotateEnd = source.mid(rotateEndStart, escapeStart - rotateEndStart);
+        const QString rotateStateSource = readQmlFile(QStringLiteral("BoxRotateInteractionState.qml"));
 
         QVERIFY(source.contains(QStringLiteral("property var activePerspectiveDelegate: null")));
-        QVERIFY(source.contains(QStringLiteral("property var activeRotateDelegate: null")));
+        QVERIFY(source.contains(QStringLiteral("property alias activeRotateDelegate: boxRotateInteraction.activeRotateDelegate")));
         QVERIFY(perspectiveUpdate.contains(QStringLiteral("perspectiveX = perspectiveStartX")));
         QVERIFY(perspectiveUpdate.contains(QStringLiteral("++perspectiveRevision")));
         QVERIFY(!perspectiveUpdate.contains(QStringLiteral("Editor.setPerspectiveHandle")));
         QVERIFY(perspectiveEnd.contains(QStringLiteral("if (dragMode === editorInteraction.dragModePerspective && commit)")));
         QVERIFY(perspectiveEnd.contains(QStringLiteral("window.editor.setPerspectiveHandle(activePerspectiveHandle, perspectiveX, perspectiveY)")));
-        QVERIFY(rotateUpdate.contains(QStringLiteral("activeRotateDelegate.rotation = rotateDegrees")));
+        QVERIFY(rotateStateSource.contains(QStringLiteral("activeRotateDelegate.rotation = rotateDegrees")));
         QVERIFY(!rotateUpdate.contains(QStringLiteral("Editor.setSelectedRotation")));
         QVERIFY(rotateEnd.contains(QStringLiteral("if (dragMode === editorInteraction.dragModeRotate && commit)")));
-        QVERIFY(rotateEnd.contains(QStringLiteral("window.editor.setSelectedRotation(rotateDegrees)")));
+        QVERIFY(rotateEnd.contains(QStringLiteral("window.editor.setSelectedRotation(boxRotateInteraction.rotateDegrees)")));
     }
 
     void qmlPerspectiveMidpointsAreDerivedAndAxisConstrained()

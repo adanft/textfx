@@ -293,6 +293,128 @@ private slots:
         QCOMPARE(moved.value(QStringLiteral("y")).toDouble(), original.value(QStringLiteral("y")).toDouble() - 10.0);
     }
 
+    void qmlBoxRotateInteractionStatePreviewsCancelsAndCommits()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(40, 50, 100, 60);
+        editor.setSelectedRotation(10.0);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        QObject* boxObject = nullptr;
+        QTRY_VERIFY(boxObject = findVisualChildByName(window->contentItem(), QStringLiteral("textBoxDelegate")));
+        auto* boxItem = qobject_cast<QQuickItem*>(boxObject);
+        QVERIFY(boxItem);
+
+        const auto documentToView = [&](const char* method, double value) {
+            QVariant result;
+            const bool invoked = QMetaObject::invokeMethod(window, method, Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, value));
+            return invoked ? result.toDouble() : std::numeric_limits<double>::quiet_NaN();
+        };
+        const auto nearlyEqual = [](double a, double b) { return std::abs(a - b) <= 0.001; };
+        const double centerX = 90.0;
+        const double centerY = 80.0;
+        const double startX = documentToView("documentToViewX", centerX);
+        const double startY = documentToView("documentToViewY", 0.0);
+        const double endX = documentToView("documentToViewX", 190.0);
+        const double endY = documentToView("documentToViewY", centerY);
+
+        QVERIFY(QMetaObject::invokeMethod(window, "beginRotateDrag",
+            Q_ARG(QVariant, QVariant::fromValue(boxObject)),
+            Q_ARG(QVariant, startX),
+            Q_ARG(QVariant, startY)));
+        QVERIFY(QMetaObject::invokeMethod(window, "updateRotateDrag", Q_ARG(QVariant, endX), Q_ARG(QVariant, endY)));
+        QTRY_VERIFY(nearlyEqual(window->property("rotateDegrees").toDouble(), 100.0));
+        QTRY_VERIFY(nearlyEqual(boxItem->rotation(), 100.0));
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("rotation")).toDouble(), 10.0);
+
+        QVERIFY(QMetaObject::invokeMethod(window, "endRotateDrag", Q_ARG(QVariant, false)));
+        QCoreApplication::processEvents();
+        QTRY_VERIFY(nearlyEqual(boxItem->rotation(), 10.0));
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("rotation")).toDouble(), 10.0);
+
+        QVERIFY(QMetaObject::invokeMethod(window, "beginRotateDrag",
+            Q_ARG(QVariant, QVariant::fromValue(boxObject)),
+            Q_ARG(QVariant, startX),
+            Q_ARG(QVariant, startY)));
+        QVERIFY(QMetaObject::invokeMethod(window, "updateRotateDrag", Q_ARG(QVariant, endX), Q_ARG(QVariant, endY)));
+        QVERIFY(QMetaObject::invokeMethod(window, "endRotateDrag", Q_ARG(QVariant, true)));
+        QTRY_VERIFY(nearlyEqual(editor.boxes().at(0).toMap().value(QStringLiteral("rotation")).toDouble(), 100.0));
+    }
+
+    void qmlBoxRotateInteractionStateWrapsAcrossAngleBoundary()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(40, 50, 100, 60);
+        editor.setSelectedRotation(10.0);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        QObject* boxObject = nullptr;
+        QTRY_VERIFY(boxObject = findVisualChildByName(window->contentItem(), QStringLiteral("textBoxDelegate")));
+        auto* boxItem = qobject_cast<QQuickItem*>(boxObject);
+        QVERIFY(boxItem);
+
+        const auto documentToView = [&](const char* method, double value) {
+            QVariant result;
+            const bool invoked = QMetaObject::invokeMethod(window, method, Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, value));
+            return invoked ? result.toDouble() : std::numeric_limits<double>::quiet_NaN();
+        };
+        const auto nearlyEqual = [](double a, double b) { return std::abs(a - b) <= 0.001; };
+        const QPointF center(90.0, 80.0);
+        constexpr double pi = 3.14159265358979323846;
+        const double radius = 100.0;
+        const auto viewPointAtAngle = [&](double degrees) {
+            const double radians = degrees * pi / 180.0;
+            const double documentX = center.x() + std::cos(radians) * radius;
+            const double documentY = center.y() + std::sin(radians) * radius;
+            return QPointF(documentToView("documentToViewX", documentX), documentToView("documentToViewY", documentY));
+        };
+        const auto dragPreview = [&](double fromDegrees, double toDegrees) {
+            const QPointF start = viewPointAtAngle(fromDegrees);
+            const QPointF end = viewPointAtAngle(toDegrees);
+            QVERIFY(QMetaObject::invokeMethod(window, "beginRotateDrag",
+                Q_ARG(QVariant, QVariant::fromValue(boxObject)),
+                Q_ARG(QVariant, start.x()),
+                Q_ARG(QVariant, start.y())));
+            QVERIFY(QMetaObject::invokeMethod(window, "updateRotateDrag", Q_ARG(QVariant, end.x()), Q_ARG(QVariant, end.y())));
+        };
+
+        dragPreview(179.0, -179.0);
+        QTRY_VERIFY(nearlyEqual(window->property("rotateDegrees").toDouble(), 12.0));
+        QTRY_VERIFY(nearlyEqual(boxItem->rotation(), 12.0));
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("rotation")).toDouble(), 10.0);
+        QVERIFY(QMetaObject::invokeMethod(window, "endRotateDrag", Q_ARG(QVariant, false)));
+        QTRY_VERIFY(nearlyEqual(boxItem->rotation(), 10.0));
+
+        dragPreview(-179.0, 179.0);
+        QTRY_VERIFY(nearlyEqual(window->property("rotateDegrees").toDouble(), 8.0));
+        QTRY_VERIFY(nearlyEqual(boxItem->rotation(), 8.0));
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("rotation")).toDouble(), 10.0);
+        QVERIFY(QMetaObject::invokeMethod(window, "endRotateDrag", Q_ARG(QVariant, true)));
+        QTRY_VERIFY(nearlyEqual(editor.boxes().at(0).toMap().value(QStringLiteral("rotation")).toDouble(), 8.0));
+    }
+
     void qmlPerspectiveGeometryCalculatesHandlesBoundsAndHitArea()
     {
         registerQmlTypes();

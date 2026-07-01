@@ -57,10 +57,10 @@ ApplicationWindow {
       property real perspectiveStartSeY: 0
       property real perspectiveStartSwX: 0
       property real perspectiveStartSwY: 0
-      property var activeRotateDelegate: null
-      property real rotateStartRotation: 0
-      property real rotateStartAngle: 0
-      property real rotateDegrees: 0
+       property alias activeRotateDelegate: boxRotateInteraction.activeRotateDelegate
+       property alias rotateStartRotation: boxRotateInteraction.rotateStartRotation
+       property alias rotateStartAngle: boxRotateInteraction.rotateStartAngle
+       property alias rotateDegrees: boxRotateInteraction.rotateDegrees
       property alias activeMoveDelegate: boxMoveInteraction.activeMoveDelegate
       property alias activeMoveIndex: boxMoveInteraction.activeMoveIndex
       property alias moveStartX: boxMoveInteraction.moveStartX
@@ -143,6 +143,11 @@ ApplicationWindow {
         id: boxMoveInteraction
         objectName: "boxMoveInteractionState"
         documentScale: window.viewDocScale()
+    }
+
+    BoxRotateInteractionState {
+        id: boxRotateInteraction
+        objectName: "boxRotateInteractionState"
     }
 
     PerspectiveGeometry {
@@ -258,17 +263,6 @@ ApplicationWindow {
     function perspectiveMargin(box) { return perspectiveGeometry.perspectiveMargin(box) }
     function perspectiveMatrix(box, width, height, renderScale, enabled) { return perspectiveGeometry.perspectiveMatrix(box, width, height, renderScale, enabled) }
 
-    function angleDegrees(cx, cy, x, y) {
-        return Math.atan2(y - cy, x - cx) * 180 / Math.PI
-    }
-
-    function angleDeltaDegrees(from, to) {
-        let delta = to - from
-        while (delta > 180) delta -= 360
-        while (delta < -180) delta += 360
-        return delta
-    }
-
     function beginResizeDrag(delegate, handle, canvasX, canvasY) {
         dragMode = editorInteraction.dragModeResize
         boxResizeInteraction.begin(delegate, handle, canvasX, canvasY)
@@ -341,32 +335,22 @@ ApplicationWindow {
     }
 
     function beginRotateDrag(delegate, canvasX, canvasY) {
-        activeRotateDelegate = delegate
         dragMode = editorInteraction.dragModeRotate
-        const cx = delegate.boxModel.x + delegate.boxModel.w / 2
-        const cy = delegate.boxModel.y + delegate.boxModel.h / 2
-        rotateStartRotation = delegate.boxModel.rotation
-        rotateDegrees = rotateStartRotation
-        rotateStartAngle = angleDegrees(cx, cy, viewToDocumentX(canvasX), viewToDocumentY(canvasY))
+        boxRotateInteraction.begin(delegate, viewToDocumentX(canvasX), viewToDocumentY(canvasY))
     }
 
     function updateRotateDrag(canvasX, canvasY) {
         if (dragMode !== editorInteraction.dragModeRotate || !activeRotateDelegate)
             return
-        const box = activeRotateDelegate.boxModel
-        const cx = box.x + box.w / 2
-        const cy = box.y + box.h / 2
-        const angle = angleDegrees(cx, cy, viewToDocumentX(canvasX), viewToDocumentY(canvasY))
-        rotateDegrees = rotateStartRotation + angleDeltaDegrees(rotateStartAngle, angle)
-        activeRotateDelegate.rotation = rotateDegrees
+        boxRotateInteraction.update(viewToDocumentX(canvasX), viewToDocumentY(canvasY))
     }
 
     function endRotateDrag(commit) {
         if (dragMode === editorInteraction.dragModeRotate && commit)
-            window.editor.setSelectedRotation(rotateDegrees)
-        else if (dragMode === editorInteraction.dragModeRotate && activeRotateDelegate)
-            activeRotateDelegate.rotation = rotateStartRotation
-        activeRotateDelegate = null
+            window.editor.setSelectedRotation(boxRotateInteraction.rotateDegrees)
+        else if (dragMode === editorInteraction.dragModeRotate)
+            boxRotateInteraction.cancelPreview()
+        boxRotateInteraction.reset()
         dragMode = editorInteraction.dragModeIdle
     }
 
