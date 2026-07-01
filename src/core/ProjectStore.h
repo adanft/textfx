@@ -12,7 +12,10 @@ namespace textfx {
 class ProjectStore {
 public:
   static constexpr auto SaveFolder = ".textfx";
-  static constexpr auto ExportFolder = "exported";
+  static constexpr auto CleanedFolder = "Cleaned";
+  static constexpr auto RawFolder = "Raw";
+  static constexpr auto ExportFolder = "Typeset";
+  static constexpr auto PageTextsFile = "Texts.txt";
 
   explicit ProjectStore(std::filesystem::path folder);
 

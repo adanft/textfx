@@ -533,6 +533,8 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 orientation: Qt.Horizontal
+                visible: Editor.hasProject
+                enabled: Editor.hasProject
 
                 LeftInspectorPanel {
                     id: sidePanel
@@ -605,9 +607,9 @@ ApplicationWindow {
                         asynchronous: true
                         visible: source.toString().length > 0
                         onStatusChanged: {
-                            if (status === Image.Ready) {
+                            if (status === Image.Ready)
                                 window.pageBaseScale = window.fitPageScale();
-                            }
+
                         }
                     }
 
@@ -680,6 +682,30 @@ ApplicationWindow {
                     }
                 }
 
+            }
+
+        }
+
+        ColumnLayout {
+            id: startScreen
+
+            objectName: "startScreen"
+            anchors.centerIn: parent
+            spacing: 12
+            visible: !Editor.hasProject
+
+            Button {
+                objectName: "startOpenButton"
+                text: qsTr("Open ")
+                Layout.preferredWidth: 180
+                onClicked: chrome.openProjectPicker()
+            }
+
+            Button {
+                objectName: "startNewButton"
+                text: qsTr("New ")
+                Layout.preferredWidth: 180
+                onClicked: chrome.openNewProjectPicker()
             }
 
         }

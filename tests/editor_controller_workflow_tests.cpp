@@ -26,6 +26,7 @@ private slots:
     EditorController editor;
 
     QVERIFY(!editor.hasProject());
+    QVERIFY(editor.actionEnabled(QStringLiteral("new")));
     QVERIFY(editor.actionEnabled(QStringLiteral("open")));
     QVERIFY(!editor.actionEnabled(QStringLiteral("save")));
     QVERIFY(!editor.actionEnabled(QStringLiteral("delete")));
@@ -208,6 +209,148 @@ private slots:
              QStringLiteral("Only local project folders can be opened."));
   }
 
+  void newProjectCreatesCanonicalStructure() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString projectPath = dir.filePath(QStringLiteral("NewProject"));
+
+    EditorController editor;
+    editor.newProject(projectPath);
+
+    QVERIFY(editor.hasProject());
+    QVERIFY(QDir(projectPath).exists(QStringLiteral("Cleaned")));
+    QVERIFY(QDir(projectPath).exists(QStringLiteral("Raw")));
+    QVERIFY(QDir(projectPath).exists(QStringLiteral("Typeset")));
+    QVERIFY(QFile::exists(projectPath + QStringLiteral("/Texts.txt")));
+    QCOMPARE(editor.pageCount(), 0);
+    QCOMPARE(editor.notification(), QStringLiteral("New project created"));
+  }
+
+  void newProjectRejectsDirectoryAtTextsPath() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString projectPath = dir.filePath(QStringLiteral("NewProject"));
+    QVERIFY(QDir().mkpath(projectPath + QStringLiteral("/Texts.txt")));
+
+    EditorController editor;
+    editor.newProject(projectPath);
+
+    QVERIFY(!editor.hasProject());
+    QVERIFY(QDir(projectPath).exists(QStringLiteral("Texts.txt")));
+    QVERIFY(editor.notification().startsWith(
+        QStringLiteral("Could not create project:")));
+    QVERIFY(editor.notification().contains(QStringLiteral("Texts.txt")));
+  }
+
+  void newProjectRejectsUnreadableTextsFile() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString projectPath = dir.filePath(QStringLiteral("NewProject"));
+    QVERIFY(QDir().mkpath(projectPath));
+
+    const QString textsPath = projectPath + QStringLiteral("/Texts.txt");
+    QFile texts(textsPath);
+    QVERIFY(texts.open(QIODevice::WriteOnly | QIODevice::Text));
+    texts.write("[page.png]\nExisting text\n");
+    texts.close();
+    QVERIFY(QFile::setPermissions(textsPath, QFileDevice::WriteOwner));
+
+    QFile readProbe(textsPath);
+    if (readProbe.open(QIODevice::ReadOnly)) {
+      readProbe.close();
+      QFile::setPermissions(textsPath, QFileDevice::ReadOwner |
+                                           QFileDevice::WriteOwner);
+      QSKIP("Unreadable regular files are still readable in this environment.");
+    }
+
+    EditorController editor;
+    editor.newProject(projectPath);
+
+    QFile::setPermissions(textsPath,
+                          QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+    QFile preserved(textsPath);
+    QVERIFY(preserved.open(QIODevice::ReadOnly | QIODevice::Text));
+    QCOMPARE(QString::fromUtf8(preserved.readAll()),
+             QStringLiteral("[page.png]\nExisting text\n"));
+    QVERIFY(!editor.hasProject());
+    QVERIFY(editor.notification().startsWith(
+        QStringLiteral("Could not create project:")));
+    QVERIFY(editor.notification().contains(QStringLiteral("Texts.txt")));
+  }
+
+  void openProjectRejectsUnreadableTextsFile() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    QFile texts(dir.filePath(QStringLiteral("Texts.txt")));
+    QVERIFY(texts.open(QIODevice::WriteOnly | QIODevice::Text));
+    texts.write("[page.png]\nExisting text\n");
+    texts.close();
+    QVERIFY(QFile::setPermissions(texts.fileName(), QFileDevice::WriteOwner));
+
+    QFile readProbe(texts.fileName());
+    if (readProbe.open(QIODevice::ReadOnly)) {
+      readProbe.close();
+      QFile::setPermissions(texts.fileName(), QFileDevice::ReadOwner |
+                                                  QFileDevice::WriteOwner);
+      QSKIP("Unreadable regular files are still readable in this environment.");
+    }
+
+    EditorController editor;
+    editor.openProject(dir.path());
+
+    QFile::setPermissions(texts.fileName(),
+                          QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+    QVERIFY(!editor.hasProject());
+    QCOMPARE(editor.notification(), QStringLiteral("Could not open Texts.txt."));
+  }
+
+  void openProjectRejectsDirectoryAtTextsPath() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    QVERIFY(QDir(dir.path()).mkpath(QStringLiteral("Texts.txt")));
+
+    EditorController editor;
+    editor.openProject(dir.path());
+
+    QVERIFY(!editor.hasProject());
+    QCOMPARE(editor.notification(), QStringLiteral("Could not open Texts.txt."));
+  }
+
+  void newProjectUrlUsesQtLocalFileConversion() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString projectPath =
+        dir.filePath(QStringLiteral("project with spaces"));
+
+    EditorController editor;
+    editor.newProjectUrl(QUrl::fromLocalFile(projectPath));
+
+    QVERIFY(editor.hasProject());
+    QVERIFY(QDir(projectPath).exists(QStringLiteral("Cleaned")));
+    QVERIFY(QFile::exists(projectPath + QStringLiteral("/Texts.txt")));
+  }
+
+  void openProjectLoadsCanonicalCleanedImagesAndTexts() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    QVERIFY(QDir(dir.path()).mkpath(QStringLiteral("Cleaned")));
+    touch(dir.filePath(QStringLiteral("page1.png")));
+    touch(dir.filePath(QStringLiteral("Cleaned/page2.png")));
+    QFile texts(dir.filePath(QStringLiteral("Texts.txt")));
+    QVERIFY(texts.open(QIODevice::WriteOnly | QIODevice::Text));
+    texts.write("[page2.png]\nCanonical text\n");
+    texts.close();
+
+    EditorController editor;
+    editor.openProject(dir.path());
+
+    QVERIFY(editor.hasProject());
+    QCOMPARE(editor.pageCount(), 1);
+    QCOMPARE(editor.currentPageName(), QStringLiteral("page2.png"));
+    QCOMPARE(editor.pageTexts(),
+             QStringList({QStringLiteral("Canonical text")}));
+  }
+
   void navigationAutosavesAndReloadsCurrentPage() {
     QTemporaryDir dir;
     QVERIFY(dir.isValid());
@@ -256,7 +399,7 @@ private slots:
 
     QCOMPARE(editor.currentPageName(), QStringLiteral("page2.png"));
     QVERIFY(QFile::exists(dir.filePath(QStringLiteral(".textfx/page1.json"))));
-    QVERIFY(!QFile::exists(dir.filePath(QStringLiteral("exported/page1.png"))));
+    QVERIFY(!QFile::exists(dir.filePath(QStringLiteral("Typeset/page1.png"))));
     QCOMPARE(readJson(dir.filePath(QStringLiteral(".textfx/page1.json")))
                  .value(QStringLiteral("boxes"))
                  .toArray()
@@ -294,8 +437,8 @@ private slots:
     editor.openProject(dir.path());
     editor.createTextBox(1, 2, 80, 40);
     editor.updateSelectedText(QStringLiteral("Saved page"));
-    const auto output = dir.filePath(QStringLiteral("exported/page1.png"));
-    QVERIFY(QDir(dir.path()).mkpath(QStringLiteral("exported")));
+    const auto output = dir.filePath(QStringLiteral("Typeset/page1.png"));
+    QVERIFY(QDir(dir.path()).mkpath(QStringLiteral("Typeset")));
     QFile stale(output);
     QVERIFY(stale.open(QIODevice::WriteOnly));
     stale.write("stale export");
@@ -363,12 +506,12 @@ private slots:
     emptyPage.write(
         R"({"format":"textfx.page-boxes.v1","page":"page3.png","boxes":[]})");
     emptyPage.close();
-    QVERIFY(QDir(dir.path()).mkpath(QStringLiteral("exported")));
-    QFile stale(dir.filePath(QStringLiteral("exported/page3.png")));
+    QVERIFY(QDir(dir.path()).mkpath(QStringLiteral("Typeset")));
+    QFile stale(dir.filePath(QStringLiteral("Typeset/page3.png")));
     QVERIFY(stale.open(QIODevice::WriteOnly));
     stale.write("stale export");
     stale.close();
-    QFile staleMissingJson(dir.filePath(QStringLiteral("exported/page4.png")));
+    QFile staleMissingJson(dir.filePath(QStringLiteral("Typeset/page4.png")));
     QVERIFY(staleMissingJson.open(QIODevice::WriteOnly));
     staleMissingJson.write("stale export without json");
     staleMissingJson.close();
@@ -391,13 +534,13 @@ private slots:
                  .size(),
              0);
 
-    QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("exported/page1.png"))),
+    QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("Typeset/page1.png"))),
              qPrintable(editor.notification()));
-    QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("exported/page2.png"))),
+    QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("Typeset/page2.png"))),
              qPrintable(editor.notification()));
-    QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("exported/page3.png"))),
+    QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("Typeset/page3.png"))),
              qPrintable(editor.notification()));
-    QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("exported/page4.png"))),
+    QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("Typeset/page4.png"))),
              qPrintable(editor.notification()));
     QVERIFY(!QFile::exists(dir.filePath(QStringLiteral(".textfx/page4.json"))));
     QCOMPARE(editor.notification(), QStringLiteral("Exported 4 page(s)."));
@@ -423,7 +566,7 @@ private slots:
 
     QVERIFY(!editor.dirty());
     QVERIFY(editor.notification().contains(QStringLiteral("1 failed")));
-    QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("exported/page2.png"))),
+    QVERIFY2(hasPngMagic(dir.filePath(QStringLiteral("Typeset/page2.png"))),
              qPrintable(editor.notification()));
   }
   void liveInteractionDefersPreviewButRefreshesModel() {
@@ -807,7 +950,7 @@ private slots:
     QVERIFY(dir.isValid());
     touch(dir.filePath(QStringLiteral("page1.png")));
     touch(dir.filePath(QStringLiteral("page2.png")));
-    QFile texts(dir.filePath(QStringLiteral("texts.txt")));
+    QFile texts(dir.filePath(QStringLiteral("Texts.txt")));
     QVERIFY(texts.open(QIODevice::WriteOnly | QIODevice::Text));
     texts.write("[page1.png]\nFirst\nSecond\n[page2.png]\nOther\n");
     texts.close();

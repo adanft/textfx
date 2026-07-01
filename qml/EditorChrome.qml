@@ -31,6 +31,14 @@ Item {
         colorDialog.open();
     }
 
+    function openProjectPicker() {
+        openProjectDialog.open();
+    }
+
+    function openNewProjectPicker() {
+        newProjectDialog.open();
+    }
+
     function qmlColor(hex) {
         const raw = String(hex || "000000ff");
         const value = raw.startsWith("#") ? raw.slice(1) : raw;
@@ -81,6 +89,15 @@ Item {
         shortcut: StandardKey.Open
         enabled: editorChrome.editor && editorChrome.editor.actionEnabled("open")
         onTriggered: openProjectDialog.open()
+    }
+
+    Action {
+        id: newAction
+
+        text: qsTr("New")
+        shortcut: StandardKey.New
+        enabled: editorChrome.editor && editorChrome.editor.actionEnabled("new")
+        onTriggered: newProjectDialog.open()
     }
 
     Action {
@@ -200,6 +217,11 @@ Item {
 
         Menu {
             title: qsTr("File")
+
+            ShortcutMenuItem {
+                action: newAction
+                shortcutLabel: "Ctrl+N"
+            }
 
             ShortcutMenuItem {
                 action: openAction
@@ -330,6 +352,13 @@ Item {
 
         title: qsTr("Open Project")
         onAccepted: editorChrome.editor.openProjectUrl(selectedFolder)
+    }
+
+    FolderDialog {
+        id: newProjectDialog
+
+        title: qsTr("New Project")
+        onAccepted: editorChrome.editor.newProjectUrl(selectedFolder)
     }
 
     ColorDialog {

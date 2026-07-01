@@ -310,6 +310,63 @@ private slots:
     QVERIFY(!sidePanelSource.contains(QStringLiteral("border.color: \"#")));
   }
 
+  void qmlStartScreenShowsNewOpenActions() {
+    const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
+    const QString chromeSource =
+        readQmlFile(QStringLiteral("EditorChrome.qml"));
+
+    QVERIFY(mainSource.contains(QStringLiteral("objectName: \"startScreen\"")));
+    QVERIFY(mainSource.contains(QStringLiteral("visible: !Editor.hasProject")));
+    QVERIFY(mainSource.contains(QStringLiteral("visible: Editor.hasProject")));
+    QVERIFY(mainSource.contains(QStringLiteral("enabled: Editor.hasProject")));
+    QVERIFY(mainSource.contains(QStringLiteral("text: qsTr(\"Open \")")));
+    QVERIFY(mainSource.contains(QStringLiteral("text: qsTr(\"New \")")));
+    QVERIFY(mainSource.contains(
+        QStringLiteral("onClicked: chrome.openProjectPicker()")));
+    QVERIFY(mainSource.contains(
+        QStringLiteral("onClicked: chrome.openNewProjectPicker()")));
+    QVERIFY(
+        chromeSource.contains(QStringLiteral("function openProjectPicker()")));
+    QVERIFY(chromeSource.contains(
+        QStringLiteral("function openNewProjectPicker()")));
+    QVERIFY(chromeSource.contains(
+        QStringLiteral("editorChrome.editor.openProjectUrl(selectedFolder)")));
+    QVERIFY(chromeSource.contains(
+        QStringLiteral("editorChrome.editor.newProjectUrl(selectedFolder)")));
+  }
+
+  void qmlStartScreenIsVisibleBeforeProjectOpen() {
+    registerQmlTypes();
+
+    EditorController editor;
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+
+    auto *startScreen = qobject_cast<QQuickItem *>(findVisualChildByName(
+        window->contentItem(), QStringLiteral("startScreen")));
+    auto *openButton = qobject_cast<QQuickItem *>(findVisualChildByName(
+        window->contentItem(), QStringLiteral("startOpenButton")));
+    auto *newButton = qobject_cast<QQuickItem *>(findVisualChildByName(
+        window->contentItem(), QStringLiteral("startNewButton")));
+    QVERIFY(startScreen);
+    QVERIFY(openButton);
+    QVERIFY(newButton);
+    QTRY_VERIFY(startScreen->isVisible());
+    QTRY_VERIFY(openButton->isVisible());
+    QTRY_VERIFY(newButton->isVisible());
+    QCOMPARE(openButton->property("text").toString(),
+             QStringLiteral("Open "));
+    QCOMPARE(newButton->property("text").toString(), QStringLiteral("New "));
+  }
+
   void qmlPageScaleIsNotBoundToCanvasViewport() {
     QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
@@ -328,10 +385,15 @@ private slots:
         QStringLiteral(
             "function pageScale() { return viewportMetrics.pageScale() }")));
     QVERIFY(source.contains(QStringLiteral("onStatusChanged")));
-    QVERIFY(sourceContainsIgnoringWhitespace(
-        source,
-        QStringLiteral("if (status === Image.Ready) { "
-                       "window.pageBaseScale = window.fitPageScale() }")));
+    QVERIFY(
+        sourceContainsIgnoringWhitespace(
+            source,
+            QStringLiteral("if (status === Image.Ready) { "
+                           "window.pageBaseScale = window.fitPageScale() }")) ||
+        sourceContainsIgnoringWhitespace(
+            source, QStringLiteral("if (status === Image.Ready) "
+                                   "window.pageBaseScale = "
+                                   "window.fitPageScale()")));
 
     const QString viewportSource =
         readQmlFile(QStringLiteral("ViewportMetrics.qml"));
@@ -770,7 +832,7 @@ private slots:
     QTemporaryDir dir;
     QVERIFY(dir.isValid());
     touch(dir.filePath(QStringLiteral("page1.png")));
-    QFile texts(dir.filePath(QStringLiteral("texts.txt")));
+    QFile texts(dir.filePath(QStringLiteral("Texts.txt")));
     QVERIFY(texts.open(QIODevice::WriteOnly | QIODevice::Text));
     texts.write("[page1.png]\nPanel page text\n");
     texts.close();

@@ -70,6 +70,8 @@ public:
   Q_INVOKABLE bool actionEnabled(const QString &command) const;
   Q_INVOKABLE void openProjectUrl(const QUrl &folderUrl);
   Q_INVOKABLE void openProject(const QString &folder);
+  Q_INVOKABLE void newProjectUrl(const QUrl &folderUrl);
+  Q_INVOKABLE void newProject(const QString &folder);
   Q_INVOKABLE void newDocument();
   Q_INVOKABLE void save();
   Q_INVOKABLE void saveAll();
@@ -155,12 +157,15 @@ private:
   void editSelectedBox(const std::function<void(TextBox &)> &mutation);
   void markDocumentChanged();
   void setNotification(QString message);
+  void clearProjectState();
+  bool openProjectInternal(const QString &folder,
+                           const QString &successNotification);
   void refreshPages();
   bool loadPageAt(int index);
   bool autosaveCurrent();
   std::string currentPageKey() const;
   bool saveProjectPresets(const std::string &preferredName = {});
-  void reloadPresets(const std::string &preferredName = {});
+  bool reloadPresets(const std::string &preferredName = {});
 
   DocumentModel document_;
   std::vector<TextPreset> projectPresets_;

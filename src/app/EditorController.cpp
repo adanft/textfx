@@ -19,6 +19,7 @@
 #include <QTextDocument>
 #include <QUrl>
 
+#include <fstream>
 #include <utility>
 
 namespace textfx {
@@ -27,6 +28,38 @@ QString toQString(const std::string &value) {
   return QString::fromStdString(value);
 }
 std::string toStdString(const QString &value) { return value.toStdString(); }
+
+bool ensureRegularFile(const std::filesystem::path &path, std::string *error) {
+  if (std::filesystem::exists(path) &&
+      !std::filesystem::is_regular_file(path)) {
+    if (error)
+      *error = path.filename().string() + " must be a regular file";
+    return false;
+  }
+
+  std::ofstream file(path, std::ios::app);
+  if (!file.is_open()) {
+    if (error)
+      *error = "could not open " + path.filename().string();
+    return false;
+  }
+  file.close();
+
+  if (!std::filesystem::is_regular_file(path)) {
+    if (error)
+      *error = path.filename().string() + " must be a regular file";
+    return false;
+  }
+
+  std::ifstream readable(path);
+  if (!readable.is_open()) {
+    if (error)
+      *error = "could not read " + path.filename().string();
+    return false;
+  }
+
+  return true;
+}
 } // namespace
 
 EditorController::EditorController(QObject *parent) : QObject(parent) {}
@@ -86,14 +119,22 @@ bool EditorController::actionEnabled(const QString &command) const {
 }
 
 void EditorController::openProject(const QString &folder) {
+  openProjectInternal(folder, QStringLiteral("Project opened"));
+}
+
+bool EditorController::openProjectInternal(const QString &folder,
+                                           const QString &successNotification) {
   if (!autosaveCurrent())
-    return;
+    return false;
   store_ = std::make_unique<ProjectStore>(folder.toStdString());
   std::string error;
   pageTexts_ = store_->loadPageTexts(&error);
   pageTextPositions_.clear();
-  if (!error.empty())
+  if (!error.empty()) {
+    clearProjectState();
     setNotification(toQString(error));
+    return false;
+  }
   refreshPages();
   document_.clear();
   selectedIndex_ = -1;
@@ -101,16 +142,25 @@ void EditorController::openProject(const QString &folder) {
   currentPage_.clear();
   currentPageIndex_ = -1;
   if (!pagePaths_.empty()) {
-    loadPageAt(0);
-  } else {
-    reloadPresets();
+    if (!loadPageAt(0)) {
+      const QString loadError = notification_;
+      clearProjectState();
+      setNotification(loadError);
+      return false;
+    }
+  } else if (!reloadPresets()) {
+    const QString loadError = notification_;
+    clearProjectState();
+    setNotification(loadError);
+    return false;
   }
   emit selectionChanged();
   emit pageTextsChanged();
   emit documentChanged();
   emit stateChanged();
-  setNotification(hasProject() ? QStringLiteral("Project opened")
+  setNotification(hasProject() ? successNotification
                                : QStringLiteral("No project open"));
+  return hasProject();
 }
 
 void EditorController::openProjectUrl(const QUrl &folderUrl) {
@@ -121,6 +171,40 @@ void EditorController::openProjectUrl(const QUrl &folderUrl) {
     return;
   }
   openProject(folder);
+}
+
+void EditorController::newProjectUrl(const QUrl &folderUrl) {
+  const QString folder = folderUrl.toLocalFile();
+  if (folder.isEmpty()) {
+    setNotification(
+        QStringLiteral("Only local project folders can be created."));
+    return;
+  }
+  newProject(folder);
+}
+
+void EditorController::newProject(const QString &folder) {
+  if (!autosaveCurrent())
+    return;
+
+  const std::filesystem::path root = folder.toStdString();
+  try {
+    std::filesystem::create_directories(root / ProjectStore::CleanedFolder);
+    std::filesystem::create_directories(root / ProjectStore::RawFolder);
+    std::filesystem::create_directories(root / ProjectStore::ExportFolder);
+    std::string error;
+    if (!ensureRegularFile(root / ProjectStore::PageTextsFile, &error)) {
+      setNotification(
+          QStringLiteral("Could not create project: %1").arg(toQString(error)));
+      return;
+    }
+  } catch (const std::filesystem::filesystem_error &ex) {
+    setNotification(QStringLiteral("Could not create project: %1")
+                        .arg(toQString(ex.what())));
+    return;
+  }
+
+  openProjectInternal(folder, QStringLiteral("New project created"));
 }
 
 void EditorController::newDocument() {
@@ -728,6 +812,24 @@ void EditorController::refreshPages() {
   pages_ = pages.names;
 }
 
+void EditorController::clearProjectState() {
+  store_.reset();
+  currentPage_.clear();
+  currentPageIndex_ = -1;
+  pagePaths_.clear();
+  pages_.clear();
+  pageTexts_.clear();
+  pageTextPositions_.clear();
+  document_.clear();
+  projectPresets_.clear();
+  selectedIndex_ = -1;
+  selectedPresetIndex_ = -1;
+  emit selectionChanged();
+  emit pageTextsChanged();
+  emit documentChanged();
+  emit stateChanged();
+}
+
 bool EditorController::loadPageAt(int index) {
   if (!store_ ||
       ProjectSessionService::normalizePageIndex(index, pagePaths_.size()) < 0)
@@ -784,7 +886,7 @@ bool EditorController::saveProjectPresets(const std::string &preferredName) {
   return true;
 }
 
-void EditorController::reloadPresets(const std::string &preferredName) {
+bool EditorController::reloadPresets(const std::string &preferredName) {
   std::string currentName = preferredName;
   if (currentName.empty() && selectedPresetIndex_ >= 0 &&
       selectedPresetIndex_ < static_cast<int>(document_.presets().size())) {
@@ -795,8 +897,10 @@ void EditorController::reloadPresets(const std::string &preferredName) {
   document_.presets() = ProjectStore::defaultTextPresets();
   if (store_) {
     std::string error;
-    if (!store_->loadPresets(document_, projectPresets_, &error))
+    if (!store_->loadPresets(document_, projectPresets_, &error)) {
       setNotification(toQString(error));
+      return false;
+    }
   }
   selectedPresetIndex_ = document_.presets().empty() ? -1 : 0;
   for (int i = 0; i < static_cast<int>(document_.presets().size()); ++i) {
@@ -804,6 +908,7 @@ void EditorController::reloadPresets(const std::string &preferredName) {
       selectedPresetIndex_ = i;
   }
   emit documentChanged();
+  return true;
 }
 
 } // namespace textfx

@@ -8,8 +8,8 @@
 
 namespace textfx {
 namespace {
-const std::vector<std::string> cleanedFolders{"cleaned", "clean", "pages",
-                                              "images"};
+const std::vector<std::string> legacyCleanedFolders{"cleaned", "clean", "pages",
+                                                    "images"};
 const std::vector<TextPreset> defaultPresets{
     {"Globo normal",
      {.fontFamily = "Back Issues BB",
@@ -145,10 +145,13 @@ ProjectStore::ProjectStore(std::filesystem::path folder)
     : folder_(std::move(folder)) {}
 
 std::vector<std::filesystem::path> ProjectStore::listPagePaths() const {
-  auto pages = imagePathsIn(folder_);
+  auto pages = imagePathsIn(folder_ / CleanedFolder);
   if (!pages.empty())
     return pages;
-  for (const auto &name : cleanedFolders) {
+  pages = imagePathsIn(folder_);
+  if (!pages.empty())
+    return pages;
+  for (const auto &name : legacyCleanedFolders) {
     pages = imagePathsIn(folder_ / name);
     if (!pages.empty())
       return pages;
@@ -158,15 +161,21 @@ std::vector<std::filesystem::path> ProjectStore::listPagePaths() const {
 
 std::filesystem::path
 ProjectStore::rawPagePathFor(const std::filesystem::path &cleanPagePath) const {
-  std::vector<std::filesystem::path> candidates{folder_ / "raw"};
+  std::vector<std::filesystem::path> candidates{folder_ / RawFolder,
+                                                folder_ / "raw"};
   const auto folderName = lower(folder_.filename().string());
-  if (std::ranges::find(cleanedFolders, folderName) != cleanedFolders.end()) {
+  if (folderName == lower(CleanedFolder) ||
+      std::ranges::find(legacyCleanedFolders, folderName) !=
+          legacyCleanedFolders.end()) {
+    candidates.push_back(folder_.parent_path() / RawFolder);
     candidates.push_back(folder_.parent_path() / "raw");
   }
   const auto cleanFolder = cleanPagePath.parent_path();
-  if (std::ranges::find(cleanedFolders,
-                        lower(cleanFolder.filename().string())) !=
-      cleanedFolders.end()) {
+  const auto cleanFolderName = lower(cleanFolder.filename().string());
+  if (cleanFolderName == lower(CleanedFolder) ||
+      std::ranges::find(legacyCleanedFolders, cleanFolderName) !=
+          legacyCleanedFolders.end()) {
+    candidates.push_back(cleanFolder.parent_path() / RawFolder);
     candidates.push_back(cleanFolder.parent_path() / "raw");
   }
 
@@ -195,20 +204,29 @@ std::filesystem::path ProjectStore::presetsPath() const {
 }
 
 std::filesystem::path ProjectStore::pageTextsPath() const {
-  return folder_ / "texts.txt";
+  return folder_ / PageTextsFile;
 }
 
 std::unordered_map<std::string, std::vector<std::string>>
 ProjectStore::loadPageTexts(std::string *error) const {
   std::unordered_map<std::string, std::vector<std::string>> result;
-  const auto path = pageTextsPath();
+  const auto canonicalPath = pageTextsPath();
+  auto path = canonicalPath;
+  if (!std::filesystem::exists(path))
+    path = folder_ / "texts.txt";
   if (!std::filesystem::exists(path))
     return result;
+
+  if (!std::filesystem::is_regular_file(path)) {
+    if (error != nullptr)
+      *error = "Could not open Texts.txt.";
+    return result;
+  }
 
   std::ifstream input(path);
   if (!input) {
     if (error != nullptr)
-      *error = "Could not open texts.txt.";
+      *error = "Could not open Texts.txt.";
     return result;
   }
 

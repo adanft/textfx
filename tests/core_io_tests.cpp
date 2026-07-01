@@ -52,6 +52,26 @@ TEST_CASE("Project pages are naturally sorted") {
   std::filesystem::remove_all(folder);
 }
 
+TEST_CASE("Project store uses canonical project folders") {
+  const auto folder = makeTempDir("textfx-canonical-folders-");
+  const auto cleanPage = folder / ProjectStore::CleanedFolder / "page2.png";
+  touch(folder / "page1.png");
+  touch(cleanPage);
+  touch(folder / ProjectStore::RawFolder / "page2.png");
+
+  const ProjectStore store(folder);
+
+  const auto pages = store.listPagePaths();
+  REQUIRE(pages.size() == 1);
+  CHECK(pages.front() == cleanPage);
+  CHECK(store.rawPagePathFor(cleanPage) ==
+        folder / ProjectStore::RawFolder / "page2.png");
+  CHECK(store.pageExportPathFor(cleanPage) ==
+        folder / ProjectStore::ExportFolder / "page2.png");
+  CHECK(store.pageTextsPath() == folder / ProjectStore::PageTextsFile);
+  std::filesystem::remove_all(folder);
+}
+
 TEST_CASE("Project session service exposes page names labels and keys") {
   const auto folder = makeTempDir("textfx-project-session-pages-");
   for (const auto &name : {"page10.png", "page2.png"}) {
@@ -203,9 +223,9 @@ TEST_CASE("Unsupported fields are ignored on import and omitted on save") {
   std::filesystem::remove_all(folder);
 }
 
-TEST_CASE("texts.txt page texts are parsed by page section") {
+TEST_CASE("Texts.txt page texts are parsed by page section") {
   const auto folder = makeTempDir("textfx-page-texts-");
-  std::ofstream(folder / "texts.txt") << R"(
+  std::ofstream(folder / ProjectStore::PageTextsFile) << R"(
 ignored before section
 [page2.png]
  First line 
@@ -222,6 +242,20 @@ Third line
   CHECK(texts.at("page2.png").at(1) == "Second line");
   REQUIRE(texts.at("page10.png").size() == 1);
   CHECK(texts.at("page10.png").at(0) == "Third line");
+  std::filesystem::remove_all(folder);
+}
+
+TEST_CASE("Legacy lowercase texts file remains a read fallback") {
+  const auto folder = makeTempDir("textfx-legacy-page-texts-");
+  std::ofstream(folder / "texts.txt") << R"(
+[page1.png]
+Legacy line
+)";
+
+  const auto texts = ProjectStore(folder).loadPageTexts();
+
+  REQUIRE(texts.at("page1.png").size() == 1);
+  CHECK(texts.at("page1.png").at(0) == "Legacy line");
   std::filesystem::remove_all(folder);
 }
 
