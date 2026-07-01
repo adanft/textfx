@@ -35,7 +35,7 @@ QPainterPath textLayoutPath(const TextLayoutOptions &options, const QFont &font,
     QTextLayout layout(paragraph.isEmpty() ? QStringLiteral(" ") : paragraph,
                        font);
     QTextOption option;
-    option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    option.setWrapMode(QTextOption::WordWrap);
     layout.setTextOption(option);
     layout.beginLayout();
     while (true) {

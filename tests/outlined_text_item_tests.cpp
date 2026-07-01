@@ -44,6 +44,45 @@ private slots:
     QCOMPARE(linesAtScale(1.5), expected);
   }
 
+  void longWordsDoNotSplitArbitrarily() {
+    OutlinedTextItem item;
+    item.setWidth(80);
+    item.setHeight(120);
+    item.setText(QStringLiteral("Supercalifragilisticexpialidocious"));
+    item.setPixelSize(20);
+
+    const QStringList lines = item.wrappedLinesForTesting();
+    QCOMPARE(lines,
+             QStringList{QStringLiteral("Supercalifragilisticexpialidocious")});
+  }
+
+  void spacesStillWrapAcrossLines() {
+    OutlinedTextItem item;
+    item.setWidth(110);
+    item.setHeight(120);
+    item.setText(QStringLiteral("Alpha Beta Gamma"));
+    item.setPixelSize(20);
+
+    const QStringList lines = item.wrappedLinesForTesting();
+    QVERIFY2(lines.size() >= 2, qPrintable(lines.join(QStringLiteral("|"))));
+    QCOMPARE(lines.join(QStringLiteral(" ")).simplified(),
+             QStringLiteral("Alpha Beta Gamma"));
+  }
+
+  void overflowTracksTextThatExceedsBox() {
+    OutlinedTextItem item;
+    item.setWidth(60);
+    item.setHeight(28);
+    item.setText(QStringLiteral("Supercalifragilisticexpialidocious"));
+    item.setPixelSize(20);
+
+    QVERIFY(item.overflow());
+
+    item.setWidth(600);
+    item.setHeight(120);
+    QVERIFY(!item.overflow());
+  }
+
   void usesOutlineSizeWhenPainting() {
     auto render = [](qreal outlineSize) {
       OutlinedTextItem item;

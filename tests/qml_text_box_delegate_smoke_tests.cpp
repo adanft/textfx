@@ -229,6 +229,36 @@ private slots:
     verifyGeometry();
   }
 
+  void qmlTextOverflowMarksDelegate() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(4, 4, 42, 24);
+    editor.updateSelectedText(
+        QStringLiteral("Supercalifragilisticexpialidocious"));
+    editor.setSelectedFontSize(20);
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QObject *delegate = nullptr;
+    QTRY_VERIFY(delegate = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("textBoxDelegate")));
+    QTRY_VERIFY(delegate->property("textOverflow").toBool());
+
+    const QString delegateSource =
+        readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+    QVERIFY(delegateSource.contains(QStringLiteral(
+        "border.color: textOverflow ? Qt.rgba(1, 0, 0, 1)")));
+  }
+
   void qmlNestedInteractionHandlersUseStableEditorReference() {
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString delegateSource =

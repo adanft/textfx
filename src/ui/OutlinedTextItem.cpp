@@ -11,6 +11,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPainterPathStroker>
+#include <QRectF>
 
 #include <algorithm>
 #include <cmath>
@@ -38,6 +39,7 @@ void OutlinedTextItem::setText(const QString &value) {
   if (text_ == value)
     return;
   text_ = value;
+  updateOverflow();
   update();
   emit textChanged();
 }
@@ -46,6 +48,7 @@ void OutlinedTextItem::setFontFamily(const QString &value) {
   if (fontFamily_ == value)
     return;
   fontFamily_ = value;
+  updateOverflow();
   update();
   emit fontFamilyChanged();
 }
@@ -55,6 +58,7 @@ void OutlinedTextItem::setPixelSize(qreal value) {
   if (qFuzzyCompare(pixelSize_, value))
     return;
   pixelSize_ = value;
+  updateOverflow();
   update();
   emit pixelSizeChanged();
 }
@@ -63,6 +67,7 @@ void OutlinedTextItem::setBold(bool value) {
   if (bold_ == value)
     return;
   bold_ = value;
+  updateOverflow();
   update();
   emit boldChanged();
 }
@@ -71,6 +76,7 @@ void OutlinedTextItem::setItalic(bool value) {
   if (italic_ == value)
     return;
   italic_ = value;
+  updateOverflow();
   update();
   emit italicChanged();
 }
@@ -79,6 +85,7 @@ void OutlinedTextItem::setLetterSpacing(qreal value) {
   if (qFuzzyCompare(letterSpacing_, value))
     return;
   letterSpacing_ = value;
+  updateOverflow();
   update();
   emit letterSpacingChanged();
 }
@@ -87,6 +94,7 @@ void OutlinedTextItem::setLineSpacing(qreal value) {
   if (qFuzzyCompare(lineSpacing_, value))
     return;
   lineSpacing_ = value;
+  updateOverflow();
   update();
   emit lineSpacingChanged();
 }
@@ -112,6 +120,7 @@ void OutlinedTextItem::setOutlineSize(qreal value) {
   if (qFuzzyCompare(outlineSize_, value))
     return;
   outlineSize_ = value;
+  updateOverflow();
   update();
   emit outlineSizeChanged();
 }
@@ -203,6 +212,7 @@ void OutlinedTextItem::setPathEnabled(bool value) {
   if (pathEnabled_ == value)
     return;
   pathEnabled_ = value;
+  updateOverflow();
   update();
   emit pathEnabledChanged();
 }
@@ -212,6 +222,7 @@ void OutlinedTextItem::setPathMode(int value) {
   if (pathMode_ == value)
     return;
   pathMode_ = value;
+  updateOverflow();
   update();
   emit pathModeChanged();
 }
@@ -220,6 +231,7 @@ void OutlinedTextItem::setPathPoints(const QVariantList &value) {
   if (pathPoints_ == value)
     return;
   pathPoints_ = value;
+  updateOverflow();
   update();
   emit pathPointsChanged();
 }
@@ -229,6 +241,7 @@ void OutlinedTextItem::setRenderScale(qreal value) {
   if (qFuzzyCompare(renderScale_, value))
     return;
   renderScale_ = value;
+  updateOverflow();
   update();
   emit renderScaleChanged();
 }
@@ -237,8 +250,16 @@ void OutlinedTextItem::setHorizontalAlignment(int value) {
   if (horizontalAlignment_ == value)
     return;
   horizontalAlignment_ = value;
+  updateOverflow();
   update();
   emit horizontalAlignmentChanged();
+}
+
+void OutlinedTextItem::geometryChange(const QRectF &newGeometry,
+                                      const QRectF &oldGeometry) {
+  QQuickPaintedItem::geometryChange(newGeometry, oldGeometry);
+  if (newGeometry.size() != oldGeometry.size())
+    updateOverflow();
 }
 
 void OutlinedTextItem::paint(QPainter *painter) {
@@ -434,6 +455,62 @@ QFont OutlinedTextItem::layoutFont() const {
   font.setItalic(italic_);
   font.setLetterSpacing(QFont::AbsoluteSpacing, letterSpacing_);
   return resolveFont(font).font;
+}
+
+void OutlinedTextItem::updateOverflow() {
+  const qreal scale = std::max<qreal>(0.0001, renderScale_);
+  const qreal layoutWidth = std::max<qreal>(1.0, width() / scale);
+  const qreal layoutHeight = std::max<qreal>(1.0, height() / scale);
+  const qreal inset = outlineSize_ > 0 ? outlineSize_ / 2.0 : 0.0;
+  const QVector<QPointF> normalizedPoints = normalizedPathPoints(pathPoints_);
+  const TextLayoutOptions layoutOptions{text_,        layoutWidth,
+                                        layoutHeight, inset,
+                                        lineSpacing_, horizontalAlignment_};
+  const bool usingPathText = pathEnabled_ && normalizedPoints.size() > 1 &&
+                             !isNeutralFlatPath(normalizedPoints);
+  QPainterPath path =
+      usingPathText
+          ? pathTextLayoutPath(layoutOptions, layoutFont(), normalizedPoints,
+                               pathMode_ == 1, pixelSize_ + lineSpacing_)
+          : textLayoutPath(layoutOptions, layoutFont());
+  QRectF paintedBounds = path.boundingRect();
+  if (outlineSize_ > 0) {
+    QPainterPathStroker stroker;
+    stroker.setWidth(outlineSize_);
+    stroker.setJoinStyle(Qt::RoundJoin);
+    paintedBounds =
+        paintedBounds.united(stroker.createStroke(path).boundingRect());
+  }
+
+  qreal dx = 0.0;
+  qreal dy = 0.0;
+  if (paintedBounds.left() < 0.0 && paintedBounds.width() <= layoutWidth)
+    dx = -paintedBounds.left();
+  else if (paintedBounds.width() <= layoutWidth &&
+           paintedBounds.right() > layoutWidth)
+    dx = layoutWidth - paintedBounds.right();
+  if (!usingPathText) {
+    if (paintedBounds.top() < 0.0 && paintedBounds.height() <= layoutHeight)
+      dy = -paintedBounds.top();
+    else if (paintedBounds.height() <= layoutHeight &&
+             paintedBounds.bottom() > layoutHeight)
+      dy = layoutHeight - paintedBounds.bottom();
+  }
+  paintedBounds.translate(dx, dy);
+
+  constexpr qreal kOverflowEpsilon = 0.5;
+  const bool hasOverflow =
+      !text_.isEmpty() &&
+      (paintedBounds.width() > layoutWidth + kOverflowEpsilon ||
+       paintedBounds.height() > layoutHeight + kOverflowEpsilon ||
+       paintedBounds.left() < -kOverflowEpsilon ||
+       paintedBounds.top() < -kOverflowEpsilon ||
+       paintedBounds.right() > layoutWidth + kOverflowEpsilon ||
+       paintedBounds.bottom() > layoutHeight + kOverflowEpsilon);
+  if (overflow_ == hasOverflow)
+    return;
+  overflow_ = hasOverflow;
+  emit overflowChanged();
 }
 
 #ifdef TEXTFX_TESTING

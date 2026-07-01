@@ -5,6 +5,7 @@
 #include <QImage>
 #include <QPointF>
 #include <QQuickPaintedItem>
+#include <QRectF>
 #include <QStringList>
 #include <QVariantList>
 #include <QVector>
@@ -56,9 +57,10 @@ class OutlinedTextItem : public QQuickPaintedItem {
   Q_PROPERTY(QVariantList pathPoints READ pathPoints WRITE setPathPoints NOTIFY
                  pathPointsChanged)
   Q_PROPERTY(qreal renderScale READ renderScale WRITE setRenderScale NOTIFY
-                 renderScaleChanged)
+                  renderScaleChanged)
   Q_PROPERTY(int horizontalAlignment READ horizontalAlignment WRITE
-                 setHorizontalAlignment NOTIFY horizontalAlignmentChanged)
+                  setHorizontalAlignment NOTIFY horizontalAlignmentChanged)
+  Q_PROPERTY(bool overflow READ overflow NOTIFY overflowChanged)
 
 public:
   explicit OutlinedTextItem(QQuickItem *parent = nullptr);
@@ -113,6 +115,7 @@ public:
   void setRenderScale(qreal value);
   int horizontalAlignment() const { return horizontalAlignment_; }
   void setHorizontalAlignment(int value);
+  bool overflow() const { return overflow_; }
 
 #ifdef TEXTFX_TESTING
   QStringList wrappedLinesForTesting() const;
@@ -121,6 +124,10 @@ public:
 #endif
 
   void paint(QPainter *painter) override;
+
+protected:
+  void geometryChange(const QRectF &newGeometry,
+                      const QRectF &oldGeometry) override;
 
 signals:
   void textChanged();
@@ -148,9 +155,11 @@ signals:
   void pathPointsChanged();
   void renderScaleChanged();
   void horizontalAlignmentChanged();
+  void overflowChanged();
 
 private:
   QFont layoutFont() const;
+  void updateOverflow();
   QString blurCacheKey(int radius, const QRect &sourceRect) const;
   QString text_;
   QString fontFamily_;
@@ -177,6 +186,7 @@ private:
   QVariantList pathPoints_;
   qreal renderScale_ = 1.0;
   int horizontalAlignment_ = Qt::AlignLeft;
+  bool overflow_ = false;
   QString blurCacheKey_;
   QImage blurCacheImage_;
 };

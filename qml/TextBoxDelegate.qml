@@ -20,6 +20,7 @@ Rectangle {
     property real visualDocY: moveActive ? rootWindow.moveY : resizeActive ? rootWindow.resizeY : modelData.y
     property real visualDocW: resizeActive ? rootWindow.resizeW : modelData.w
     property real visualDocH: resizeActive ? rootWindow.resizeH : modelData.h
+    readonly property bool textOverflow: boxOutlinedText.overflow
 
     objectName: "textBoxDelegate"
     x: rootWindow.documentToViewX(visualDocX)
@@ -28,7 +29,7 @@ Rectangle {
     height: visualDocH * rootWindow.viewDocScale()
     color: "transparent"
     border.width: perspectiveActive ? 0 : selected ? rootWindow.selectionLineWidth() : Math.max(1, rootWindow.documentToViewLength(1))
-    border.color: editingSelected ? Qt.rgba(1, 0.84, 0, 1) : selected ? rootWindow.palette.highlight : rootWindow.palette.mid
+    border.color: textOverflow ? Qt.rgba(1, 0, 0, 1) : editingSelected ? Qt.rgba(1, 0.84, 0, 1) : selected ? rootWindow.palette.highlight : rootWindow.palette.mid
     rotation: modelData.rotation
 
     Canvas {
