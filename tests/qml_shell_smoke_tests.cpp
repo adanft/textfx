@@ -697,6 +697,60 @@ private slots:
         QCOMPARE(pointValue(box, QStringLiteral("sw"), 0), 40.0);
     }
 
+    void qmlPathHandleInteractionStatePreviewsAndResetsForPerspectivePlane()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(40, 40, 160, 60);
+        editor.setSelectedPathEnabled(true);
+        editor.setPathHandle(0, 0.0, 0.0);
+        editor.setPerspectiveHandle(QStringLiteral("nw"), 30.0, -10.0);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        auto* state = window->findChild<QObject*>(QStringLiteral("pathHandleInteractionState"));
+        QVERIFY(state);
+
+        QObject* object = nullptr;
+        QTRY_VERIFY(object = findVisualChildByName(window->contentItem(), QStringLiteral("pathHandle")));
+        auto* handle = qobject_cast<QQuickItem*>(object);
+        QVERIFY(handle);
+        QTRY_VERIFY(handle->isVisible());
+
+        const QVariantList before = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList();
+        const QPoint start = handle->mapToScene(QPointF(handle->width() / 2, handle->height() / 2)).toPoint();
+        const QPoint preview = start + QPoint(18, 0);
+
+        QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, start);
+        QTRY_VERIFY(state->property("pathHandleInteractionActive").toBool());
+        QCOMPARE(state->property("activePathHandleIndex").toInt(), 0);
+        QVERIFY(state->property("activePathHandlePerspective").toBool());
+
+        QTest::mouseMove(window, preview);
+        QCoreApplication::processEvents();
+        const QVariantList during = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList();
+        QVERIFY(during != before);
+        QVERIFY(during.at(0).toList().at(0).toDouble() > before.at(0).toList().at(0).toDouble());
+
+        QVERIFY(QMetaObject::invokeMethod(window, "endPathHandleDrag"));
+        QTRY_VERIFY(!state->property("pathHandleInteractionActive").toBool());
+        QCOMPARE(state->property("activePathHandleIndex").toInt(), -1);
+
+        QTest::mouseMove(window, preview + QPoint(18, 0));
+        QCoreApplication::processEvents();
+        const QVariantList afterReleaseMove = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList();
+        QCOMPARE(afterReleaseMove, during);
+    }
+
     void qmlCtrlSpaceIgnoresFocusedSidePanelTextInputs()
     {
         QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
@@ -1453,6 +1507,9 @@ private slots:
         QVERIFY(source.contains(QStringLiteral("model: [qsTr(\"Vertical\"), qsTr(\"Horizontal\")]")));
         QVERIFY(source.contains(QStringLiteral("model: [qsTr(\"Straight\"), qsTr(\"Smooth\")]")));
         QVERIFY(source.contains(QStringLiteral("rightInspectorPanel.editor.addSelectedPathPoint()")));
+        QVERIFY(source.contains(QStringLiteral("PathHandleInteractionState")));
+        QVERIFY(source.contains(QStringLiteral("objectName: \"pathHandleInteractionState\"")));
+        QVERIFY(source.contains(QStringLiteral("pathHandleInteraction.update(canvas, canvasX, canvasY, window.editor.leftMouseButtonDown())")));
         QVERIFY(source.contains(QStringLiteral("model: pathHandlePlane.boxRef.boxModel.pathPoints")));
         QVERIFY(!source.contains(QStringLiteral("Double-click canvas to create text")));
         QVERIFY(!source.contains(QStringLiteral("Live editing uses QML layout; rendered effects apply on export.")));

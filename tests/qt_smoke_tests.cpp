@@ -182,6 +182,9 @@ private slots:
         editor.setSelectedPathEnabled(true);
         editor.setPathHandle(0, 0.0, 0.0);
         editor.setPerspectiveHandle(QStringLiteral("nw"), 30.0, -10.0);
+        editor.setPerspectiveHandle(QStringLiteral("ne"), -24.0, 18.0);
+        editor.setPerspectiveHandle(QStringLiteral("se"), 34.0, 12.0);
+        editor.setPerspectiveHandle(QStringLiteral("sw"), -12.0, -22.0);
 
         QQmlApplicationEngine engine;
         engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
@@ -197,6 +200,10 @@ private slots:
         auto* handle = qobject_cast<QQuickItem*>(object);
         QVERIFY(handle);
         QTRY_VERIFY(handle->isVisible());
+        QObject* canvasObject = nullptr;
+        QTRY_VERIFY(canvasObject = findVisualChildByName(window->contentItem(), QStringLiteral("centralCanvas")));
+        auto* canvas = qobject_cast<QQuickItem*>(canvasObject);
+        QVERIFY(canvas);
         auto* pathPlane = handle->parentItem();
         QVERIFY(pathPlane);
         auto* box = pathPlane->parentItem();
@@ -211,13 +218,38 @@ private slots:
 
         const QVariantList before = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList();
         const QPoint start = actual.toPoint();
-        const QPoint end = start + QPoint(18, 0);
         QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, start);
-        QTest::mouseMove(window, end);
-        QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, end);
+        QTRY_VERIFY(window->property("pathHandleInteractionActive").toBool());
+        const QPointF canvasStart(
+            window->property("pathHandlePressCanvasX").toDouble(),
+            window->property("pathHandlePressCanvasY").toDouble());
+        const QPointF canvasEnd = canvasStart + QPointF(42.0, 18.0);
+        const QPointF planeStart(
+            window->property("pathHandlePressLocalX").toDouble(),
+            window->property("pathHandlePressLocalY").toDouble());
+        const QPointF planeEnd = pathPlane->mapFromItem(canvas, canvasEnd);
+        const double expectedDx = (planeEnd.x() - planeStart.x()) / pathPlane->width();
+        const double expectedDy = (planeEnd.y() - planeStart.y()) / pathPlane->height();
+        const double naiveDx = (canvasEnd.x() - canvasStart.x()) / pathPlane->width();
+        const double naiveDy = (canvasEnd.y() - canvasStart.y()) / pathPlane->height();
+        QVERIFY(std::hypot(expectedDx - naiveDx, expectedDy - naiveDy) > 0.08);
+        QVERIFY(QMetaObject::invokeMethod(window, "updatePathHandleDragFromCanvas",
+            Q_ARG(QVariant, canvasEnd.x()),
+            Q_ARG(QVariant, canvasEnd.y())));
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, start);
         const QVariantList after = editor.boxes().at(0).toMap().value(QStringLiteral("pathPoints")).toList();
         QVERIFY(after != before);
-        QVERIFY(after.at(0).toList().at(0).toDouble() > before.at(0).toList().at(0).toDouble());
+        const auto beforePoint = before.at(0).toList();
+        const auto afterPoint = after.at(0).toList();
+        const double actualDx = afterPoint.at(0).toDouble() - beforePoint.at(0).toDouble();
+        const double actualDy = afterPoint.at(1).toDouble() - beforePoint.at(1).toDouble();
+        QVERIFY2(std::abs(actualDx - expectedDx) < 0.03,
+            qPrintable(QStringLiteral("actualDx=%1 expectedDx=%2 actualDy=%3 expectedDy=%4 naiveDx=%5 naiveDy=%6")
+                .arg(actualDx).arg(expectedDx).arg(actualDy).arg(expectedDy).arg(naiveDx).arg(naiveDy)));
+        QVERIFY2(std::abs(actualDy - expectedDy) < 0.03,
+            qPrintable(QStringLiteral("actualDx=%1 expectedDx=%2 actualDy=%3 expectedDy=%4 naiveDx=%5 naiveDy=%6")
+                .arg(actualDx).arg(expectedDx).arg(actualDy).arg(expectedDy).arg(naiveDx).arg(naiveDy)));
+        QVERIFY(std::hypot(actualDx - naiveDx, actualDy - naiveDy) > 0.05);
     }
 
     void blurUsesLiveRendererWithoutPreviewArtifact()

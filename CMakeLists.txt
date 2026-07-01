@@ -83,6 +83,7 @@ qt_add_qml_module(textfx
         qml/CentralCanvasShell.qml
         qml/EditorChrome.qml
         qml/LeftInspectorPanel.qml
+        qml/PathHandleInteractionState.qml
         qml/PerspectiveGeometry.qml
         qml/PerspectiveInteractionState.qml
         qml/RightInspectorPanel.qml

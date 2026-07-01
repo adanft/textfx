@@ -69,20 +69,20 @@ ApplicationWindow {
       property alias moveStartCanvasY: boxMoveInteraction.moveStartCanvasY
       property alias moveX: boxMoveInteraction.moveX
       property alias moveY: boxMoveInteraction.moveY
-        property int activePathHandleIndex: -1
-        property var activePathHandlePlane: null
-        property bool activePathHandlePerspective: false
-        property bool pathHandleInteractionActive: false
-        property bool pathHandleDragPressed: false
-        property real activePathBoxWidth: 1
-        property real activePathBoxHeight: 1
-        property real activePathBoxRotation: 0
-        property real pathHandlePressCanvasX: 0
-        property real pathHandlePressCanvasY: 0
-        property real pathHandlePressLocalX: 0
-        property real pathHandlePressLocalY: 0
-        property real pathHandleStartX: 0
-        property real pathHandleStartY: 0
+        property alias activePathHandleIndex: pathHandleInteraction.activePathHandleIndex
+        property alias activePathHandlePlane: pathHandleInteraction.activePathHandlePlane
+        property alias activePathHandlePerspective: pathHandleInteraction.activePathHandlePerspective
+        property alias pathHandleInteractionActive: pathHandleInteraction.pathHandleInteractionActive
+        property alias pathHandleDragPressed: pathHandleInteraction.pathHandleDragPressed
+        property alias activePathBoxWidth: pathHandleInteraction.activePathBoxWidth
+        property alias activePathBoxHeight: pathHandleInteraction.activePathBoxHeight
+        property alias activePathBoxRotation: pathHandleInteraction.activePathBoxRotation
+        property alias pathHandlePressCanvasX: pathHandleInteraction.pathHandlePressCanvasX
+        property alias pathHandlePressCanvasY: pathHandleInteraction.pathHandlePressCanvasY
+        property alias pathHandlePressLocalX: pathHandleInteraction.pathHandlePressLocalX
+        property alias pathHandlePressLocalY: pathHandleInteraction.pathHandlePressLocalY
+        property alias pathHandleStartX: pathHandleInteraction.pathHandleStartX
+        property alias pathHandleStartY: pathHandleInteraction.pathHandleStartY
 
     QtObject {
         id: editorInteraction
@@ -154,6 +154,11 @@ ApplicationWindow {
         id: perspectiveInteraction
         objectName: "perspectiveInteractionState"
         documentScale: window.viewDocScale()
+    }
+
+    PathHandleInteractionState {
+        id: pathHandleInteraction
+        objectName: "pathHandleInteractionState"
     }
 
     PerspectiveGeometry {
@@ -354,58 +359,28 @@ ApplicationWindow {
     }
 
     function beginPathHandleDrag(pathPlane, index, startX, startY, pressCanvasX, pressCanvasY) {
-        activePathHandlePlane = pathPlane
-        activePathBoxWidth = pathPlane ? pathPlane.width : 1
-        activePathBoxHeight = pathPlane ? pathPlane.height : 1
-        activePathHandlePerspective = !!(pathPlane && pathPlane.boxRef && pathPlane.boxRef.perspectiveActive)
-        activePathBoxRotation = pathPlane && pathPlane.boxRef ? pathPlane.boxRef.rotation : 0
-        activePathHandleIndex = index
-        pathHandlePressCanvasX = pressCanvasX
-        pathHandlePressCanvasY = pressCanvasY
-        const pressLocal = pathPlane ? pathPlane.mapFromItem(canvas, pressCanvasX, pressCanvasY) : Qt.point(pressCanvasX, pressCanvasY)
-        pathHandlePressLocalX = pressLocal.x
-        pathHandlePressLocalY = pressLocal.y
-        pathHandleStartX = startX
-        pathHandleStartY = startY
         dragMode = editorInteraction.dragModePathHandle
-        pathHandleDragPressed = true
-        pathHandleInteractionActive = true
+        pathHandleInteraction.begin(pathPlane, index, startX, startY, canvas, pressCanvasX, pressCanvasY)
         window.editor.beginInteraction()
     }
 
     function updatePathHandleDragFromCanvas(canvasX, canvasY) {
-        if (!pathHandleInteractionActive || !pathHandleDragPressed || dragMode !== editorInteraction.dragModePathHandle || activePathHandleIndex < 0)
+        if (dragMode !== editorInteraction.dragModePathHandle)
             return
-        if (!window.editor.leftMouseButtonDown()) {
+        const result = pathHandleInteraction.update(canvas, canvasX, canvasY, window.editor.leftMouseButtonDown())
+        if (result.ended) {
             endPathHandleDrag()
             return
         }
-        let localDx = 0
-        let localDy = 0
-        if (activePathHandlePerspective) {
-            const local = activePathHandlePlane ? activePathHandlePlane.mapFromItem(canvas, canvasX, canvasY) : Qt.point(canvasX, canvasY)
-            localDx = local.x - pathHandlePressLocalX
-            localDy = local.y - pathHandlePressLocalY
-        } else {
-            const radians = -activePathBoxRotation * Math.PI / 180
-            const dx = canvasX - pathHandlePressCanvasX
-            const dy = canvasY - pathHandlePressCanvasY
-            localDx = dx * Math.cos(radians) - dy * Math.sin(radians)
-            localDy = dx * Math.sin(radians) + dy * Math.cos(radians)
-        }
-        window.editor.setPathHandle(activePathHandleIndex, (pathHandleStartX + localDx) / activePathBoxWidth, (pathHandleStartY + localDy) / activePathBoxHeight)
+        if (result.changed)
+            window.editor.setPathHandle(result.index, result.x, result.y)
     }
 
     function endPathHandleDrag() {
         if (dragMode !== editorInteraction.dragModePathHandle)
             return false
-        if (pathHandleInteractionActive)
+        if (pathHandleInteraction.reset())
             window.editor.endInteraction()
-        pathHandleDragPressed = false
-        pathHandleInteractionActive = false
-        activePathHandlePlane = null
-        activePathHandlePerspective = false
-        activePathHandleIndex = -1
         dragMode = editorInteraction.dragModeIdle
         return true
     }
