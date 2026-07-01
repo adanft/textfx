@@ -61,14 +61,14 @@ ApplicationWindow {
       property real rotateStartRotation: 0
       property real rotateStartAngle: 0
       property real rotateDegrees: 0
-      property var activeMoveDelegate: null
-      property int activeMoveIndex: -1
-      property real moveStartX: 0
-      property real moveStartY: 0
-      property real moveStartCanvasX: 0
-      property real moveStartCanvasY: 0
-      property real moveX: 0
-      property real moveY: 0
+      property alias activeMoveDelegate: boxMoveInteraction.activeMoveDelegate
+      property alias activeMoveIndex: boxMoveInteraction.activeMoveIndex
+      property alias moveStartX: boxMoveInteraction.moveStartX
+      property alias moveStartY: boxMoveInteraction.moveStartY
+      property alias moveStartCanvasX: boxMoveInteraction.moveStartCanvasX
+      property alias moveStartCanvasY: boxMoveInteraction.moveStartCanvasY
+      property alias moveX: boxMoveInteraction.moveX
+      property alias moveY: boxMoveInteraction.moveY
         property int activePathHandleIndex: -1
         property var activePathHandlePlane: null
         property bool activePathHandlePerspective: false
@@ -137,6 +137,12 @@ ApplicationWindow {
         objectName: "boxResizeInteractionState"
         documentScale: window.viewDocScale()
         minimumBoxSize: editorLimits.minimumBoxSize
+    }
+
+    BoxMoveInteractionState {
+        id: boxMoveInteraction
+        objectName: "boxMoveInteractionState"
+        documentScale: window.viewDocScale()
     }
 
     function fitPageScale() { return viewportMetrics.fitPageScale() }
@@ -498,29 +504,22 @@ ApplicationWindow {
     }
 
     function beginMoveDrag(delegate, index, canvasX, canvasY) {
-        activeMoveDelegate = delegate
-        activeMoveIndex = index
         dragMode = editorInteraction.dragModeMove
-        moveStartX = delegate.boxModel.x
-        moveStartY = delegate.boxModel.y
-        moveStartCanvasX = canvasX
-        moveStartCanvasY = canvasY
-        moveX = moveStartX
-        moveY = moveStartY
+        boxMoveInteraction.begin(delegate, index, canvasX, canvasY)
     }
 
     function updateMoveDrag(canvasX, canvasY) {
         if (dragMode !== editorInteraction.dragModeMove || !activeMoveDelegate)
             return
-        moveX = moveStartX + (canvasX - moveStartCanvasX) / viewDocScale()
-        moveY = moveStartY + (canvasY - moveStartCanvasY) / viewDocScale()
+        boxMoveInteraction.update(canvasX, canvasY)
     }
 
     function endMoveDrag(commit) {
-        if (dragMode === editorInteraction.dragModeMove && commit)
-            window.editor.moveSelected(moveX - moveStartX, moveY - moveStartY)
-        activeMoveDelegate = null
-        activeMoveIndex = -1
+        if (dragMode === editorInteraction.dragModeMove && commit) {
+            const moveDelta = boxMoveInteraction.delta()
+            window.editor.moveSelected(moveDelta.x, moveDelta.y)
+        }
+        boxMoveInteraction.reset()
         dragMode = editorInteraction.dragModeIdle
     }
 

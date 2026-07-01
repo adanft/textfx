@@ -75,6 +75,7 @@ qt_add_qml_module(textfx
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/BoxMoveInteractionState.qml
         qml/BoxResizeInteractionState.qml
         qml/CanvasInteractionState.qml
         qml/ColorButton.qml

@@ -417,6 +417,63 @@ private slots:
         QCOMPARE(clamped.value(QStringLiteral("h")).toDouble(), 60.0);
     }
 
+    void qmlBoxMoveInteractionStateCommitsVisiblePositionAndCancels()
+    {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(40, 50, 100, 60);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+
+        auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        QObject* boxObject = nullptr;
+        QTRY_VERIFY(boxObject = findVisualChildByName(window->contentItem(), QStringLiteral("textBoxDelegate")));
+        auto* boxItem = qobject_cast<QQuickItem*>(boxObject);
+        QVERIFY(boxItem);
+
+        const QVariantMap original = editor.boxes().at(0).toMap();
+        const qreal originalVisualX = boxItem->x();
+        const qreal originalVisualY = boxItem->y();
+
+        QVERIFY(QMetaObject::invokeMethod(window, "beginMoveDrag",
+            Q_ARG(QVariant, QVariant::fromValue(boxObject)),
+            Q_ARG(QVariant, 0),
+            Q_ARG(QVariant, 0.0),
+            Q_ARG(QVariant, 0.0)));
+        QVERIFY(QMetaObject::invokeMethod(window, "updateMoveDrag", Q_ARG(QVariant, 25.0), Q_ARG(QVariant, -10.0)));
+        QTRY_COMPARE(window->property("moveX").toDouble(), 65.0);
+        QTRY_COMPARE(window->property("moveY").toDouble(), 40.0);
+        QTRY_VERIFY(boxItem->x() > originalVisualX + 20.0);
+        QTRY_VERIFY(boxItem->y() < originalVisualY - 5.0);
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("x")).toDouble(), original.value(QStringLiteral("x")).toDouble());
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("y")).toDouble(), original.value(QStringLiteral("y")).toDouble());
+
+        QVERIFY(QMetaObject::invokeMethod(window, "endMoveDrag", Q_ARG(QVariant, false)));
+        QCoreApplication::processEvents();
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("x")).toDouble(), original.value(QStringLiteral("x")).toDouble());
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("y")).toDouble(), original.value(QStringLiteral("y")).toDouble());
+
+        QVERIFY(QMetaObject::invokeMethod(window, "beginMoveDrag",
+            Q_ARG(QVariant, QVariant::fromValue(boxObject)),
+            Q_ARG(QVariant, 0),
+            Q_ARG(QVariant, 0.0),
+            Q_ARG(QVariant, 0.0)));
+        QVERIFY(QMetaObject::invokeMethod(window, "updateMoveDrag", Q_ARG(QVariant, 25.0), Q_ARG(QVariant, -10.0)));
+        QVERIFY(QMetaObject::invokeMethod(window, "endMoveDrag", Q_ARG(QVariant, true)));
+
+        const QVariantMap moved = editor.boxes().at(0).toMap();
+        QCOMPARE(moved.value(QStringLiteral("x")).toDouble(), original.value(QStringLiteral("x")).toDouble() + 25.0);
+        QCOMPARE(moved.value(QStringLiteral("y")).toDouble(), original.value(QStringLiteral("y")).toDouble() - 10.0);
+    }
+
     void copyPastePreservesCopiedBox()
     {
         EditorController editor;
@@ -1183,15 +1240,18 @@ private slots:
 
     void qmlBoxMoveUsesTransientWindowDragAndStableEditor()
     {
-        QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
-        QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
-        const QString source = qmlSource();
+        const QString source = readQmlFile(QStringLiteral("Main.qml"));
+        const QString moveStateSource = readQmlFile(QStringLiteral("BoxMoveInteractionState.qml"));
+        const QString delegateSource = readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+        QVERIFY(!source.isEmpty());
+        QVERIFY(!moveStateSource.isEmpty());
+        QVERIFY(!delegateSource.isEmpty());
 
-        const qsizetype moveStart = source.indexOf(QStringLiteral("z: boxRef.selected && editorRef.editingText ? -1 : 10"));
-        const qsizetype resizeStart = source.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"), moveStart);
+        const qsizetype moveStart = delegateSource.indexOf(QStringLiteral("z: boxRef.selected && editorRef.editingText ? -1 : 10"));
+        const qsizetype resizeStart = delegateSource.indexOf(QStringLiteral("model: [\n            {name: \"nw\"}"), moveStart);
         QVERIFY(moveStart >= 0);
         QVERIFY(resizeStart > moveStart);
-        const QString moveSource = source.mid(moveStart, resizeStart - moveStart);
+        const QString moveSource = delegateSource.mid(moveStart, resizeStart - moveStart);
 
         const qsizetype updateMoveStart = source.indexOf(QStringLiteral("function updateMoveDrag(canvasX, canvasY)"));
         const qsizetype endMoveStart = source.indexOf(QStringLiteral("function endMoveDrag(commit)"));
@@ -1203,8 +1263,16 @@ private slots:
         const QString endMove = source.mid(endMoveStart, escapeStart - endMoveStart);
 
         QVERIFY(source.contains(QStringLiteral("readonly property var editor: Editor")));
-        QVERIFY(source.contains(QStringLiteral("property var activeMoveDelegate: null")));
+        QVERIFY(moveStateSource.contains(QStringLiteral("property var activeMoveDelegate: null")));
+        QVERIFY(source.contains(QStringLiteral("property alias activeMoveDelegate: boxMoveInteraction.activeMoveDelegate")));
+        QVERIFY(source.contains(QStringLiteral("property alias activeMoveIndex: boxMoveInteraction.activeMoveIndex")));
+        QVERIFY(source.contains(QStringLiteral("property alias moveX: boxMoveInteraction.moveX")));
+        QVERIFY(source.contains(QStringLiteral("property alias moveY: boxMoveInteraction.moveY")));
+        QVERIFY(source.contains(QStringLiteral("BoxMoveInteractionState")));
+        QVERIFY(source.contains(QStringLiteral("objectName: \"boxMoveInteractionState\"")));
         QVERIFY(source.contains(QStringLiteral("function beginMoveDrag(delegate, index, canvasX, canvasY)")));
+        QVERIFY(source.contains(QStringLiteral("boxMoveInteraction.begin(delegate, index, canvasX, canvasY)")));
+        QVERIFY(updateMove.contains(QStringLiteral("boxMoveInteraction.update(canvasX, canvasY)")));
         QVERIFY(moveSource.contains(QStringLiteral("preventStealing: true")));
         QVERIFY(moveSource.contains(QStringLiteral("mouse.accepted = true")));
         QVERIFY(source.contains(QStringLiteral("function perspectiveVisualBounds(box, width, height)")));
@@ -1213,10 +1281,10 @@ private slots:
         QVERIFY(moveSource.contains(QStringLiteral("x: visualBounds.x")));
         QVERIFY(moveSource.contains(QStringLiteral("width: visualBounds.width")));
         QVERIFY(moveSource.contains(QStringLiteral("if (boxRef.perspectiveActive && !rootWindow.pointInPerspectivePolygon(local, boxRef.boxModel, boxRef.width, boxRef.height))")));
-        QVERIFY(source.contains(QStringLiteral("readonly property var rootWindow: ApplicationWindow.window")));
-        QVERIFY(source.contains(QStringLiteral("readonly property var editorRef: rootWindow ? rootWindow.editor : null")));
-        QVERIFY(source.contains(QStringLiteral("property real visualDocX: moveActive ? rootWindow.moveX : resizeActive ? rootWindow.resizeX : modelData.x")));
-        QVERIFY(source.contains(QStringLiteral("x: rootWindow.documentToViewX(visualDocX)")));
+        QVERIFY(delegateSource.contains(QStringLiteral("readonly property var rootWindow: ApplicationWindow.window")));
+        QVERIFY(delegateSource.contains(QStringLiteral("readonly property var editorRef: rootWindow ? rootWindow.editor : null")));
+        QVERIFY(delegateSource.contains(QStringLiteral("property real visualDocX: moveActive ? rootWindow.moveX : resizeActive ? rootWindow.resizeX : modelData.x")));
+        QVERIFY(delegateSource.contains(QStringLiteral("x: rootWindow.documentToViewX(visualDocX)")));
         QVERIFY(moveSource.contains(QStringLiteral("editorRef.selectBox(boxRef.boxModel.index)")));
         QVERIFY(moveSource.contains(QStringLiteral("editorRef.beginInteraction()")));
         QVERIFY(moveSource.contains(QStringLiteral("rootWindow.beginMoveDrag(boxRef, boxRef.boxModel.index, point.x, point.y)")));
@@ -1227,7 +1295,9 @@ private slots:
         QVERIFY(!moveSource.contains(QStringLiteral("window.editor")));
         QVERIFY(!updateMove.contains(QStringLiteral("moveSelected")));
         QVERIFY(!updateMove.contains(QStringLiteral("activeMoveDelegate.x")));
-        QVERIFY(endMove.contains(QStringLiteral("window.editor.moveSelected(moveX - moveStartX, moveY - moveStartY)")));
+        QVERIFY(endMove.contains(QStringLiteral("const moveDelta = boxMoveInteraction.delta()")));
+        QVERIFY(endMove.contains(QStringLiteral("window.editor.moveSelected(moveDelta.x, moveDelta.y)")));
+        QVERIFY(endMove.contains(QStringLiteral("boxMoveInteraction.reset()")));
     }
 
     void qmlPerspectiveMoveHitAreaFollowsVisualPolygonBelowHandles()
