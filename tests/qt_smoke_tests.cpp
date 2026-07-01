@@ -1377,7 +1377,7 @@ private slots:
                        "modelText(); if (activeFocus && "
                        "userInputSyncPending) { setLivePreviewText(text); "
                        "userInputSyncPending = false; pendingUserInputText "
-                       "= \"\"; return")));
+                       "= \"\"; applyLineSpacing(); return")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorBlock,
         QStringLiteral("onTextChanged: { setLivePreviewText(text); "

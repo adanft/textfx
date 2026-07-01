@@ -3,6 +3,7 @@
 
 #include <QMetaObject>
 #include <QFile>
+#include <QFont>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickItem>
@@ -281,6 +282,94 @@ private slots:
                  QStringLiteral("First page line"));
     QVERIFY(editor.editingText());
     QVERIFY(textArea->property("activeFocus").toBool());
+  }
+
+  void qmlPresetApplyWhileEditingRefreshesStyleWithoutResettingText() {
+    registerQmlTypes();
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    touch(dir.filePath(QStringLiteral("page1.png")));
+
+    EditorController editor;
+    editor.openProject(dir.path());
+    editor.createTextBox(10, 20, 260, 120);
+    editor.updateSelectedText(QStringLiteral("Model text"));
+    editor.setSelectedFontSize(34);
+    editor.setSelectedBold(true);
+    editor.setSelectedLineSpacing(11);
+    editor.setSelectedAlignment(2);
+    QVERIFY(editor.addPreset(QStringLiteral("Live Style")));
+
+    editor.setSelectedFontSize(18);
+    editor.setSelectedBold(false);
+    editor.setSelectedLineSpacing(0);
+    editor.setSelectedAlignment(0);
+    editor.updateSelectedText(QStringLiteral("Draft"));
+    editor.beginTextEdit();
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QObject *textArea = nullptr;
+    QObject *outlinedText = nullptr;
+    QTRY_VERIFY(textArea = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxTextArea")));
+    QTRY_VERIFY(outlinedText = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxOutlinedText")));
+    QTRY_VERIFY(textArea->property("visible").toBool());
+    QTRY_VERIFY(textArea->property("activeFocus").toBool());
+
+    textArea->setProperty("cursorPosition", 5);
+    QTest::keyClick(window, Qt::Key_Exclam);
+    QCOMPARE(textArea->property("text").toString(), QStringLiteral("Draft!"));
+    QCOMPARE(outlinedText->property("text").toString(),
+             QStringLiteral("Draft!"));
+
+    QVERIFY(editor.applySelectedPreset());
+
+    QTRY_COMPARE(outlinedText->property("pixelSize").toInt(), 34);
+    QCOMPARE(outlinedText->property("bold").toBool(), true);
+    QCOMPARE(outlinedText->property("lineSpacing").toInt(), 11);
+    QCOMPARE(outlinedText->property("horizontalAlignment").toInt(),
+             int(Qt::AlignRight));
+    QTRY_COMPARE(textArea->property("text").toString(),
+                 QStringLiteral("Draft!"));
+    QCOMPARE(textArea->property("livePreviewText").toString(),
+             QStringLiteral("Draft!"));
+    QCOMPARE(outlinedText->property("text").toString(),
+             QStringLiteral("Draft!"));
+    QCOMPARE(textArea->property("font").value<QFont>().pixelSize(), 34);
+    QCOMPARE(textArea->property("font").value<QFont>().bold(), true);
+    QCOMPARE(textArea->property("horizontalAlignment").toInt(),
+             int(Qt::AlignRight));
+
+    auto *quickTextDocument =
+        textArea->property("textDocument").value<QObject *>();
+    auto *documentWrapper = qobject_cast<QQuickTextDocument *>(quickTextDocument);
+    QVERIFY(documentWrapper);
+    QTRY_COMPARE(documentWrapper->textDocument()
+                     ->firstBlock()
+                     .blockFormat()
+                     .lineHeight(),
+                 11.0);
+    QCOMPARE(editor.selectedBoxViewModel()
+                 .toMap()
+                 .value(QStringLiteral("fontSize"))
+                 .toInt(),
+             34);
+    QCOMPARE(editor.selectedBoxViewModel()
+                 .toMap()
+                 .value(QStringLiteral("text"))
+                 .toString(),
+             QStringLiteral("Draft!"));
+    QVERIFY(editor.editingText());
   }
 
   void qmlResizeWhileEditingKeepsEffectiveBoundsAfterInteractionEnds() {

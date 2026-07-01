@@ -280,6 +280,7 @@ Rectangle {
                 setLivePreviewText(text);
                 userInputSyncPending = false;
                 pendingUserInputText = "";
+                applyLineSpacing();
                 return ;
             }
 
