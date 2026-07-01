@@ -210,6 +210,34 @@ if(BUILD_TESTING)
             ENVIRONMENT "${TEXTFX_QT_TEST_ENVIRONMENT}"
         )
         list(APPEND TEXTFX_TEST_TARGETS textfx_qt_smoke_tests)
+
+        qt_add_executable(textfx_outlined_text_item_tests
+            tests/outlined_text_item_tests.cpp
+            tests/qt_test_helpers.cpp
+            tests/qt_test_helpers.h
+            src/ui/OutlinedTextItem.cpp
+            src/ui/OutlinedTextItem.h
+        )
+
+        target_link_libraries(textfx_outlined_text_item_tests
+            PRIVATE
+                textfx_core
+                Qt6::Qml
+                Qt6::Quick
+                Qt6::Test
+        )
+        target_compile_definitions(textfx_outlined_text_item_tests PRIVATE
+            TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
+            TEXTFX_TESTING=1
+        )
+
+        add_test(NAME textfx_outlined_text_item_tests COMMAND textfx_outlined_text_item_tests)
+        set_tests_properties(textfx_outlined_text_item_tests PROPERTIES
+            LABELS "ui;render"
+            TIMEOUT 60
+            ENVIRONMENT "${TEXTFX_QT_TEST_ENVIRONMENT}"
+        )
+        list(APPEND TEXTFX_TEST_TARGETS textfx_outlined_text_item_tests)
     else()
         message(STATUS "Qt6 Test not found; Qt/QML smoke tests are not built. Install the Qt6 Test component locally to include them in the check target.")
     endif()
