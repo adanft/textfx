@@ -727,10 +727,10 @@ void EditorController::beginTextEdit() {
 
 void EditorController::endTextEdit() {
   const bool wasEditing = editingText_;
-  editingText_ = false;
-  emit stateChanged();
   if (wasEditing)
     endInteraction();
+  editingText_ = false;
+  emit stateChanged();
 }
 
 void EditorController::applyTextLineSpacing(QObject *quickTextDocument,

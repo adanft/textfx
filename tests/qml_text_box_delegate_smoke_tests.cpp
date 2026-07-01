@@ -104,6 +104,50 @@ private slots:
     QTRY_COMPARE(lineSpacing(), 18.0);
   }
 
+  void qmlTextEditPreviewUsesUpdatedModelWhenEditEnds() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 260, 90);
+    editor.updateSelectedText(QStringLiteral("Before"));
+    editor.beginTextEdit();
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QObject *textArea = nullptr;
+    QObject *outlinedText = nullptr;
+    QTRY_VERIFY(textArea = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxTextArea")));
+    QTRY_VERIFY(outlinedText = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxOutlinedText")));
+    QTRY_VERIFY(textArea->property("visible").toBool());
+    QTRY_VERIFY(textArea->property("activeFocus").toBool());
+
+    QVERIFY(textArea->setProperty("text", QStringLiteral("After")));
+    QTRY_COMPARE(outlinedText->property("text").toString(),
+                 QStringLiteral("After"));
+    QTRY_COMPARE(
+        editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
+        QStringLiteral("After"));
+
+    editor.endTextEdit();
+    QCoreApplication::processEvents();
+
+    QVERIFY(!editor.editingText());
+    QTRY_VERIFY(!textArea->property("visible").toBool());
+    QCOMPARE(editor.selectedIndex(), 0);
+    QCOMPARE(outlinedText->property("text").toString(),
+             QStringLiteral("After"));
+  }
+
   void qmlTextEditOverlayUsesOutlinedLayoutMetrics() {
     registerQmlTypes();
 
