@@ -199,6 +199,8 @@ QString qmlSource() {
          readQmlFile(QStringLiteral("TextBoxDelegate.qml")) +
          QLatin1Char('\n') + readQmlFile(QStringLiteral("TextPathGuide.qml")) +
          QLatin1Char('\n') +
+         readQmlFile(QStringLiteral("TextPathHandles.qml")) +
+         QLatin1Char('\n') +
          readQmlFile(QStringLiteral("TextStyleButton.qml")) +
          QLatin1Char('\n') + readQmlFile(QStringLiteral("ViewportMetrics.qml"));
 }

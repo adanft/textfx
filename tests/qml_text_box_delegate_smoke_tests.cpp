@@ -1118,31 +1118,37 @@ private slots:
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString delegateSource =
         readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+    const QString pathHandlesSource =
+        readQmlFile(QStringLiteral("TextPathHandles.qml"));
 
     const qsizetype resizeStart = indexOfIgnoringWhitespace(
         delegateSource, QStringLiteral("model: [\n            {name: \"nw\"}"));
-    const qsizetype pathStart = delegateSource.indexOf(
+    const qsizetype pathStart = pathHandlesSource.indexOf(
         QStringLiteral("model: pathHandlePlane.boxRef.boxModel.pathPoints"),
-        resizeStart);
-    const qsizetype pathEnd = delegateSource.size();
+        0);
+    const qsizetype pathEnd = pathHandlesSource.size();
     const qsizetype rotateRectStart =
         delegateSource.indexOf(QStringLiteral("id: rotateHandle"), resizeStart);
     const qsizetype rotateStart = delegateSource.indexOf(
         QStringLiteral(
             "rotateHandle.rootWindow.beginRotateDrag(rotateHandle.boxRef"),
         resizeStart);
+    const qsizetype pathComponentStart =
+        delegateSource.indexOf(QStringLiteral("TextPathHandles {"),
+                               rotateRectStart);
     QVERIFY(resizeStart >= 0);
     QVERIFY(rotateRectStart > resizeStart);
     QVERIFY(rotateStart > resizeStart);
-    QVERIFY(pathStart > rotateStart);
+    QVERIFY(pathComponentStart > rotateStart);
+    QVERIFY(pathStart >= 0);
     QVERIFY(pathEnd > pathStart);
 
     const QString resizeSource =
         delegateSource.mid(resizeStart, rotateStart - resizeStart);
     const QString rotateSource =
-        delegateSource.mid(rotateRectStart, pathStart - rotateRectStart);
+        delegateSource.mid(rotateRectStart, pathComponentStart - rotateRectStart);
     const QString pathSource =
-        delegateSource.mid(pathStart, pathEnd - pathStart);
+        pathHandlesSource.mid(pathStart, pathEnd - pathStart);
 
     QVERIFY(resizeSource.contains(
         QStringLiteral("resizeHandle.editorRef.endInteraction()")));
@@ -1156,8 +1162,10 @@ private slots:
         QStringLiteral("readonly property var rootWindow: window")));
     QVERIFY(!delegateSource.contains(QStringLiteral("Editor.")));
     QVERIFY(!delegateSource.contains(QStringLiteral("window.")));
-    QVERIFY(!delegateSource.contains(
-        QStringLiteral("property var boxRef: boxDelegate")));
+    QVERIFY(delegateSource.contains(QStringLiteral("TextPathHandles {")));
+    QVERIFY(delegateSource.contains(QStringLiteral("boxRef: boxDelegate")));
+    QVERIFY(delegateSource.contains(
+        QStringLiteral("canvasItem: boxDelegate.canvasItem")));
     QVERIFY(
         resizeSource.contains(QStringLiteral("property var boxRef: parent")));
     QVERIFY(resizeSource.contains(
