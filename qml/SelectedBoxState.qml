@@ -15,6 +15,20 @@ QtObject {
         return value === undefined || value === null ? fallback : value;
     }
 
+    function effectValue(effectName, propertyName, legacyRoleName, fallback) {
+        const effects = value("boxEffects", null);
+        if (effects !== null && effects !== undefined) {
+            const effect = effects[effectName];
+            if (effect !== null && effect !== undefined) {
+                const groupedValue = effect[propertyName];
+                if (groupedValue !== undefined && groupedValue !== null)
+                    return groupedValue;
+            }
+        }
+
+        return value(legacyRoleName, fallback);
+    }
+
     property Connections boxesModelConnections: Connections {
         target: selectedBoxState.editor ? selectedBoxState.editor.boxesModel : null
         function onDataChanged() { selectedBoxState.revision += 1; }

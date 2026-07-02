@@ -4,6 +4,7 @@
 #include <QCoreApplication>
 #include <QFile>
 #include <QMetaObject>
+#include <QQmlComponent>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickItem>
@@ -14,6 +15,7 @@
 #include <QVariantMap>
 
 #include <cmath>
+#include <memory>
 
 using namespace textfx;
 using namespace textfx::test;
@@ -232,6 +234,9 @@ private slots:
     QVERIFY(selectedBoxStateSource.contains(
         QStringLiteral("function value(roleName, fallback)")));
     QVERIFY(selectedBoxStateSource.contains(
+        QStringLiteral("function effectValue(effectName, propertyName, "
+                       "legacyRoleName, fallback)")));
+    QVERIFY(selectedBoxStateSource.contains(
         QStringLiteral("target: selectedBoxState.editor ? "
                        "selectedBoxState.editor.boxesModel : null")));
     QVERIFY(selectedBoxStateSource.contains(
@@ -346,6 +351,16 @@ private slots:
         rightPanelSource,
         QStringLiteral("SelectedBoxState { id: selectedBoxState; "
                        "editor: rightInspectorPanel.editor }")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("outlineColor: selectedBoxState.effectValue(\"outline\", "
+                       "\"color\", \"boxOutlineColor\", \"#ffffff\")")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("shadowBlurSize: selectedBoxState.effectValue(\"shadow\", "
+                       "\"blurSize\", \"boxShadowBlurSize\", 0)")));
+    QVERIFY(!rightPanelSource.contains(
+        QStringLiteral("outlineColor: selectedBoxState.value(\"boxOutlineColor\"")));
     QVERIFY(!rightPanelSource.contains(QStringLiteral("selectedBoxRevision")));
     QVERIFY(!rightPanelSource.contains(QStringLiteral("function selectedBoxValue")));
     QVERIFY(!rightPanelSource.contains(
@@ -1268,6 +1283,81 @@ private slots:
     QVERIFY(!zoomLabel->property("text").toString().startsWith(
         QLatin1Char('0')));
     QCOMPARE(zoomLabel->width(), aboveSixHundredReservedWidth);
+  }
+
+  void qmlSelectedBoxStateEffectValuePrefersGroupedEffects() {
+    QQmlEngine engine;
+    QQmlComponent component(&engine);
+    const QString qmlImportUrl = QUrl::fromLocalFile(
+                                     QStringLiteral(TEXTFX_FIXTURE_DIR
+                                                    "/../../qml"))
+                                     .toString();
+    const QString source = QStringLiteral(R"QML(
+import QtQml
+import "%1"
+
+QtObject {
+    id: root
+    property QtObject selectedState: SelectedBoxState {
+        editor: root.fakeEditor
+    }
+    property QtObject fakeBoxesModel: QtObject {
+        signal dataChanged()
+        signal modelReset()
+        signal rowsInserted()
+        signal rowsRemoved()
+    }
+    property QtObject fakeEditor: QtObject {
+        property int selectedIndex: 0
+        property QtObject boxesModel: root.fakeBoxesModel
+        function boxRole(index, roleName) {
+            if (roleName === "boxEffects")
+                return { outline: { enabled: true, color: "grouped-color", size: 9 } };
+            if (roleName === "boxOutline")
+                return false;
+            if (roleName === "boxOutlineColor")
+                return "legacy-color";
+            if (roleName === "boxOutlineSize")
+                return 3;
+            if (roleName === "boxShadowColor")
+                return "legacy-shadow";
+            return undefined;
+        }
+    }
+}
+)QML").arg(qmlImportUrl);
+    component.setData(source.toUtf8(), QUrl::fromLocalFile(
+                                           QStringLiteral(TEXTFX_FIXTURE_DIR
+                                                          "/../../qml/")));
+
+    std::unique_ptr<QObject> root(component.create());
+    QVERIFY2(root, qPrintable(component.errorString()));
+    auto *state = root->property("selectedState").value<QObject *>();
+    QVERIFY(state);
+
+    QVariant value;
+    QVERIFY(QMetaObject::invokeMethod(
+        state, "effectValue", Q_RETURN_ARG(QVariant, value),
+        Q_ARG(QVariant, QStringLiteral("outline")),
+        Q_ARG(QVariant, QStringLiteral("color")),
+        Q_ARG(QVariant, QStringLiteral("boxOutlineColor")),
+        Q_ARG(QVariant, QStringLiteral("fallback-color"))));
+    QCOMPARE(value.toString(), QStringLiteral("grouped-color"));
+
+    QVERIFY(QMetaObject::invokeMethod(
+        state, "effectValue", Q_RETURN_ARG(QVariant, value),
+        Q_ARG(QVariant, QStringLiteral("outline")),
+        Q_ARG(QVariant, QStringLiteral("enabled")),
+        Q_ARG(QVariant, QStringLiteral("boxOutline")), Q_ARG(QVariant, true)));
+    QCOMPARE(value.toBool(), true);
+
+    QVERIFY(QMetaObject::invokeMethod(
+        state, "effectValue", Q_RETURN_ARG(QVariant, value),
+        Q_ARG(QVariant, QStringLiteral("shadow")),
+        Q_ARG(QVariant, QStringLiteral("color")),
+        Q_ARG(QVariant, QStringLiteral("boxShadowColor")),
+        Q_ARG(QVariant, QStringLiteral("fallback-shadow"))));
+    QCOMPARE(value.toString(), QStringLiteral("legacy-shadow"));
   }
 
   void qmlRightInspectorNavigationAndEffectsRouteThroughEditor() {

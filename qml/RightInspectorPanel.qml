@@ -9,23 +9,23 @@ Pane {
     property var editorLimits
     readonly property var selectedBoxData: ({
         rotation: selectedBoxState.value("boxRotation", 0),
-        perspective: selectedBoxState.value("boxPerspective", false),
-        outline: selectedBoxState.value("boxOutline", false),
-        outlineColor: selectedBoxState.value("boxOutlineColor", "#ffffff"),
-        outlineSize: selectedBoxState.value("boxOutlineSize", 2),
-        blur: selectedBoxState.value("boxBlur", false),
-        blurSize: selectedBoxState.value("boxBlurSize", 0),
-        shadow: selectedBoxState.value("boxShadow", false),
-        shadowColor: selectedBoxState.value("boxShadowColor", "#000000"),
-        shadowOffsetX: selectedBoxState.value("boxShadowOffsetX", 4),
-        shadowOffsetY: selectedBoxState.value("boxShadowOffsetY", 4),
-        shadowBlurSize: selectedBoxState.value("boxShadowBlurSize", 0),
-        gradient: selectedBoxState.value("boxGradient", false),
-        gradientDirection: selectedBoxState.value("boxGradientDirection", 0),
-        gradientColorA: selectedBoxState.value("boxGradientColorA", "#ffffff"),
-        gradientColorB: selectedBoxState.value("boxGradientColorB", "#000000"),
-        path: selectedBoxState.value("boxPath", false),
-        pathMode: selectedBoxState.value("boxPathMode", 0)
+        perspective: selectedBoxState.effectValue("perspective", "enabled", "boxPerspective", false),
+        outline: selectedBoxState.effectValue("outline", "enabled", "boxOutline", false),
+        outlineColor: selectedBoxState.effectValue("outline", "color", "boxOutlineColor", "#ffffff"),
+        outlineSize: selectedBoxState.effectValue("outline", "size", "boxOutlineSize", 2),
+        blur: selectedBoxState.effectValue("blur", "enabled", "boxBlur", false),
+        blurSize: selectedBoxState.effectValue("blur", "size", "boxBlurSize", 0),
+        shadow: selectedBoxState.effectValue("shadow", "enabled", "boxShadow", false),
+        shadowColor: selectedBoxState.effectValue("shadow", "color", "boxShadowColor", "#000000"),
+        shadowOffsetX: selectedBoxState.effectValue("shadow", "offsetX", "boxShadowOffsetX", 4),
+        shadowOffsetY: selectedBoxState.effectValue("shadow", "offsetY", "boxShadowOffsetY", 4),
+        shadowBlurSize: selectedBoxState.effectValue("shadow", "blurSize", "boxShadowBlurSize", 0),
+        gradient: selectedBoxState.effectValue("gradient", "enabled", "boxGradient", false),
+        gradientDirection: selectedBoxState.effectValue("gradient", "direction", "boxGradientDirection", 0),
+        gradientColorA: selectedBoxState.effectValue("gradient", "colorA", "boxGradientColorA", "#ffffff"),
+        gradientColorB: selectedBoxState.effectValue("gradient", "colorB", "boxGradientColorB", "#000000"),
+        path: selectedBoxState.effectValue("path", "enabled", "boxPath", false),
+        pathMode: selectedBoxState.effectValue("path", "mode", "boxPathMode", 0)
     })
     property var qmlColorProvider: function(hex) {
         return hex;
