@@ -1123,6 +1123,8 @@ private slots:
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString delegateSource =
         readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+    const QString moveAreaSource =
+        readQmlFile(QStringLiteral("TextBoxMoveArea.qml"));
     const QString resizeHandlesSource =
         readQmlFile(QStringLiteral("TextResizeHandles.qml"));
     const QString rotateHandleSource =
@@ -1145,6 +1147,7 @@ private slots:
         delegateSource.indexOf(QStringLiteral("TextPathHandles {"),
                                0);
     QVERIFY(resizeStart >= 0);
+    QVERIFY(!moveAreaSource.isEmpty());
     QVERIFY(rotateRectStart >= 0);
     QVERIFY(rotateStart > rotateRectStart);
     QVERIFY(pathComponentStart >= 0);
@@ -1173,9 +1176,17 @@ private slots:
     QVERIFY(delegateSource.contains(QStringLiteral("TextResizeHandles {")));
     QVERIFY(delegateSource.contains(QStringLiteral("TextRotateHandle {")));
     QVERIFY(delegateSource.contains(QStringLiteral("TextPathHandles {")));
+    QVERIFY(delegateSource.contains(QStringLiteral("TextBoxMoveArea {")));
     QVERIFY(delegateSource.contains(QStringLiteral("boxRef: boxDelegate")));
     QVERIFY(delegateSource.contains(
         QStringLiteral("canvasItem: boxDelegate.canvasItem")));
+    QVERIFY(delegateSource.contains(QStringLiteral("editOverlay: boxTextOverlay")));
+    QVERIFY(moveAreaSource.contains(
+        QStringLiteral("property var rootWindow: boxRef.rootWindow")));
+    QVERIFY(moveAreaSource.contains(
+        QStringLiteral("property var editorRef: boxRef.editorRef")));
+    QVERIFY(moveAreaSource.contains(
+        QStringLiteral("editOverlay.forceEditFocus()")));
     QVERIFY(
         resizeSource.contains(QStringLiteral("property var boxRef: resizeHandles.boxRef")));
     QVERIFY(resizeSource.contains(

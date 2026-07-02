@@ -196,8 +196,9 @@ QString qmlSource() {
          QLatin1Char('\n') +
          readQmlFile(QStringLiteral("TextEffectsSection.qml")) +
           QLatin1Char('\n') +
-          readQmlFile(QStringLiteral("TextBoxDelegate.qml")) +
-          QLatin1Char('\n') + readQmlFile(QStringLiteral("TextEditOverlay.qml")) +
+           readQmlFile(QStringLiteral("TextBoxDelegate.qml")) +
+           QLatin1Char('\n') + readQmlFile(QStringLiteral("TextBoxMoveArea.qml")) +
+           QLatin1Char('\n') + readQmlFile(QStringLiteral("TextEditOverlay.qml")) +
           QLatin1Char('\n') + readQmlFile(QStringLiteral("TextPathGuide.qml")) +
           QLatin1Char('\n') +
           readQmlFile(QStringLiteral("TextResizeHandles.qml")) +

@@ -115,6 +115,7 @@ qt_add_qml_module(textfx
         qml/TextPropertiesSection.qml
         qml/TextPresetsSection.qml
         qml/TextBoxDelegate.qml
+        qml/TextBoxMoveArea.qml
         qml/TextEditOverlay.qml
         qml/TextPathGuide.qml
         qml/TextPathHandles.qml

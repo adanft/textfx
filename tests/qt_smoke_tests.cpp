@@ -501,19 +501,21 @@ private slots:
         readQmlFile(QStringLiteral("BoxMoveInteractionState.qml"));
     const QString delegateSource =
         readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+    const QString moveAreaSource =
+        readQmlFile(QStringLiteral("TextBoxMoveArea.qml"));
+    QFile cmake(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../CMakeLists.txt"));
+    QVERIFY(cmake.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString cmakeSource = QString::fromUtf8(cmake.readAll());
     QVERIFY(!source.isEmpty());
     QVERIFY(!moveStateSource.isEmpty());
     QVERIFY(!delegateSource.isEmpty());
+    QVERIFY(!moveAreaSource.isEmpty());
+    QVERIFY(cmakeSource.contains(QStringLiteral("qml/TextBoxMoveArea.qml")));
 
-    const qsizetype moveStart = delegateSource.indexOf(QStringLiteral(
+    const qsizetype moveStart = moveAreaSource.indexOf(QStringLiteral(
         "z: boxRef.selected && editorRef.editingText ? -1 : 10"));
-    const qsizetype resizeStart = indexOfIgnoringWhitespace(
-        delegateSource, QStringLiteral("TextResizeHandles {"),
-        moveStart);
     QVERIFY(moveStart >= 0);
-    QVERIFY(resizeStart > moveStart);
-    const QString moveSource =
-        delegateSource.mid(moveStart, resizeStart - moveStart);
+    const QString moveSource = moveAreaSource.mid(moveStart);
 
     const qsizetype updateMoveStart = source.indexOf(
         QStringLiteral("function updateMoveDrag(canvasX, canvasY)"));
@@ -558,7 +560,7 @@ private slots:
     QVERIFY(source.contains(QStringLiteral(
         "function pointInPerspectivePolygon(point, box, width, height)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        delegateSource,
+        moveAreaSource,
         QStringLiteral("rootWindow.perspectiveVisualBounds("
                        "boxRef.boxModel, boxRef.width, boxRef.height)")));
     QVERIFY(moveSource.contains(QStringLiteral("x: visualBounds.x")));
@@ -582,6 +584,8 @@ private slots:
     QVERIFY(!delegateSource.contains(QStringLiteral("property bool resizeActive")));
     QVERIFY(delegateSource.contains(
         QStringLiteral("x: rootWindow.documentToViewX(visualDocX)")));
+    QVERIFY(delegateSource.contains(QStringLiteral("TextBoxMoveArea {")));
+    QVERIFY(delegateSource.contains(QStringLiteral("editOverlay: boxTextOverlay")));
     QVERIFY(moveSource.contains(
         QStringLiteral("editorRef.selectBox(boxRef.boxModel.index)")));
     QVERIFY(
