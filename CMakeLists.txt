@@ -100,6 +100,7 @@ qt_add_qml_module(textfx
         qml/ColorButton.qml
         qml/CentralCanvasShell.qml
         qml/EditorChrome.qml
+        qml/LayersSection.qml
         qml/LeftInspectorPanel.qml
         qml/PathHandleInteractionState.qml
         qml/PerspectiveGeometry.qml

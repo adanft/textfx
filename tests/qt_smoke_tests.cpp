@@ -1803,7 +1803,7 @@ private slots:
         "Editor.rawVisible && Editor.rawPageUrl.toString().length > 0 ? "
         "Editor.rawPageUrl : Editor.currentPageUrl")));
     QVERIFY(source.contains(
-        QStringLiteral("model: rightInspectorPanel.editor.layers")));
+        QStringLiteral("model: layersSection.editor.layers")));
     for (const QString iconPath : {
              QStringLiteral(":/qt/qml/TextFX/assets/icons/flat/arrow-left.svg"),
              QStringLiteral(":/qt/qml/TextFX/assets/icons/flat/arrow-right.svg"),
@@ -1816,25 +1816,25 @@ private slots:
         source,
         QStringLiteral(
             "text: qsTr(\"Up\"); enabled: "
-            "rightInspectorPanel.editor.selectedIndex "
-            ">= 0 && rightInspectorPanel.editor.selectedIndex < "
-            "rightInspectorPanel.editor.boxCount - 1; display: "
+            "layersSection.editor.selectedIndex "
+            ">= 0 && layersSection.editor.selectedIndex < "
+            "layersSection.editor.boxCount - 1; display: "
             "AbstractButton.IconOnly; icon.source: "
             "\"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-up.svg\"; "
             "icon.width: 20; icon.height: 20; icon.color: !enabled ? "
             "palette.mid : palette.buttonText; onClicked: "
-            "rightInspectorPanel.editor.moveLayer(rightInspectorPanel.editor."
+            "layersSection.editor.moveLayer(layersSection.editor."
             "selectedIndex + 1)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         source,
         QStringLiteral(
             "text: qsTr(\"Down\"); enabled: "
-            "rightInspectorPanel.editor.selectedIndex > 0; display: "
+            "layersSection.editor.selectedIndex > 0; display: "
             "AbstractButton.IconOnly; icon.source: "
             "\"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-down.svg\"; "
             "icon.width: 20; icon.height: 20; icon.color: !enabled ? "
             "palette.mid : palette.buttonText; onClicked: "
-            "rightInspectorPanel.editor.moveLayer(rightInspectorPanel.editor."
+            "layersSection.editor.moveLayer(layersSection.editor."
             "selectedIndex - 1)")));
   }
 };

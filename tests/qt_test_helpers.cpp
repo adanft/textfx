@@ -169,9 +169,10 @@ QString qmlSource() {
          readQmlFile(QStringLiteral("CentralCanvasShell.qml")) +
          QLatin1Char('\n') + readQmlFile(QStringLiteral("EditorChrome.qml")) +
          QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("LeftInspectorPanel.qml")) +
-         QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("PathHandleInteractionState.qml")) +
+          readQmlFile(QStringLiteral("LeftInspectorPanel.qml")) +
+          QLatin1Char('\n') + readQmlFile(QStringLiteral("LayersSection.qml")) +
+          QLatin1Char('\n') +
+          readQmlFile(QStringLiteral("PathHandleInteractionState.qml")) +
          QLatin1Char('\n') +
          readQmlFile(QStringLiteral("PerspectiveGeometry.qml")) +
          QLatin1Char('\n') +

@@ -429,6 +429,8 @@ private slots:
     const QString source = qmlSource();
     const QString rightPanelSource =
         readQmlFile(QStringLiteral("RightInspectorPanel.qml"));
+    const QString layersSectionSource =
+        readQmlFile(QStringLiteral("LayersSection.qml"));
     const qsizetype rightPanelStart =
         source.indexOf(QStringLiteral("id: rightPanel"));
     QVERIFY(rightPanelStart >= 0);
@@ -532,11 +534,17 @@ private slots:
 
     for (const QString &sectionId : {QStringLiteral("navigationSection"),
                                      QStringLiteral("boxEffectsSection"),
-                                     QStringLiteral("textEffectsSection"),
-                                     QStringLiteral("layersSection")}) {
+                                     QStringLiteral("textEffectsSection")}) {
       QVERIFY2(rightPanelSource.contains(QStringLiteral("id: ") + sectionId),
                qPrintable(sectionId));
     }
+    QVERIFY(layersSectionSource.contains(QStringLiteral("id: layersSection")));
+    QVERIFY(rightPanelSource.contains(QStringLiteral("LayersSection {")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("LayersSection { editor: rightInspectorPanel.editor; "
+                       "Layout.fillWidth: true; Layout.minimumWidth: 0; "
+                       "Layout.fillHeight: true }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         rightPanelSource,
         QStringLiteral("Label { text: qsTr(\"Navigation\"); font.bold: true; "
@@ -550,26 +558,28 @@ private slots:
         QStringLiteral("Label { text: qsTr(\"Text Effects\"); font.bold: true; "
                        "enabled: textEffectsSection.sectionReady }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
+        layersSectionSource,
         QStringLiteral("Label { text: qsTr(\"Layers\"); font.bold: true; "
                        "enabled: layersSection.sectionReady }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
+        layersSectionSource,
         QStringLiteral("horizontalAlignment: Text.AlignRight; text: "
-                       "rightInspectorPanel.editor.layers.length; enabled: "
+                       "layersSection.editor.layers.length; enabled: "
                        "layersSection.sectionReady")));
     QVERIFY(rightPanelSource.contains(QStringLiteral(
         "icon.source: \"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-left.svg\"")));
     QVERIFY(rightPanelSource.contains(QStringLiteral(
         "icon.source: \"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-right.svg\"")));
-    QVERIFY(rightPanelSource.contains(QStringLiteral(
+    QVERIFY(layersSectionSource.contains(QStringLiteral(
         "icon.source: \"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-up.svg\"")));
-    QVERIFY(rightPanelSource.contains(QStringLiteral(
+    QVERIFY(layersSectionSource.contains(QStringLiteral(
         "icon.source: \"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-down.svg\"")));
-    QVERIFY(rightPanelSource.contains(QStringLiteral(
+    QVERIFY(source.contains(QStringLiteral(
         "icon.color: !enabled ? palette.mid : palette.buttonText")));
     QVERIFY(rightPanelSource.count(
-                QStringLiteral("display: AbstractButton.IconOnly")) >= 4);
+                QStringLiteral("display: AbstractButton.IconOnly")) >= 2);
+    QVERIFY(layersSectionSource.count(
+                QStringLiteral("display: AbstractButton.IconOnly")) >= 2);
     QVERIFY(rightPanelSource.count(QStringLiteral("GroupBox {")) >= 3);
     QVERIFY(rightPanelSource.count(QStringLiteral("Layout.minimumWidth: 0")) >=
             20);
@@ -577,10 +587,10 @@ private slots:
         rightPanelSource,
         QStringLiteral("contentItem: Label { text: pageSelect.displayText")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
+        layersSectionSource,
         QStringLiteral("contentItem: Label { text: layerDelegate.text")));
     QVERIFY(
-        rightPanelSource.contains(QStringLiteral("elide: Text.ElideRight")));
+        layersSectionSource.contains(QStringLiteral("elide: Text.ElideRight")));
 
     const qsizetype zoomLabelStart = rightPanelSource.indexOf(
         QStringLiteral("objectName: \"rightInspectorZoomLabel\""));
@@ -616,8 +626,8 @@ private slots:
     QVERIFY(boxEffectsSource.contains(QStringLiteral(
         "rightInspectorPanel.editor.resetSelectedPerspective()")));
 
-    const qsizetype layersStart = rightPanelSource.indexOf(
-        QStringLiteral("id: layersSection"), textStart);
+    const qsizetype layersStart =
+        rightPanelSource.indexOf(QStringLiteral("LayersSection {"), textStart);
     QVERIFY(layersStart > textStart);
     const QString textEffectsSource =
         rightPanelSource.mid(textStart, layersStart - textStart);

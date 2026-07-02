@@ -1230,6 +1230,7 @@ private slots:
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString leftSource = readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
     const QString rightSource = readQmlFile(QStringLiteral("RightInspectorPanel.qml"));
+    const QString layersSource = readQmlFile(QStringLiteral("LayersSection.qml"));
 
     QVERIFY(!mainSource.contains(QStringLiteral("selectedBox: Editor.selectedBox")));
     QVERIFY(!leftSource.contains(QStringLiteral("property var selectedBox:")));
@@ -1242,8 +1243,9 @@ private slots:
     QVERIFY(rightSource.contains(QStringLiteral("selectedBoxRevision")));
     QVERIFY(leftSource.contains(QStringLiteral("leftInspectorPanel.editor.boxesModel")));
     QVERIFY(rightSource.contains(QStringLiteral("rightInspectorPanel.editor.boxesModel")));
-    QVERIFY(rightSource.contains(QStringLiteral("rightInspectorPanel.editor.boxCount")));
+    QVERIFY(layersSource.contains(QStringLiteral("layersSection.editor.boxCount")));
     QVERIFY(!rightSource.contains(QStringLiteral("rightInspectorPanel.editor.boxes.length")));
+    QVERIFY(!layersSource.contains(QStringLiteral("layersSection.editor.boxes.length")));
   }
 
   void qmlSelectionGeometryAndRotateHandleUseCurrentVisualBounds() {
