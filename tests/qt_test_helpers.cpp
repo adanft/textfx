@@ -173,7 +173,9 @@ QString qmlSource() {
           QLatin1Char('\n') +
            readQmlFile(QStringLiteral("LeftInspectorPanel.qml")) +
            QLatin1Char('\n') +
-           readQmlFile(QStringLiteral("TextPresetsSection.qml")) +
+            readQmlFile(QStringLiteral("TextPropertiesSection.qml")) +
+            QLatin1Char('\n') +
+            readQmlFile(QStringLiteral("TextPresetsSection.qml")) +
            QLatin1Char('\n') + readQmlFile(QStringLiteral("LayersSection.qml")) +
           QLatin1Char('\n') +
           readQmlFile(QStringLiteral("NavigationSection.qml")) +

@@ -111,6 +111,7 @@ qt_add_qml_module(textfx
         qml/RightInspectorPanel.qml
         qml/ShortcutMenuItem.qml
         qml/TextEffectsSection.qml
+        qml/TextPropertiesSection.qml
         qml/TextPresetsSection.qml
         qml/TextBoxDelegate.qml
         qml/TextStyleButton.qml

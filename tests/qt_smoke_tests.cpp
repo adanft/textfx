@@ -926,18 +926,18 @@ private slots:
     QVERIFY(colorButton > colorLabel);
     QVERIFY(propertiesSource.contains(
         QStringLiteral("model: "
-                       "leftInspectorPanel.fontFamilyOptionsProvider("
-                       "leftInspectorPanel.selectedBoxData.fontFamily)")));
+                       "textPropertiesSection.fontFamilyOptionsProvider("
+                       "textPropertiesSection.selectedBoxData.fontFamily)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral("ComboBox { id: fontFamilyCombo "
                        "Layout.fillWidth: true "
                        "Layout.minimumWidth: 0 model: "
-                       "leftInspectorPanel.fontFamilyOptionsProvider")));
+                       "textPropertiesSection.fontFamilyOptionsProvider")));
     const qsizetype fontComboEnd = propertiesSource.indexOf(
         QStringLiteral(
             "onActivated: "
-            "leftInspectorPanel.editor.setSelectedFontFamily(currentText)"),
+            "textPropertiesSection.editor.setSelectedFontFamily(currentText)"),
         fontCombo);
     QVERIFY(fontComboEnd > fontCombo);
     QVERIFY(propertiesSource.contains(QStringLiteral("contentItem: Label {")));
@@ -953,7 +953,7 @@ private slots:
         QStringLiteral("verticalAlignment: Text.AlignVCenter")));
     QVERIFY(propertiesSource.contains(QStringLiteral(
         "onActivated: "
-        "leftInspectorPanel.editor.setSelectedFontFamily(currentText)")));
+        "textPropertiesSection.editor.setSelectedFontFamily(currentText)")));
     QVERIFY(!propertiesSource.contains(QStringLiteral(
         "onEditingFinished: leftInspectorPanel.editor.setSelectedFontFamily")));
     QVERIFY(!propertiesSource.contains(
@@ -968,29 +968,29 @@ private slots:
         QStringLiteral(
             "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/bold.svg\"; "
             "accessibleLabel: qsTr(\"Bold\"); checked: "
-            "leftInspectorPanel.selectedBoxData.bold; onClicked: "
-            "leftInspectorPanel.editor.setSelectedBold(checked)")));
+            "textPropertiesSection.selectedBoxData.bold; onClicked: "
+            "textPropertiesSection.editor.setSelectedBold(checked)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
             "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/italic.svg\"; "
             "accessibleLabel: qsTr(\"Italic\"); checked: "
-            "leftInspectorPanel.selectedBoxData.italic; onClicked: "
-            "leftInspectorPanel.editor.setSelectedItalic(checked)")));
+            "textPropertiesSection.selectedBoxData.italic; onClicked: "
+            "textPropertiesSection.editor.setSelectedItalic(checked)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
             "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/uppercase.svg\"; "
             "accessibleLabel: qsTr(\"Uppercase\"); checked: "
-            "leftInspectorPanel.selectedBoxData.uppercase; onClicked: "
-            "leftInspectorPanel.editor.setSelectedUppercase(checked)")));
+            "textPropertiesSection.selectedBoxData.uppercase; onClicked: "
+            "textPropertiesSection.editor.setSelectedUppercase(checked)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
             "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/lowercase.svg\"; "
             "accessibleLabel: qsTr(\"Lowercase\"); checked: "
-            "leftInspectorPanel.selectedBoxData.lowercase; onClicked: "
-            "leftInspectorPanel.editor.setSelectedLowercase(checked)")));
+            "textPropertiesSection.selectedBoxData.lowercase; onClicked: "
+            "textPropertiesSection.editor.setSelectedLowercase(checked)")));
     QVERIFY(!propertiesSource.contains(QStringLiteral("String.fromCodePoint(")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
@@ -1016,25 +1016,25 @@ private slots:
         QStringLiteral(
             "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/align-left.svg\"; accessibleLabel: qsTr(\"Align "
             "Left\"); checked: "
-            "leftInspectorPanel.selectedBoxData.alignment === 0; "
+            "textPropertiesSection.selectedBoxData.alignment === 0; "
             "onClicked: "
-            "leftInspectorPanel.editor.setSelectedAlignment(0)")));
+            "textPropertiesSection.editor.setSelectedAlignment(0)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
             "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/align-center.svg\"; accessibleLabel: qsTr(\"Align "
             "Center\"); checked: "
-            "leftInspectorPanel.selectedBoxData.alignment === 1; "
+            "textPropertiesSection.selectedBoxData.alignment === 1; "
             "onClicked: "
-            "leftInspectorPanel.editor.setSelectedAlignment(1)")));
+            "textPropertiesSection.editor.setSelectedAlignment(1)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
             "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/align-right.svg\"; accessibleLabel: qsTr(\"Align "
             "Right\"); checked: "
-            "leftInspectorPanel.selectedBoxData.alignment === 2; "
+            "textPropertiesSection.selectedBoxData.alignment === 2; "
             "onClicked: "
-            "leftInspectorPanel.editor.setSelectedAlignment(2)")));
+            "textPropertiesSection.editor.setSelectedAlignment(2)")));
     QVERIFY(!source.contains(
         QStringLiteral("CheckBox { checked: window.selectedBox() ? "
                        "window.selectedBox().bold")));
@@ -1052,18 +1052,69 @@ private slots:
     QVERIFY(buttonSource.contains(QStringLiteral("palette.buttonText")));
   }
 
+  void qmlTextPropertiesSectionIsExtractedAndWired() {
+    const QString leftPanelSource =
+        readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
+    const QString textPropertiesSectionSource =
+        readQmlFile(QStringLiteral("TextPropertiesSection.qml"));
+    QFile cmake(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../CMakeLists.txt"));
+    QVERIFY(cmake.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString cmakeSource = QString::fromUtf8(cmake.readAll());
+
+    QVERIFY(!textPropertiesSectionSource.isEmpty());
+    QVERIFY(cmakeSource.contains(QStringLiteral("qml/TextPropertiesSection.qml")));
+    QVERIFY(textPropertiesSectionSource.contains(
+        QStringLiteral("id: textPropertiesSection")));
+    QVERIFY(textPropertiesSectionSource.contains(
+        QStringLiteral("property var editor: null")));
+    QVERIFY(textPropertiesSectionSource.contains(
+        QStringLiteral("property var editorLimits")));
+    QVERIFY(textPropertiesSectionSource.contains(
+        QStringLiteral("property var selectedBoxData: ({})")));
+    QVERIFY(textPropertiesSectionSource.contains(
+        QStringLiteral("property var fontFamilyOptionsProvider")));
+    QVERIFY(textPropertiesSectionSource.contains(
+        QStringLiteral("property var qmlColorProvider")));
+    QVERIFY(textPropertiesSectionSource.contains(
+        QStringLiteral("signal colorDialogRequested(string hex, string setter)")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        leftPanelSource,
+        QStringLiteral("TextPropertiesSection { editor: leftInspectorPanel.editor; "
+                       "editorLimits: leftInspectorPanel.editorLimits; "
+                       "selectedBoxData: leftInspectorPanel.selectedBoxData; "
+                       "fontFamilyOptionsProvider: "
+                       "leftInspectorPanel.fontFamilyOptionsProvider; "
+                       "qmlColorProvider: leftInspectorPanel.qmlColorProvider; "
+                       "onColorDialogRequested: (hex, setter) => { "
+                       "leftInspectorPanel.colorDialogRequested(hex, setter) "
+                       "}; Layout.fillWidth: true; Layout.minimumWidth: 0 }")));
+    QVERIFY(!leftPanelSource.contains(QStringLiteral("id: textPropertiesSection")));
+    QVERIFY(textPropertiesSectionSource.contains(QStringLiteral(
+        "model: textPropertiesSection.fontFamilyOptionsProvider("
+        "textPropertiesSection.selectedBoxData.fontFamily)")));
+    QVERIFY(textPropertiesSectionSource.contains(QStringLiteral(
+        "swatchText: textPropertiesSection.qmlColorProvider("
+        "textPropertiesSection.selectedBoxData.color)")));
+    QVERIFY(textPropertiesSectionSource.contains(QStringLiteral(
+        "onClicked: textPropertiesSection.colorDialogRequested(swatchText, "
+        "\"text\")")));
+  }
+
   void qmlTextPresetsUseComboBoxSelector() {
     QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
     const QString leftPanelSource =
         readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
+    const QString textPropertiesSectionSource =
+        readQmlFile(QStringLiteral("TextPropertiesSection.qml"));
     const QString textPresetsSectionSource =
         readQmlFile(QStringLiteral("TextPresetsSection.qml"));
     const qsizetype propertiesStart = indexOfIgnoringWhitespace(
-        leftPanelSource, QStringLiteral("Label { text: qsTr(\"Text Properties\"); "
-                                        "font.bold: true; enabled: "
-                                        "textPropertiesSection.sectionReady }"));
+        textPropertiesSectionSource,
+        QStringLiteral("Label { text: qsTr(\"Text Properties\"); "
+                       "font.bold: true; enabled: "
+                       "textPropertiesSection.sectionReady }"));
     const qsizetype presetsStart =
         leftPanelSource.indexOf(QStringLiteral("TextPresetsSection {"));
     const qsizetype pageTextsStart =
@@ -1072,14 +1123,15 @@ private slots:
     QVERIFY(presetsStart >= 0);
     QVERIFY(pageTextsStart > presetsStart);
     const QString propertiesSource =
-        leftPanelSource.mid(propertiesStart, presetsStart - propertiesStart);
+        textPropertiesSectionSource.mid(propertiesStart);
     const QString presetsSource = textPresetsSectionSource;
 
     QVERIFY(propertiesSource.contains(QStringLiteral("GroupBox {")));
     QVERIFY(source.contains(QStringLiteral("id: textPropertiesSection")));
     QVERIFY(source.contains(
         QStringLiteral("readonly property bool sectionReady: "
-                       "leftInspectorPanel.editor.selectedIndex >= 0")));
+                       "textPropertiesSection.editor && "
+                       "textPropertiesSection.editor.selectedIndex >= 0")));
     QVERIFY(propertiesSource.contains(
         QStringLiteral("enabled: textPropertiesSection.sectionReady")));
     QVERIFY(!textPresetsSectionSource.isEmpty());
