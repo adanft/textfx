@@ -34,8 +34,6 @@ Pane {
     property real displayScale: 1
     property real minimumDisplayScale: 0.5
     property real maximumDisplayScale: 6
-    readonly property real displayScaleSnapThreshold: 0.1
-    readonly property string maximumDisplayScaleLabel: displayScaleLabel(maximumDisplayScale)
 
     signal colorDialogRequested(string hex, string setter)
     signal zoomRequested(real displayScale)
@@ -47,14 +45,6 @@ Pane {
 
         const value = editor.boxRole(editor.selectedIndex, roleName);
         return value === undefined || value === null ? fallback : value;
-    }
-
-    function detentedDisplayScale(displayScale) {
-        return Math.abs(displayScale - 1) <= displayScaleSnapThreshold + 1e-9 ? 1 : displayScale;
-    }
-
-    function displayScaleLabel(displayScale) {
-        return Number(displayScale * 100).toLocaleString(Qt.locale(), "f", 1) + "%";
     }
 
     z: 1
@@ -83,147 +73,16 @@ Pane {
             height: Math.max(implicitHeight, rightPanelScroll.availableHeight)
             spacing: 8
 
-            ColumnLayout {
-                id: navigationSection
-
-                readonly property bool sectionReady: rightInspectorPanel.editor.pageCount > 0
-
+            NavigationSection {
+                editor: rightInspectorPanel.editor
+                displayScale: rightInspectorPanel.displayScale
+                minimumDisplayScale: rightInspectorPanel.minimumDisplayScale
+                maximumDisplayScale: rightInspectorPanel.maximumDisplayScale
+                onZoomRequested: (displayScale) => {
+                    rightInspectorPanel.zoomRequested(displayScale);
+                }
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-
-                Label {
-                    text: qsTr("Navigation")
-                    font.bold: true
-                    enabled: navigationSection.sectionReady
-                }
-
-                GroupBox {
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 0
-                    enabled: navigationSection.sectionReady
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        spacing: 6
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            spacing: 6
-
-                            Label {
-                                id: zoomLabel
-
-                                objectName: "rightInspectorZoomLabel"
-                                text: rightInspectorPanel.displayScaleLabel(rightInspectorPanel.displayScale)
-                                color: rightInspectorPanel.palette.text
-                                horizontalAlignment: Text.AlignRight
-                                Layout.preferredWidth: zoomLabelMetrics.advanceWidth(rightInspectorPanel.maximumDisplayScaleLabel)
-
-                                FontMetrics {
-                                    id: zoomLabelMetrics
-
-                                    font: zoomLabel.font
-                                }
-
-                            }
-
-                            Slider {
-                                objectName: "rightInspectorZoomSlider"
-
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 0
-                                from: rightInspectorPanel.minimumDisplayScale
-                                to: rightInspectorPanel.maximumDisplayScale
-                                value: rightInspectorPanel.displayScale
-                                live: true
-                                onMoved: {
-                                    rightInspectorPanel.zoomRequested(rightInspectorPanel.detentedDisplayScale(value));
-                                }
-                            }
-
-                        }
-
-                        Label {
-                            text: rightInspectorPanel.editor.currentPageName.length > 0 ? rightInspectorPanel.editor.currentPageName : qsTr("No page")
-                            font.bold: true
-                            elide: Text.ElideMiddle
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                        }
-
-                        Flow {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            spacing: 6
-
-                            Button {
-                                text: qsTr("Previous")
-                                enabled: rightInspectorPanel.editor.canGoPrevious
-                                display: AbstractButton.IconOnly
-                                icon.source: "qrc:/qt/qml/TextFX/assets/icons/flat/arrow-left.svg"
-                                icon.width: 20
-                                icon.height: 20
-                                icon.color: !enabled ? palette.mid : palette.buttonText
-                                onClicked: rightInspectorPanel.editor.previousPage()
-                            }
-
-                            Button {
-                                objectName: "rightInspectorNextPageButton"
-                                text: qsTr("Next")
-                                enabled: rightInspectorPanel.editor.canGoNext
-                                display: AbstractButton.IconOnly
-                                icon.source: "qrc:/qt/qml/TextFX/assets/icons/flat/arrow-right.svg"
-                                icon.width: 20
-                                icon.height: 20
-                                icon.color: !enabled ? palette.mid : palette.buttonText
-                                onClicked: rightInspectorPanel.editor.nextPage()
-                            }
-
-                        }
-
-                        ComboBox {
-                            id: pageSelect
-
-                            objectName: "rightInspectorPageSelect"
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            model: rightInspectorPanel.editor.pageLabels
-                            currentIndex: rightInspectorPanel.editor.currentPageIndex
-                            enabled: rightInspectorPanel.editor.pageCount > 0
-                            onActivated: (index) => {
-                                return rightInspectorPanel.editor.goToPage(index);
-                            }
-
-                            contentItem: Label {
-                                text: pageSelect.displayText
-                                font: pageSelect.font
-                                enabled: pageSelect.enabled
-                                elide: Text.ElideRight
-                                verticalAlignment: Text.AlignVCenter
-                            }
-
-                        }
-
-                        Label {
-                            text: rightInspectorPanel.editor.pageCount > 0 ? qsTr("Page %1 of %2").arg(rightInspectorPanel.editor.currentPageIndex + 1).arg(rightInspectorPanel.editor.pageCount) : qsTr("Page 0 of 0")
-                            color: rightInspectorPanel.palette.mid
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                        }
-
-                        CheckBox {
-                            objectName: "rightInspectorRawVisibleCheckBox"
-                            text: qsTr("Show Raw")
-                            checked: rightInspectorPanel.editor.rawVisible
-                            onToggled: rightInspectorPanel.editor.rawVisible = checked
-                        }
-
-                    }
-
-                }
-
             }
 
             ColumnLayout {

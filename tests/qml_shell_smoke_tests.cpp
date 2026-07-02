@@ -431,6 +431,8 @@ private slots:
         readQmlFile(QStringLiteral("RightInspectorPanel.qml"));
     const QString layersSectionSource =
         readQmlFile(QStringLiteral("LayersSection.qml"));
+    const QString navigationSectionSource =
+        readQmlFile(QStringLiteral("NavigationSection.qml"));
     const qsizetype rightPanelStart =
         source.indexOf(QStringLiteral("id: rightPanel"));
     QVERIFY(rightPanelStart >= 0);
@@ -463,57 +465,83 @@ private slots:
     QVERIFY(rightPanelSource.contains(
         QStringLiteral("property real maximumDisplayScale: 6")));
     QVERIFY(rightPanelSource.contains(
+        QStringLiteral("signal zoomRequested(real displayScale)")));
+    QVERIFY(rightPanelSource.contains(QStringLiteral("NavigationSection {")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("NavigationSection { editor: rightInspectorPanel.editor; "
+                       "displayScale: rightInspectorPanel.displayScale; "
+                       "minimumDisplayScale: "
+                       "rightInspectorPanel.minimumDisplayScale; "
+                       "maximumDisplayScale: "
+                       "rightInspectorPanel.maximumDisplayScale; "
+                       "onZoomRequested: (displayScale) => { "
+                       "rightInspectorPanel.zoomRequested(displayScale) }; "
+                       "Layout.fillWidth: true; Layout.minimumWidth: 0 }")));
+    QVERIFY(!rightPanelSource.contains(
+        QStringLiteral("objectName: \"rightInspectorZoomLabel\"")));
+    QVERIFY(!rightPanelSource.contains(
+        QStringLiteral("objectName: \"rightInspectorZoomSlider\"")));
+    QVERIFY(navigationSectionSource.contains(QStringLiteral("color: palette.mid")));
+
+    QVERIFY(navigationSectionSource.contains(
+        QStringLiteral("id: navigationSection")));
+    QVERIFY(navigationSectionSource.contains(
+        QStringLiteral("property real displayScale: 1")));
+    QVERIFY(navigationSectionSource.contains(
+        QStringLiteral("property real minimumDisplayScale: 0.5")));
+    QVERIFY(navigationSectionSource.contains(
+        QStringLiteral("property real maximumDisplayScale: 6")));
+    QVERIFY(navigationSectionSource.contains(
         QStringLiteral("readonly property real displayScaleSnapThreshold: "
                        "0.1")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
+        navigationSectionSource,
         QStringLiteral("readonly property string maximumDisplayScaleLabel: "
                        "displayScaleLabel(maximumDisplayScale)")));
-    QVERIFY(rightPanelSource.contains(
+    QVERIFY(navigationSectionSource.contains(
         QStringLiteral("signal zoomRequested(real displayScale)")));
-    QVERIFY(rightPanelSource.contains(
+    QVERIFY(navigationSectionSource.contains(
         QStringLiteral("objectName: \"rightInspectorZoomLabel\"")));
-    QVERIFY(rightPanelSource.contains(
+    QVERIFY(navigationSectionSource.contains(
         QStringLiteral("objectName: \"rightInspectorZoomSlider\"")));
-    QVERIFY(rightPanelSource.contains(
-        QStringLiteral("color: rightInspectorPanel.palette.mid")));
-    QVERIFY(rightPanelSource.contains(
-        QStringLiteral("color: rightInspectorPanel.palette.text")));
-    QVERIFY(!rightPanelSource.contains(QStringLiteral(
-        "color: Qt.alpha(rightInspectorPanel.palette.text, 0.75)")));
+    QVERIFY(navigationSectionSource.contains(
+        QStringLiteral("color: zoomLabel.palette.text")));
+    QVERIFY(!navigationSectionSource.contains(QStringLiteral(
+        "color: Qt.alpha(navigationSection.palette.text, 0.75)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
+        navigationSectionSource,
         QStringLiteral("function displayScaleLabel(displayScale) { return "
                        "Number(displayScale * 100).toLocaleString(Qt.locale(), "
                        "\"f\", 1) + \"%\" }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
-        QStringLiteral("text: rightInspectorPanel.displayScaleLabel("
-                       "rightInspectorPanel.displayScale)")));
+        navigationSectionSource,
+        QStringLiteral("text: navigationSection.displayScaleLabel("
+                       "navigationSection.displayScale)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
+        navigationSectionSource,
         QStringLiteral("Layout.preferredWidth: "
-                       "zoomLabelMetrics.advanceWidth("
-                       "rightInspectorPanel.maximumDisplayScaleLabel)")));
-    QVERIFY(!rightPanelSource.contains(QStringLiteral(
+                        "zoomLabelMetrics.advanceWidth("
+                        "navigationSection.maximumDisplayScaleLabel)")));
+    QVERIFY(!navigationSectionSource.contains(QStringLiteral(
         "zoomLabelMetrics.advanceWidth(\"600.0%\")")));
-    QVERIFY(rightPanelSource.contains(QStringLiteral("FontMetrics {")));
+    QVERIFY(navigationSectionSource.contains(QStringLiteral("FontMetrics {")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
+        navigationSectionSource,
         QStringLiteral("function detentedDisplayScale(displayScale) { return "
                         "Math.abs(displayScale - 1) <= "
-                       "displayScaleSnapThreshold + 1e-9 ? 1 : displayScale }")));
+                        "displayScaleSnapThreshold + 1e-9 ? 1 : displayScale }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
-        QStringLiteral("from: rightInspectorPanel.minimumDisplayScale; to: "
-                       "rightInspectorPanel.maximumDisplayScale; value: "
-                       "rightInspectorPanel.displayScale; live: true")));
+        navigationSectionSource,
+        QStringLiteral("from: navigationSection.minimumDisplayScale; to: "
+                       "navigationSection.maximumDisplayScale; value: "
+                       "navigationSection.displayScale; live: true")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
-        QStringLiteral("onMoved: { rightInspectorPanel.zoomRequested("
-                       "rightInspectorPanel.detentedDisplayScale(value)) }")));
-    QVERIFY(!rightPanelSource.contains(QStringLiteral("dragDisplayScale")));
-    QVERIFY(!rightPanelSource.contains(QStringLiteral("onPressedChanged")));
+        navigationSectionSource,
+        QStringLiteral("onMoved: { navigationSection.zoomRequested("
+                       "navigationSection.detentedDisplayScale(value)) }")));
+    QVERIFY(!navigationSectionSource.contains(QStringLiteral("dragDisplayScale")));
+    QVERIFY(!navigationSectionSource.contains(QStringLiteral("onPressedChanged")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         mainSource, QStringLiteral("function setDisplayScaleAtCenter(displayScale) "
                                    "{ if (displayScale <= 0 || window.pageBaseScale "
@@ -532,12 +560,12 @@ private slots:
     QVERIFY(!rightPanelSource.contains(
         QStringLiteral("width: Math.max(1, rightPanel.availableWidth)")));
 
-    for (const QString &sectionId : {QStringLiteral("navigationSection"),
-                                     QStringLiteral("boxEffectsSection"),
+    for (const QString &sectionId : {QStringLiteral("boxEffectsSection"),
                                      QStringLiteral("textEffectsSection")}) {
       QVERIFY2(rightPanelSource.contains(QStringLiteral("id: ") + sectionId),
                qPrintable(sectionId));
     }
+    QVERIFY(navigationSectionSource.contains(QStringLiteral("id: navigationSection")));
     QVERIFY(layersSectionSource.contains(QStringLiteral("id: layersSection")));
     QVERIFY(rightPanelSource.contains(QStringLiteral("LayersSection {")));
     QVERIFY(sourceContainsIgnoringWhitespace(
@@ -546,7 +574,7 @@ private slots:
                        "Layout.fillWidth: true; Layout.minimumWidth: 0; "
                        "Layout.fillHeight: true }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
+        navigationSectionSource,
         QStringLiteral("Label { text: qsTr(\"Navigation\"); font.bold: true; "
                        "enabled: navigationSection.sectionReady }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
@@ -566,9 +594,9 @@ private slots:
         QStringLiteral("horizontalAlignment: Text.AlignRight; text: "
                        "layersSection.editor.layers.length; enabled: "
                        "layersSection.sectionReady")));
-    QVERIFY(rightPanelSource.contains(QStringLiteral(
+    QVERIFY(navigationSectionSource.contains(QStringLiteral(
         "icon.source: \"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-left.svg\"")));
-    QVERIFY(rightPanelSource.contains(QStringLiteral(
+    QVERIFY(navigationSectionSource.contains(QStringLiteral(
         "icon.source: \"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-right.svg\"")));
     QVERIFY(layersSectionSource.contains(QStringLiteral(
         "icon.source: \"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-up.svg\"")));
@@ -576,15 +604,16 @@ private slots:
         "icon.source: \"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-down.svg\"")));
     QVERIFY(source.contains(QStringLiteral(
         "icon.color: !enabled ? palette.mid : palette.buttonText")));
-    QVERIFY(rightPanelSource.count(
+    QVERIFY(navigationSectionSource.count(
                 QStringLiteral("display: AbstractButton.IconOnly")) >= 2);
     QVERIFY(layersSectionSource.count(
                 QStringLiteral("display: AbstractButton.IconOnly")) >= 2);
-    QVERIFY(rightPanelSource.count(QStringLiteral("GroupBox {")) >= 3);
+    QVERIFY(rightPanelSource.count(QStringLiteral("GroupBox {")) >= 2);
+    QVERIFY(navigationSectionSource.count(QStringLiteral("GroupBox {")) >= 1);
     QVERIFY(rightPanelSource.count(QStringLiteral("Layout.minimumWidth: 0")) >=
-            20);
+            14);
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
+        navigationSectionSource,
         QStringLiteral("contentItem: Label { text: pageSelect.displayText")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         layersSectionSource,
@@ -592,10 +621,10 @@ private slots:
     QVERIFY(
         layersSectionSource.contains(QStringLiteral("elide: Text.ElideRight")));
 
-    const qsizetype zoomLabelStart = rightPanelSource.indexOf(
+    const qsizetype zoomLabelStart = navigationSectionSource.indexOf(
         QStringLiteral("objectName: \"rightInspectorZoomLabel\""));
-    const qsizetype pageNameStart = rightPanelSource.indexOf(
-        QStringLiteral("rightInspectorPanel.editor.currentPageName"),
+    const qsizetype pageNameStart = navigationSectionSource.indexOf(
+        QStringLiteral("navigationSection.editor.currentPageName"),
         zoomLabelStart);
     QVERIFY(zoomLabelStart >= 0);
     QVERIFY(pageNameStart > zoomLabelStart);
@@ -1097,25 +1126,29 @@ private slots:
     QVERIFY(slider->isEnabled());
     QVERIFY(std::abs(slider->property("value").toDouble() - 1.025) < 0.0001);
 
+    QObject *navigationSection = nullptr;
+    QTRY_VERIFY(navigationSection = findVisualChildByName(
+                    window->contentItem(),
+                    QStringLiteral("rightInspectorNavigationSection")));
     QVariant snapped;
     QVERIFY(QMetaObject::invokeMethod(
-        rightInspector, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
+        navigationSection, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
         Q_ARG(QVariant, 0.9)));
     QCOMPARE(snapped.toDouble(), 1.0);
     QVERIFY(QMetaObject::invokeMethod(
-        rightInspector, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
+        navigationSection, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
         Q_ARG(QVariant, 1.1)));
     QCOMPARE(snapped.toDouble(), 1.0);
     QVERIFY(QMetaObject::invokeMethod(
-        rightInspector, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
+        navigationSection, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
         Q_ARG(QVariant, 1.05)));
     QCOMPARE(snapped.toDouble(), 1.0);
     QVERIFY(QMetaObject::invokeMethod(
-        rightInspector, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
+        navigationSection, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
         Q_ARG(QVariant, 0.899)));
     QCOMPARE(snapped.toDouble(), 0.899);
     QVERIFY(QMetaObject::invokeMethod(
-        rightInspector, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
+        navigationSection, "detentedDisplayScale", Q_RETURN_ARG(QVariant, snapped),
         Q_ARG(QVariant, 1.101)));
     QCOMPARE(snapped.toDouble(), 1.101);
 
@@ -1417,9 +1450,10 @@ private slots:
     const QString source = qmlSource();
 
     QVERIFY(source.contains(
-        QStringLiteral("model: rightInspectorPanel.editor.pageLabels")));
+        QStringLiteral("model: navigationSection.editor ? "
+                       "navigationSection.editor.pageLabels : []")));
     QVERIFY(source.contains(
-        QStringLiteral("rightInspectorPanel.editor.goToPage(index)")));
+        QStringLiteral("navigationSection.editor.goToPage(index)")));
     QVERIFY(source.contains(
         QStringLiteral("model: [qsTr(\"Vertical\"), qsTr(\"Horizontal\")]")));
     QVERIFY(source.contains(

@@ -172,6 +172,8 @@ QString qmlSource() {
           readQmlFile(QStringLiteral("LeftInspectorPanel.qml")) +
           QLatin1Char('\n') + readQmlFile(QStringLiteral("LayersSection.qml")) +
           QLatin1Char('\n') +
+          readQmlFile(QStringLiteral("NavigationSection.qml")) +
+          QLatin1Char('\n') +
           readQmlFile(QStringLiteral("PathHandleInteractionState.qml")) +
          QLatin1Char('\n') +
          readQmlFile(QStringLiteral("PerspectiveGeometry.qml")) +
