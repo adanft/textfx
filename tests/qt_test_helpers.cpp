@@ -192,6 +192,8 @@ QString qmlSource() {
          QLatin1Char('\n') +
          readQmlFile(QStringLiteral("ShortcutMenuItem.qml")) +
          QLatin1Char('\n') +
+         readQmlFile(QStringLiteral("SelectedBoxState.qml")) +
+         QLatin1Char('\n') +
          readQmlFile(QStringLiteral("TextEffectsSection.qml")) +
          QLatin1Char('\n') +
          readQmlFile(QStringLiteral("TextBoxDelegate.qml")) +

@@ -110,6 +110,7 @@ qt_add_qml_module(textfx
         qml/PerspectiveInteractionState.qml
         qml/RightInspectorPanel.qml
         qml/ShortcutMenuItem.qml
+        qml/SelectedBoxState.qml
         qml/TextEffectsSection.qml
         qml/TextPropertiesSection.qml
         qml/TextPresetsSection.qml

@@ -1230,6 +1230,8 @@ private slots:
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString leftSource = readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
     const QString rightSource = readQmlFile(QStringLiteral("RightInspectorPanel.qml"));
+    const QString selectedBoxStateSource =
+        readQmlFile(QStringLiteral("SelectedBoxState.qml"));
     const QString layersSource = readQmlFile(QStringLiteral("LayersSection.qml"));
 
     QVERIFY(!mainSource.contains(QStringLiteral("selectedBox: Editor.selectedBox")));
@@ -1237,12 +1239,19 @@ private slots:
     QVERIFY(!rightSource.contains(QStringLiteral("property var selectedBox:")));
     QVERIFY(leftSource.contains(QStringLiteral("selectedBoxData")));
     QVERIFY(rightSource.contains(QStringLiteral("selectedBoxData")));
-    QVERIFY(leftSource.contains(QStringLiteral("editor.boxRole(editor.selectedIndex")));
-    QVERIFY(rightSource.contains(QStringLiteral("editor.boxRole(editor.selectedIndex")));
-    QVERIFY(leftSource.contains(QStringLiteral("selectedBoxRevision")));
-    QVERIFY(rightSource.contains(QStringLiteral("selectedBoxRevision")));
-    QVERIFY(leftSource.contains(QStringLiteral("leftInspectorPanel.editor.boxesModel")));
-    QVERIFY(rightSource.contains(QStringLiteral("rightInspectorPanel.editor.boxesModel")));
+    QVERIFY(leftSource.contains(QStringLiteral("selectedBoxState.value")));
+    QVERIFY(rightSource.contains(QStringLiteral("selectedBoxState.value")));
+    QVERIFY(!leftSource.contains(QStringLiteral("editor.boxRole(editor.selectedIndex")));
+    QVERIFY(!rightSource.contains(QStringLiteral("editor.boxRole(editor.selectedIndex")));
+    QVERIFY(!leftSource.contains(QStringLiteral("selectedBoxRevision")));
+    QVERIFY(!rightSource.contains(QStringLiteral("selectedBoxRevision")));
+    QVERIFY(!leftSource.contains(QStringLiteral("leftInspectorPanel.editor.boxesModel")));
+    QVERIFY(!rightSource.contains(QStringLiteral("rightInspectorPanel.editor.boxesModel")));
+    QVERIFY(selectedBoxStateSource.contains(
+        QStringLiteral("editor.boxRole(editor.selectedIndex")));
+    QVERIFY(selectedBoxStateSource.contains(QStringLiteral("revision")));
+    QVERIFY(selectedBoxStateSource.contains(
+        QStringLiteral("selectedBoxState.editor.boxesModel")));
     QVERIFY(layersSource.contains(QStringLiteral("layersSection.editor.boxCount")));
     QVERIFY(!rightSource.contains(QStringLiteral("rightInspectorPanel.editor.boxes.length")));
     QVERIFY(!layersSource.contains(QStringLiteral("layersSection.editor.boxes.length")));

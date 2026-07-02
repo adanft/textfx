@@ -7,26 +7,25 @@ Pane {
 
     property var editor: null
     property var editorLimits
-    property int selectedBoxRevision: 0
     readonly property var selectedBoxData: ({
-        rotation: selectedBoxValue("boxRotation", 0),
-        perspective: selectedBoxValue("boxPerspective", false),
-        outline: selectedBoxValue("boxOutline", false),
-        outlineColor: selectedBoxValue("boxOutlineColor", "#ffffff"),
-        outlineSize: selectedBoxValue("boxOutlineSize", 2),
-        blur: selectedBoxValue("boxBlur", false),
-        blurSize: selectedBoxValue("boxBlurSize", 0),
-        shadow: selectedBoxValue("boxShadow", false),
-        shadowColor: selectedBoxValue("boxShadowColor", "#000000"),
-        shadowOffsetX: selectedBoxValue("boxShadowOffsetX", 4),
-        shadowOffsetY: selectedBoxValue("boxShadowOffsetY", 4),
-        shadowBlurSize: selectedBoxValue("boxShadowBlurSize", 0),
-        gradient: selectedBoxValue("boxGradient", false),
-        gradientDirection: selectedBoxValue("boxGradientDirection", 0),
-        gradientColorA: selectedBoxValue("boxGradientColorA", "#ffffff"),
-        gradientColorB: selectedBoxValue("boxGradientColorB", "#000000"),
-        path: selectedBoxValue("boxPath", false),
-        pathMode: selectedBoxValue("boxPathMode", 0)
+        rotation: selectedBoxState.value("boxRotation", 0),
+        perspective: selectedBoxState.value("boxPerspective", false),
+        outline: selectedBoxState.value("boxOutline", false),
+        outlineColor: selectedBoxState.value("boxOutlineColor", "#ffffff"),
+        outlineSize: selectedBoxState.value("boxOutlineSize", 2),
+        blur: selectedBoxState.value("boxBlur", false),
+        blurSize: selectedBoxState.value("boxBlurSize", 0),
+        shadow: selectedBoxState.value("boxShadow", false),
+        shadowColor: selectedBoxState.value("boxShadowColor", "#000000"),
+        shadowOffsetX: selectedBoxState.value("boxShadowOffsetX", 4),
+        shadowOffsetY: selectedBoxState.value("boxShadowOffsetY", 4),
+        shadowBlurSize: selectedBoxState.value("boxShadowBlurSize", 0),
+        gradient: selectedBoxState.value("boxGradient", false),
+        gradientDirection: selectedBoxState.value("boxGradientDirection", 0),
+        gradientColorA: selectedBoxState.value("boxGradientColorA", "#ffffff"),
+        gradientColorB: selectedBoxState.value("boxGradientColorB", "#000000"),
+        path: selectedBoxState.value("boxPath", false),
+        pathMode: selectedBoxState.value("boxPathMode", 0)
     })
     property var qmlColorProvider: function(hex) {
         return hex;
@@ -38,26 +37,14 @@ Pane {
     signal colorDialogRequested(string hex, string setter)
     signal zoomRequested(real displayScale)
 
-    function selectedBoxValue(roleName, fallback) {
-        selectedBoxRevision;
-        if (!editor || editor.selectedIndex < 0)
-            return fallback;
-
-        const value = editor.boxRole(editor.selectedIndex, roleName);
-        return value === undefined || value === null ? fallback : value;
-    }
-
     z: 1
     SplitView.minimumWidth: 180
     SplitView.preferredWidth: 260
     SplitView.fillHeight: true
 
-    Connections {
-        target: rightInspectorPanel.editor ? rightInspectorPanel.editor.boxesModel : null
-        function onDataChanged() { rightInspectorPanel.selectedBoxRevision += 1; }
-        function onModelReset() { rightInspectorPanel.selectedBoxRevision += 1; }
-        function onRowsInserted() { rightInspectorPanel.selectedBoxRevision += 1; }
-        function onRowsRemoved() { rightInspectorPanel.selectedBoxRevision += 1; }
+    SelectedBoxState {
+        id: selectedBoxState
+        editor: rightInspectorPanel.editor
     }
 
     ScrollView {

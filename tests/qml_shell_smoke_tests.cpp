@@ -139,6 +139,8 @@ private slots:
         readQmlFile(QStringLiteral("CentralCanvasShell.qml"));
     const QString leftPanelSource =
         readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
+    const QString selectedBoxStateSource =
+        readQmlFile(QStringLiteral("SelectedBoxState.qml"));
     const QString pageTextsSectionSource =
         readQmlFile(QStringLiteral("PageTextsSection.qml"));
     const QString textPresetsSectionSource =
@@ -221,6 +223,33 @@ private slots:
     QVERIFY(rightPanelSource.contains(QStringLiteral("z: 1")));
     const QString &sidePanelSource = leftPanelSource;
     QVERIFY(leftPanelSource.contains(QStringLiteral("Pane {")));
+    QVERIFY(source.contains(QStringLiteral("function value(roleName, fallback)")));
+    QVERIFY(selectedBoxStateSource.contains(QStringLiteral("QtObject")));
+    QVERIFY(selectedBoxStateSource.contains(
+        QStringLiteral("property var editor: null")));
+    QVERIFY(selectedBoxStateSource.contains(
+        QStringLiteral("property int revision: 0")));
+    QVERIFY(selectedBoxStateSource.contains(
+        QStringLiteral("function value(roleName, fallback)")));
+    QVERIFY(selectedBoxStateSource.contains(
+        QStringLiteral("target: selectedBoxState.editor ? "
+                       "selectedBoxState.editor.boxesModel : null")));
+    QVERIFY(selectedBoxStateSource.contains(
+        QStringLiteral("function onDataChanged()")));
+    QVERIFY(selectedBoxStateSource.contains(
+        QStringLiteral("function onModelReset()")));
+    QVERIFY(selectedBoxStateSource.contains(
+        QStringLiteral("function onRowsInserted()")));
+    QVERIFY(selectedBoxStateSource.contains(
+        QStringLiteral("function onRowsRemoved()")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        sidePanelSource,
+        QStringLiteral("SelectedBoxState { id: selectedBoxState; "
+                       "editor: leftInspectorPanel.editor }")));
+    QVERIFY(!sidePanelSource.contains(QStringLiteral("selectedBoxRevision")));
+    QVERIFY(!sidePanelSource.contains(QStringLiteral("function selectedBoxValue")));
+    QVERIFY(!sidePanelSource.contains(
+        QStringLiteral("leftInspectorPanel.editor.boxesModel")));
     QVERIFY((sidePanelSource + textPropertiesSectionSource)
                 .contains(QStringLiteral("GroupBox")));
     QVERIFY(sourceContainsIgnoringWhitespace(
@@ -313,6 +342,14 @@ private slots:
                     "Flow { Layout.fillWidth: true; Layout.minimumWidth: 0"))) >=
             3);
     QVERIFY(rightPanelSource.contains(QStringLiteral("Pane {")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("SelectedBoxState { id: selectedBoxState; "
+                       "editor: rightInspectorPanel.editor }")));
+    QVERIFY(!rightPanelSource.contains(QStringLiteral("selectedBoxRevision")));
+    QVERIFY(!rightPanelSource.contains(QStringLiteral("function selectedBoxValue")));
+    QVERIFY(!rightPanelSource.contains(
+        QStringLiteral("rightInspectorPanel.editor.boxesModel")));
     QVERIFY(rightPanelSource.contains(QStringLiteral("z: 1")));
     QVERIFY(rightPanelSource.contains(
         QStringLiteral("SplitView.minimumWidth: 180")));

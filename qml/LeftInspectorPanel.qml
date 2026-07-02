@@ -7,18 +7,17 @@ Pane {
 
     property var editor: null
     property var editorLimits
-    property int selectedBoxRevision: 0
     readonly property var selectedBoxData: ({
-        fontFamily: selectedBoxValue("boxFontFamily", ""),
-        fontSize: selectedBoxValue("boxFontSize", 16),
-        lineSpacing: selectedBoxValue("boxLineSpacing", 0),
-        letterSpacing: selectedBoxValue("boxLetterSpacing", 0),
-        color: selectedBoxValue("boxColor", "#000000"),
-        bold: selectedBoxValue("boxBold", false),
-        italic: selectedBoxValue("boxItalic", false),
-        uppercase: selectedBoxValue("boxUppercase", false),
-        lowercase: selectedBoxValue("boxLowercase", false),
-        alignment: selectedBoxValue("boxAlignment", 0)
+        fontFamily: selectedBoxState.value("boxFontFamily", ""),
+        fontSize: selectedBoxState.value("boxFontSize", 16),
+        lineSpacing: selectedBoxState.value("boxLineSpacing", 0),
+        letterSpacing: selectedBoxState.value("boxLetterSpacing", 0),
+        color: selectedBoxState.value("boxColor", "#000000"),
+        bold: selectedBoxState.value("boxBold", false),
+        italic: selectedBoxState.value("boxItalic", false),
+        uppercase: selectedBoxState.value("boxUppercase", false),
+        lowercase: selectedBoxState.value("boxLowercase", false),
+        alignment: selectedBoxState.value("boxAlignment", 0)
     })
     property var fontFamilyOptionsProvider: function(selected) {
         return selected ? [selected] : [];
@@ -30,26 +29,14 @@ Pane {
     signal colorDialogRequested(string hex, string setter)
     signal textInputFocusChanged(bool active)
 
-    function selectedBoxValue(roleName, fallback) {
-        selectedBoxRevision;
-        if (!editor || editor.selectedIndex < 0)
-            return fallback;
-
-        const value = editor.boxRole(editor.selectedIndex, roleName);
-        return value === undefined || value === null ? fallback : value;
-    }
-
     z: 1
     SplitView.minimumWidth: 240
     SplitView.preferredWidth: 280
     SplitView.fillHeight: true
 
-    Connections {
-        target: leftInspectorPanel.editor ? leftInspectorPanel.editor.boxesModel : null
-        function onDataChanged() { leftInspectorPanel.selectedBoxRevision += 1; }
-        function onModelReset() { leftInspectorPanel.selectedBoxRevision += 1; }
-        function onRowsInserted() { leftInspectorPanel.selectedBoxRevision += 1; }
-        function onRowsRemoved() { leftInspectorPanel.selectedBoxRevision += 1; }
+    SelectedBoxState {
+        id: selectedBoxState
+        editor: leftInspectorPanel.editor
     }
 
     ScrollView {
