@@ -1056,25 +1056,24 @@ private slots:
     QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
+    const QString leftPanelSource = readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
     const qsizetype propertiesStart = indexOfIgnoringWhitespace(
-        source, QStringLiteral("Label { text: qsTr(\"Text Properties\"); "
-                               "font.bold: true; enabled: "
-                               "textPropertiesSection.sectionReady }"));
+        leftPanelSource, QStringLiteral("Label { text: qsTr(\"Text Properties\"); "
+                                        "font.bold: true; enabled: "
+                                        "textPropertiesSection.sectionReady }"));
     const qsizetype presetsStart = indexOfIgnoringWhitespace(
-        source, QStringLiteral("Label { text: qsTr(\"Text Presets\"); "
-                               "font.bold: true; enabled: "
-                               "textPresetsSection.sectionReady }"));
-    const qsizetype pageTextsStart = indexOfIgnoringWhitespace(
-        source, QStringLiteral("Label { text: qsTr(\"Page Texts\"); "
-                               "font.bold: true; enabled: "
-                               "pageTextsSection.sectionReady }"));
+        leftPanelSource, QStringLiteral("Label { text: qsTr(\"Text Presets\"); "
+                                        "font.bold: true; enabled: "
+                                        "textPresetsSection.sectionReady }"));
+    const qsizetype pageTextsStart =
+        leftPanelSource.indexOf(QStringLiteral("PageTextsSection {"), presetsStart);
     QVERIFY(propertiesStart >= 0);
     QVERIFY(presetsStart >= 0);
     QVERIFY(pageTextsStart > presetsStart);
     const QString propertiesSource =
-        source.mid(propertiesStart, presetsStart - propertiesStart);
+        leftPanelSource.mid(propertiesStart, presetsStart - propertiesStart);
     const QString presetsSource =
-        source.mid(presetsStart, pageTextsStart - presetsStart);
+        leftPanelSource.mid(presetsStart, pageTextsStart - presetsStart);
 
     QVERIFY(propertiesSource.contains(QStringLiteral("GroupBox {")));
     QVERIFY(source.contains(QStringLiteral("id: textPropertiesSection")));
@@ -1179,12 +1178,33 @@ private slots:
     QVERIFY(renameButton > updateButton);
     QVERIFY(deleteButton > renameButton);
 
-    const QString pageTextsSource = source.mid(pageTextsStart);
+    const QString pageTextsSource = readQmlFile(QStringLiteral("PageTextsSection.qml"));
+    QFile cmake(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../CMakeLists.txt"));
+    QVERIFY(cmake.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString cmakeSource = QString::fromUtf8(cmake.readAll());
+    QVERIFY(!pageTextsSource.isEmpty());
+    QVERIFY(cmakeSource.contains(QStringLiteral("qml/PageTextsSection.qml")));
     QVERIFY(source.contains(QStringLiteral("id: pageTextsSection")));
-    QVERIFY(source.contains(
+    QVERIFY(pageTextsSource.contains(QStringLiteral("id: pageTextsSection")));
+    QVERIFY(pageTextsSource.contains(QStringLiteral("property var editor: null")));
+    QVERIFY(pageTextsSource.contains(
         QStringLiteral("readonly property bool sectionReady: "
-                       "leftInspectorPanel.editor.hasProject && "
-                       "leftInspectorPanel.editor.pageTexts.length > 0")));
+                       "editor && editor.hasProject && "
+                       "editor.pageTexts.length > 0")));
+    QVERIFY(pageTextsSource.contains(
+        QStringLiteral("text: pageTextsSection.sectionReady ? "
+                       "pageTextsSection.editor.pageTexts.length : 0")));
+    QVERIFY(pageTextsSource.contains(
+        QStringLiteral("model: pageTextsSection.sectionReady ? "
+                       "pageTextsSection.editor.pageTexts : []")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        leftPanelSource,
+        QStringLiteral("PageTextsSection { editor: leftInspectorPanel.editor; "
+                       "Layout.fillWidth: true; Layout.minimumWidth: 0; "
+                       "Layout.fillHeight: true }")));
+    QVERIFY(!leftPanelSource.contains(QStringLiteral("id: pageTextsFrame")));
+    QVERIFY(!leftPanelSource.contains(
+        QStringLiteral("objectName: \"leftInspectorPageTextsList\"")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         pageTextsSource,
         QStringLiteral("Label { text: qsTr(\"Page Texts\"); font.bold: true; "
@@ -1196,7 +1216,7 @@ private slots:
     QVERIFY(sourceContainsIgnoringWhitespace(
         pageTextsSource,
         QStringLiteral("horizontalAlignment: Text.AlignRight; text: "
-                       "leftInspectorPanel.editor.pageTexts.length; enabled: "
+                       "pageTextsSection.sectionReady ? pageTextsSection.editor.pageTexts.length : 0; enabled: "
                        "pageTextsSection.sectionReady")));
     QVERIFY(pageTextsSource.contains(
         QStringLiteral("enabled: pageTextsSection.sectionReady")));
@@ -1205,7 +1225,7 @@ private slots:
     const qsizetype headerCount = indexOfIgnoringWhitespace(
         pageTextsSource,
         QStringLiteral("horizontalAlignment: Text.AlignRight; text: "
-                       "leftInspectorPanel.editor.pageTexts.length; enabled: "
+                       "pageTextsSection.sectionReady ? pageTextsSection.editor.pageTexts.length : 0; enabled: "
                        "pageTextsSection.sectionReady"));
     const qsizetype pageTextsBox =
         pageTextsSource.indexOf(QStringLiteral("GroupBox {"), headerCount);
@@ -1230,7 +1250,8 @@ private slots:
     QVERIFY(pageTextsSource.contains(QStringLiteral(
         "Layout.preferredHeight: pageTextsFrame.minimumListHeight")));
     QVERIFY(pageTextsSource.contains(
-        QStringLiteral("model: leftInspectorPanel.editor.pageTexts")));
+        QStringLiteral("model: pageTextsSection.sectionReady ? "
+                       "pageTextsSection.editor.pageTexts : []")));
     QVERIFY(
         pageTextsSource.contains(QStringLiteral("delegate: ItemDelegate {")));
     QVERIFY(pageTextsSource.contains(QStringLiteral("hoverEnabled: true")));
@@ -1243,7 +1264,7 @@ private slots:
         pageTextsSource, QStringLiteral("contentItem: Label {")));
     QVERIFY(pageTextsSource.contains(QStringLiteral("elide: Text.ElideRight")));
     QVERIFY(pageTextsSource.contains(QStringLiteral(
-        "onClicked: leftInspectorPanel.editor.applyPageText(index)")));
+        "onClicked: pageTextsSection.editor.applyPageText(index)")));
   }
 
   void qmlUsesOneOutlinedTextItemDisplayRenderer() {

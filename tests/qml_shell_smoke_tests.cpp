@@ -137,6 +137,8 @@ private slots:
         readQmlFile(QStringLiteral("CentralCanvasShell.qml"));
     const QString leftPanelSource =
         readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
+    const QString pageTextsSectionSource =
+        readQmlFile(QStringLiteral("PageTextsSection.qml"));
     const QString rightPanelSource =
         readQmlFile(QStringLiteral("RightInspectorPanel.qml"));
     const QString source = qmlSource();
@@ -224,6 +226,11 @@ private slots:
                        "enabled: textPresetsSection.sectionReady }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         sidePanelSource,
+        QStringLiteral("PageTextsSection { editor: leftInspectorPanel.editor; "
+                       "Layout.fillWidth: true; Layout.minimumWidth: 0; "
+                       "Layout.fillHeight: true }")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        pageTextsSectionSource,
         QStringLiteral("Label { text: qsTr(\"Page Texts\"); font.bold: true; "
                        "enabled: pageTextsSection.sectionReady }")));
     QVERIFY(!sidePanelSource.contains(
@@ -232,7 +239,7 @@ private slots:
         QStringLiteral("ScrollBar.horizontal.policy: ScrollBar.AlwaysOff")));
     QVERIFY(
         !sidePanelSource.contains(QStringLiteral("Layout.minimumHeight: 160")));
-    QVERIFY(sidePanelSource.contains(
+    QVERIFY(pageTextsSectionSource.contains(
         QStringLiteral("Layout.minimumHeight: minimumListHeight + topPadding + "
                        "bottomPadding")));
     QVERIFY(sidePanelSource.contains(QStringLiteral("id: leftPanelScroll")));
@@ -284,10 +291,8 @@ private slots:
         sidePanelSource,
         QStringLiteral("Label { text: qsTr(\"Text Presets\"); font.bold: true; "
                        "enabled: textPresetsSection.sectionReady }"));
-    const qsizetype pageTextsStart = indexOfIgnoringWhitespace(
-        sidePanelSource,
-        QStringLiteral("Label { text: qsTr(\"Page Texts\"); font.bold: true; "
-                       "enabled: pageTextsSection.sectionReady }"));
+    const qsizetype pageTextsStart =
+        sidePanelSource.indexOf(QStringLiteral("PageTextsSection {"));
     QVERIFY(propertiesStart >= 0);
     QVERIFY(presetsStart > propertiesStart);
     QVERIFY(pageTextsStart > presetsStart);
@@ -297,19 +302,19 @@ private slots:
                 .contains(QStringLiteral("Layout.fillWidth: true")));
     QVERIFY(sidePanelSource.mid(pageTextsStart)
                 .contains(QStringLiteral("Layout.fillWidth: true")));
-    const qsizetype pageTextsBox = sidePanelSource.indexOf(
-        QStringLiteral("id: pageTextsFrame"), pageTextsStart);
-    const qsizetype pageTextsList = sidePanelSource.indexOf(
+    const qsizetype pageTextsBox = pageTextsSectionSource.indexOf(
+        QStringLiteral("id: pageTextsFrame"));
+    const qsizetype pageTextsList = pageTextsSectionSource.indexOf(
         QStringLiteral("id: pageTextsList"), pageTextsBox);
-    QVERIFY(pageTextsBox > pageTextsStart);
+    QVERIFY(pageTextsBox >= 0);
     QVERIFY(pageTextsList > pageTextsBox);
-    QVERIFY(sidePanelSource.mid(pageTextsBox, pageTextsList - pageTextsBox)
+    QVERIFY(pageTextsSectionSource.mid(pageTextsBox, pageTextsList - pageTextsBox)
                 .contains(QStringLiteral("Layout.fillHeight: true")));
     QVERIFY(
-        sidePanelSource
+        pageTextsSectionSource
             .mid(pageTextsList,
-                 sidePanelSource.indexOf(
-                     QStringLiteral("delegate: ItemDelegate"), pageTextsList) -
+                 pageTextsSectionSource.indexOf(
+                      QStringLiteral("delegate: ItemDelegate"), pageTextsList) -
                      pageTextsList)
             .contains(QStringLiteral("Layout.fillHeight: true")));
     QVERIFY(!sidePanelSource.contains(QStringLiteral("color: \"#")));

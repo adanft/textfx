@@ -169,12 +169,14 @@ QString qmlSource() {
          QLatin1Char('\n') + readQmlFile(QStringLiteral("ColorButton.qml")) +
          QLatin1Char('\n') +
          readQmlFile(QStringLiteral("CentralCanvasShell.qml")) +
-         QLatin1Char('\n') + readQmlFile(QStringLiteral("EditorChrome.qml")) +
-         QLatin1Char('\n') +
+          QLatin1Char('\n') + readQmlFile(QStringLiteral("EditorChrome.qml")) +
+          QLatin1Char('\n') +
           readQmlFile(QStringLiteral("LeftInspectorPanel.qml")) +
           QLatin1Char('\n') + readQmlFile(QStringLiteral("LayersSection.qml")) +
           QLatin1Char('\n') +
           readQmlFile(QStringLiteral("NavigationSection.qml")) +
+          QLatin1Char('\n') +
+          readQmlFile(QStringLiteral("PageTextsSection.qml")) +
           QLatin1Char('\n') +
           readQmlFile(QStringLiteral("PathHandleInteractionState.qml")) +
          QLatin1Char('\n') +
