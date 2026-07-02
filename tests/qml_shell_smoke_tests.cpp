@@ -435,6 +435,8 @@ private slots:
         readQmlFile(QStringLiteral("NavigationSection.qml"));
     const QString boxEffectsSectionSource =
         readQmlFile(QStringLiteral("BoxEffectsSection.qml"));
+    const QString textEffectsSectionSource =
+        readQmlFile(QStringLiteral("TextEffectsSection.qml"));
     const qsizetype rightPanelStart =
         source.indexOf(QStringLiteral("id: rightPanel"));
     QVERIFY(rightPanelStart >= 0);
@@ -570,9 +572,22 @@ private slots:
                        "Layout.fillWidth: true; Layout.minimumWidth: 0 }")));
     QVERIFY(!rightPanelSource.contains(
         QStringLiteral("id: boxEffectsSection")));
-    QVERIFY(rightPanelSource.contains(QStringLiteral("id: textEffectsSection")));
+    QVERIFY(rightPanelSource.contains(QStringLiteral("TextEffectsSection {")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("TextEffectsSection { editor: "
+                       "rightInspectorPanel.editor; editorLimits: "
+                       "rightInspectorPanel.editorLimits; selectedBoxData: "
+                       "rightInspectorPanel.selectedBoxData; qmlColorProvider: "
+                       "rightInspectorPanel.qmlColorProvider; "
+                       "onColorDialogRequested: (hex, setter) => { "
+                       "rightInspectorPanel.colorDialogRequested(hex, setter) "
+                       "}; Layout.fillWidth: true; Layout.minimumWidth: 0 }")));
+    QVERIFY(!rightPanelSource.contains(QStringLiteral("id: textEffectsSection")));
     QVERIFY(boxEffectsSectionSource.contains(
         QStringLiteral("id: boxEffectsSection")));
+    QVERIFY(textEffectsSectionSource.contains(
+        QStringLiteral("id: textEffectsSection")));
     QVERIFY(navigationSectionSource.contains(QStringLiteral("id: navigationSection")));
     QVERIFY(layersSectionSource.contains(QStringLiteral("id: layersSection")));
     QVERIFY(rightPanelSource.contains(QStringLiteral("LayersSection {")));
@@ -590,7 +605,7 @@ private slots:
         QStringLiteral("Label { text: qsTr(\"Box Effects\"); font.bold: true; "
                        "enabled: boxEffectsSection.sectionReady }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
+        textEffectsSectionSource,
         QStringLiteral("Label { text: qsTr(\"Text Effects\"); font.bold: true; "
                        "enabled: textEffectsSection.sectionReady }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
@@ -616,11 +631,11 @@ private slots:
                 QStringLiteral("display: AbstractButton.IconOnly")) >= 2);
     QVERIFY(layersSectionSource.count(
                 QStringLiteral("display: AbstractButton.IconOnly")) >= 2);
-    QVERIFY((rightPanelSource + boxEffectsSectionSource)
+    QVERIFY((rightPanelSource + boxEffectsSectionSource + textEffectsSectionSource)
                 .count(QStringLiteral("GroupBox {")) >= 2);
     QVERIFY(navigationSectionSource.count(QStringLiteral("GroupBox {")) >= 1);
-    QVERIFY(rightPanelSource.count(QStringLiteral("Layout.minimumWidth: 0")) >=
-            14);
+    QVERIFY((rightPanelSource + textEffectsSectionSource)
+                .count(QStringLiteral("Layout.minimumWidth: 0")) >= 14);
     QVERIFY(sourceContainsIgnoringWhitespace(
         navigationSectionSource,
         QStringLiteral("contentItem: Label { text: pageSelect.displayText")));
@@ -640,7 +655,7 @@ private slots:
 
     const qsizetype boxStart =
         boxEffectsSectionSource.indexOf(QStringLiteral("id: boxEffectsSection"));
-    const qsizetype textStart = rightPanelSource.indexOf(
+    const qsizetype textStart = textEffectsSectionSource.indexOf(
         QStringLiteral("id: textEffectsSection"));
     QVERIFY(boxStart >= 0);
     QVERIFY(textStart >= 0);
@@ -666,11 +681,9 @@ private slots:
     QVERIFY(boxEffectsSource.contains(QStringLiteral(
         "boxEffectsSection.editor.resetSelectedPerspective()")));
 
-    const qsizetype layersStart =
-        rightPanelSource.indexOf(QStringLiteral("LayersSection {"), textStart);
-    QVERIFY(layersStart > textStart);
-    const QString textEffectsSource =
-        rightPanelSource.mid(textStart, layersStart - textStart);
+    const QString textEffectsSource = textEffectsSectionSource;
+    QVERIFY(!rightPanelSource.contains(
+        QStringLiteral("id: textEffectsTabs")));
     QVERIFY(textEffectsSource.contains(QStringLiteral("id: textEffectsTabs")));
     QVERIFY(textEffectsSource.contains(QStringLiteral("StackLayout")));
     QVERIFY(!textEffectsSource.contains(QStringLiteral("TabButton { width:")));
@@ -688,15 +701,15 @@ private slots:
           qPrintable(feature));
     }
     QVERIFY(textEffectsSource.contains(QStringLiteral(
-        "rightInspectorPanel.editor.setSelectedOutlineEnabled(checked)")));
+        "textEffectsSection.editor.setSelectedOutlineEnabled(checked)")));
     QVERIFY(textEffectsSource.contains(QStringLiteral(
-        "rightInspectorPanel.editor.setSelectedBlurEnabled(checked)")));
+        "textEffectsSection.editor.setSelectedBlurEnabled(checked)")));
     QVERIFY(textEffectsSource.contains(QStringLiteral(
-        "rightInspectorPanel.editor.setSelectedShadowEnabled(checked)")));
+        "textEffectsSection.editor.setSelectedShadowEnabled(checked)")));
     QVERIFY(textEffectsSource.contains(QStringLiteral(
-        "rightInspectorPanel.editor.setSelectedGradientEnabled(checked)")));
+        "textEffectsSection.editor.setSelectedGradientEnabled(checked)")));
     QVERIFY(textEffectsSource.contains(QStringLiteral(
-        "rightInspectorPanel.editor.setSelectedPathEnabled(checked)")));
+        "textEffectsSection.editor.setSelectedPathEnabled(checked)")));
   }
 
   void qmlMenusOwnPrimaryControlsAndToolbarIsRemoved() {
@@ -1470,7 +1483,7 @@ private slots:
     QVERIFY(source.contains(
         QStringLiteral("model: [qsTr(\"Straight\"), qsTr(\"Smooth\")]")));
     QVERIFY(source.contains(
-        QStringLiteral("rightInspectorPanel.editor.addSelectedPathPoint()")));
+        QStringLiteral("textEffectsSection.editor.addSelectedPathPoint()")));
     QVERIFY(source.contains(QStringLiteral("PathHandleInteractionState")));
     QVERIFY(source.contains(
         QStringLiteral("objectName: \"pathHandleInteractionState\"")));
