@@ -1056,15 +1056,16 @@ private slots:
     QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
-    const QString leftPanelSource = readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
+    const QString leftPanelSource =
+        readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
+    const QString textPresetsSectionSource =
+        readQmlFile(QStringLiteral("TextPresetsSection.qml"));
     const qsizetype propertiesStart = indexOfIgnoringWhitespace(
         leftPanelSource, QStringLiteral("Label { text: qsTr(\"Text Properties\"); "
                                         "font.bold: true; enabled: "
                                         "textPropertiesSection.sectionReady }"));
-    const qsizetype presetsStart = indexOfIgnoringWhitespace(
-        leftPanelSource, QStringLiteral("Label { text: qsTr(\"Text Presets\"); "
-                                        "font.bold: true; enabled: "
-                                        "textPresetsSection.sectionReady }"));
+    const qsizetype presetsStart =
+        leftPanelSource.indexOf(QStringLiteral("TextPresetsSection {"));
     const qsizetype pageTextsStart =
         leftPanelSource.indexOf(QStringLiteral("PageTextsSection {"), presetsStart);
     QVERIFY(propertiesStart >= 0);
@@ -1072,8 +1073,7 @@ private slots:
     QVERIFY(pageTextsStart > presetsStart);
     const QString propertiesSource =
         leftPanelSource.mid(propertiesStart, presetsStart - propertiesStart);
-    const QString presetsSource =
-        leftPanelSource.mid(presetsStart, pageTextsStart - presetsStart);
+    const QString presetsSource = textPresetsSectionSource;
 
     QVERIFY(propertiesSource.contains(QStringLiteral("GroupBox {")));
     QVERIFY(source.contains(QStringLiteral("id: textPropertiesSection")));
@@ -1082,12 +1082,44 @@ private slots:
                        "leftInspectorPanel.editor.selectedIndex >= 0")));
     QVERIFY(propertiesSource.contains(
         QStringLiteral("enabled: textPropertiesSection.sectionReady")));
+    QVERIFY(!textPresetsSectionSource.isEmpty());
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        leftPanelSource, QStringLiteral("TextPresetsSection { editor: "
+                                        "leftInspectorPanel.editor; "
+                                        "onTextInputFocusChanged: (active) => "
+                                        "{ leftInspectorPanel."
+                                        "textInputFocusChanged(active) }; "
+                                        "Layout.fillWidth: true; "
+                                        "Layout.minimumWidth: 0 }")));
+    QVERIFY(!leftPanelSource.contains(QStringLiteral("id: presetSelect")));
+    QVERIFY(!leftPanelSource.contains(QStringLiteral("id: presetNameField")));
     QVERIFY(presetsSource.contains(QStringLiteral("GroupBox {")));
     QVERIFY(source.contains(QStringLiteral("id: textPresetsSection")));
     QVERIFY(source.contains(
         QStringLiteral("readonly property bool sectionReady: "
-                       "leftInspectorPanel.editor.hasProject && "
-                       "leftInspectorPanel.editor.selectedIndex >= 0")));
+                       "textPresetsSection.editor && "
+                       "textPresetsSection.editor.hasProject && "
+                       "textPresetsSection.editor.selectedIndex >= 0")));
+    QVERIFY(source.contains(QStringLiteral("property var editor: null")));
+    QVERIFY(source.contains(
+        QStringLiteral("signal textInputFocusChanged(bool active)")));
+    QVERIFY(source.contains(
+        QStringLiteral("readonly property int presetCount: "
+                       "editor && editor.presets ? editor.presets.length : 0")));
+    QVERIFY(source.contains(
+        QStringLiteral("readonly property int selectedPresetIndex: "
+                       "editor ? editor.selectedPresetIndex : -1")));
+    QVERIFY(source.contains(
+        QStringLiteral("readonly property bool hasSelectedPreset: "
+                       "selectedPresetIndex >= 0 && "
+                       "selectedPresetIndex < presetCount")));
+    QVERIFY(source.contains(
+        QStringLiteral("readonly property var selectedPreset: "
+                       "hasSelectedPreset ? editor.presets[selectedPresetIndex] "
+                       ": null")));
+    QVERIFY(source.contains(
+        QStringLiteral("readonly property bool selectedPresetIsDefault: "
+                       "selectedPreset ? selectedPreset.isDefault : false")));
     QVERIFY(presetsSource.contains(
         QStringLiteral("enabled: textPresetsSection.sectionReady")));
     QVERIFY(sourceContainsIgnoringWhitespace(
@@ -1098,16 +1130,17 @@ private slots:
         presetsSource, QStringLiteral("id: presetSelect Layout.fillWidth: "
                                       "true Layout.minimumWidth: 0")));
     QVERIFY(presetsSource.contains(
-        QStringLiteral("model: leftInspectorPanel.editor.presets")));
+        QStringLiteral("model: textPresetsSection.editor ? "
+                       "textPresetsSection.editor.presets : []")));
     QVERIFY(presetsSource.contains(QStringLiteral("textRole: \"name\"")));
     QVERIFY(presetsSource.contains(QStringLiteral(
-        "currentIndex: leftInspectorPanel.editor.selectedPresetIndex >= 0 ? "
-        "leftInspectorPanel.editor.selectedPresetIndex : "
-        "(leftInspectorPanel.editor.presets.length > 0 ? 0 : -1)")));
+        "currentIndex: textPresetsSection.hasSelectedPreset ? "
+        "textPresetsSection.selectedPresetIndex : "
+        "(textPresetsSection.presetCount > 0 ? 0 : -1)")));
     const qsizetype presetComboEnd = indexOfIgnoringWhitespace(
         presetsSource,
         QStringLiteral("onActivated: (index) => { return "
-                       "leftInspectorPanel.editor.selectPreset(index) }"));
+                       "textPresetsSection.editor.selectPreset(index) }"));
     QVERIFY(presetComboEnd > 0);
     const QString presetComboSource = presetsSource.mid(
         presetsSource.indexOf(QStringLiteral("id: presetSelect")),
@@ -1127,41 +1160,44 @@ private slots:
         presetsSource,
         QStringLiteral(
             "Button { text: qsTr(\"Apply\"); enabled: "
-            "leftInspectorPanel.editor.hasProject && "
-            "leftInspectorPanel.editor.selectedIndex >= 0 && "
-            "leftInspectorPanel.editor.selectedPresetIndex >= 0; onClicked: "
-            "leftInspectorPanel.editor.applySelectedPreset() }")));
+            "textPresetsSection.sectionReady && "
+            "textPresetsSection.hasSelectedPreset; onClicked: "
+            "textPresetsSection.editor.applySelectedPreset() }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         presetsSource,
         QStringLiteral("Button { text: qsTr(\"Rename\"); enabled: "
-                       "leftInspectorPanel.editor.hasProject && "
-                       "leftInspectorPanel.editor.selectedIndex >= 0 && "
-                       "leftInspectorPanel.editor.selectedPresetIndex >= 0")));
+                       "textPresetsSection.sectionReady && "
+                       "textPresetsSection.hasSelectedPreset")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         presetsSource,
         QStringLiteral("Button { text: qsTr(\"Delete\"); enabled: "
-                       "leftInspectorPanel.editor.hasProject && "
-                       "leftInspectorPanel.editor.selectedIndex >= 0 && "
-                       "leftInspectorPanel.editor.selectedPresetIndex >= 0")));
+                       "textPresetsSection.sectionReady && "
+                       "textPresetsSection.hasSelectedPreset")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         presetsSource,
         QStringLiteral("onActivated: (index) => { return "
-                       "leftInspectorPanel.editor.selectPreset(index) }")));
+                       "textPresetsSection.editor.selectPreset(index) }")));
     QVERIFY(!presetsSource.contains(QStringLiteral("ListView")));
     QVERIFY(presetsSource.contains(
-        QStringLiteral("leftInspectorPanel.editor.applySelectedPreset()")));
+        QStringLiteral("textPresetsSection.editor.applySelectedPreset()")));
     QVERIFY(presetsSource.contains(QStringLiteral("text: qsTr(\"Apply\")")));
     QVERIFY(presetsSource.contains(QStringLiteral("Flow {")));
     QVERIFY(presetsSource.contains(QStringLiteral(
-        "leftInspectorPanel.editor.addPreset(presetNameField.text)")));
+        "textPresetsSection.editor.addPreset(presetNameField.text)")));
     QVERIFY(presetsSource.contains(QStringLiteral("text: qsTr(\"Create\")")));
     QVERIFY(presetsSource.contains(
-        QStringLiteral("leftInspectorPanel.editor.updateSelectedPreset()")));
+        QStringLiteral("textPresetsSection.editor.updateSelectedPreset()")));
     QVERIFY(presetsSource.contains(
-        QStringLiteral("leftInspectorPanel.editor.renameSelectedPreset("
+        QStringLiteral("textPresetsSection.editor.renameSelectedPreset("
                        "presetNameField.text)")));
     QVERIFY(presetsSource.contains(
-        QStringLiteral("leftInspectorPanel.editor.deleteSelectedPreset()")));
+        QStringLiteral("textPresetsSection.editor.deleteSelectedPreset()")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        presetsSource, QStringLiteral("onActiveFocusChanged: "
+                                      "textPresetsSection."
+                                      "textInputFocusChanged(activeFocus)")));
+    QVERIFY(!presetsSource.contains(QStringLiteral(
+        "editor.presets[selectedPresetIndex] ||")));
     const qsizetype crudFlowStart =
         presetsSource.indexOf(QStringLiteral("Flow {"));
     const qsizetype createButton = presetsSource.indexOf(
@@ -1182,6 +1218,7 @@ private slots:
     QFile cmake(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../CMakeLists.txt"));
     QVERIFY(cmake.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString cmakeSource = QString::fromUtf8(cmake.readAll());
+    QVERIFY(cmakeSource.contains(QStringLiteral("qml/TextPresetsSection.qml")));
     QVERIFY(!pageTextsSource.isEmpty());
     QVERIFY(cmakeSource.contains(QStringLiteral("qml/PageTextsSection.qml")));
     QVERIFY(source.contains(QStringLiteral("id: pageTextsSection")));

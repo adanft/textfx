@@ -261,117 +261,13 @@ Pane {
 
             }
 
-            ColumnLayout {
-                id: textPresetsSection
-
-                readonly property bool sectionReady: leftInspectorPanel.editor.hasProject && leftInspectorPanel.editor.selectedIndex >= 0
-
+            TextPresetsSection {
+                editor: leftInspectorPanel.editor
+                onTextInputFocusChanged: (active) => {
+                    leftInspectorPanel.textInputFocusChanged(active);
+                }
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                enabled: sectionReady
-
-                Label {
-                    text: qsTr("Text Presets")
-                    font.bold: true
-                    enabled: textPresetsSection.sectionReady
-                }
-
-                GroupBox {
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: 0
-                    enabled: textPresetsSection.sectionReady
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        spacing: 6
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-
-                            ComboBox {
-                                id: presetSelect
-
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 0
-                                model: leftInspectorPanel.editor.presets
-                                textRole: "name"
-                                currentIndex: leftInspectorPanel.editor.selectedPresetIndex >= 0 ? leftInspectorPanel.editor.selectedPresetIndex : (leftInspectorPanel.editor.presets.length > 0 ? 0 : -1)
-                                onActivated: (index) => {
-                                    return leftInspectorPanel.editor.selectPreset(index);
-                                }
-
-                                contentItem: Label {
-                                    text: presetSelect.displayText
-                                    font: presetSelect.font
-                                    enabled: presetSelect.enabled
-                                    elide: Text.ElideRight
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-
-                            }
-
-                            Button {
-                                text: qsTr("Apply")
-                                enabled: leftInspectorPanel.editor.hasProject && leftInspectorPanel.editor.selectedIndex >= 0 && leftInspectorPanel.editor.selectedPresetIndex >= 0
-                                onClicked: leftInspectorPanel.editor.applySelectedPreset()
-                            }
-
-                        }
-
-                        TextField {
-                            id: presetNameField
-
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            placeholderText: qsTr("Preset name")
-                            enabled: leftInspectorPanel.editor.hasProject && leftInspectorPanel.editor.selectedIndex >= 0
-                            onActiveFocusChanged: leftInspectorPanel.textInputFocusChanged(activeFocus)
-                        }
-
-                        Flow {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            spacing: 6
-
-                            Button {
-                                text: qsTr("Create")
-                                enabled: leftInspectorPanel.editor.hasProject && leftInspectorPanel.editor.selectedIndex >= 0 && presetNameField.text.trim().length > 0
-                                onClicked: {
-                                    leftInspectorPanel.editor.addPreset(presetNameField.text);
-                                    presetNameField.text = "";
-                                }
-                            }
-
-                            Button {
-                                text: qsTr("Update")
-                                enabled: leftInspectorPanel.editor.hasProject && leftInspectorPanel.editor.selectedIndex >= 0 && leftInspectorPanel.editor.selectedPresetIndex >= 0
-                                onClicked: leftInspectorPanel.editor.updateSelectedPreset()
-                            }
-
-                            Button {
-                                text: qsTr("Rename")
-                                enabled: leftInspectorPanel.editor.hasProject && leftInspectorPanel.editor.selectedIndex >= 0 && leftInspectorPanel.editor.selectedPresetIndex >= 0 && presetNameField.text.trim().length > 0 && !(leftInspectorPanel.editor.presets[leftInspectorPanel.editor.selectedPresetIndex] || {
-                                }).isDefault
-                                onClicked: {
-                                    leftInspectorPanel.editor.renameSelectedPreset(presetNameField.text);
-                                    presetNameField.text = "";
-                                }
-                            }
-
-                            Button {
-                                text: qsTr("Delete")
-                                enabled: leftInspectorPanel.editor.hasProject && leftInspectorPanel.editor.selectedIndex >= 0 && leftInspectorPanel.editor.selectedPresetIndex >= 0 && !(leftInspectorPanel.editor.presets[leftInspectorPanel.editor.selectedPresetIndex] || {
-                                }).isDefault
-                                onClicked: leftInspectorPanel.editor.deleteSelectedPreset()
-                            }
-
-                        }
-
-                    }
-
-                }
-
             }
 
             PageTextsSection {

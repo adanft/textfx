@@ -35,7 +35,9 @@ private slots:
         "!editorChrome.sidePanelTextInputFocused")));
     QVERIFY(source.contains(QStringLiteral(
         "onActiveFocusChanged: "
-        "leftInspectorPanel.textInputFocusChanged(activeFocus)")));
+        "textPresetsSection.textInputFocusChanged(activeFocus)")));
+    QVERIFY(source.contains(QStringLiteral(
+        "leftInspectorPanel.textInputFocusChanged(active)")));
   }
 
   void qmlEscapeCancelsCurrentContextInOrder() {
@@ -139,6 +141,8 @@ private slots:
         readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
     const QString pageTextsSectionSource =
         readQmlFile(QStringLiteral("PageTextsSection.qml"));
+    const QString textPresetsSectionSource =
+        readQmlFile(QStringLiteral("TextPresetsSection.qml"));
     const QString rightPanelSource =
         readQmlFile(QStringLiteral("RightInspectorPanel.qml"));
     const QString source = qmlSource();
@@ -222,6 +226,12 @@ private slots:
                        "true; enabled: textPropertiesSection.sectionReady }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         sidePanelSource,
+        QStringLiteral("TextPresetsSection { editor: leftInspectorPanel.editor; "
+                       "onTextInputFocusChanged: (active) => { "
+                       "leftInspectorPanel.textInputFocusChanged(active) }; "
+                       "Layout.fillWidth: true; Layout.minimumWidth: 0 }")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        textPresetsSectionSource,
         QStringLiteral("Label { text: qsTr(\"Text Presets\"); font.bold: true; "
                        "enabled: textPresetsSection.sectionReady }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
@@ -252,9 +262,20 @@ private slots:
     QVERIFY(!sidePanelSource.contains(QStringLiteral(
         "height: Math.max(implicitHeight, sidePanel.availableHeight)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        sidePanelSource,
+        textPresetsSectionSource,
         QStringLiteral("TextField { id: presetNameField; Layout.fillWidth: "
                        "true; Layout.minimumWidth: 0")));
+    QVERIFY(textPresetsSectionSource.contains(QStringLiteral("id: presetSelect")));
+    QVERIFY(textPresetsSectionSource.contains(
+        QStringLiteral("text: qsTr(\"Apply\")")));
+    QVERIFY(textPresetsSectionSource.contains(
+        QStringLiteral("text: qsTr(\"Create\")")));
+    QVERIFY(textPresetsSectionSource.contains(
+        QStringLiteral("text: qsTr(\"Update\")")));
+    QVERIFY(textPresetsSectionSource.contains(
+        QStringLiteral("text: qsTr(\"Rename\")")));
+    QVERIFY(textPresetsSectionSource.contains(
+        QStringLiteral("text: qsTr(\"Delete\")")));
     QVERIFY(sidePanelSource.contains(QStringLiteral(
         "RowLayout {\n                            Layout.fillWidth: true\n     "
         "                       Layout.minimumWidth: 0\n                       "
@@ -273,9 +294,10 @@ private slots:
             "Layout.fillWidth: true; Layout.minimumWidth: 0; from: "
             "leftInspectorPanel.editorLimits.minimumTextSpacing; to: "
             "leftInspectorPanel.editorLimits.maximumTextSpacing")));
-    QVERIFY(sidePanelSource.count(QStringLiteral(
-                "Flow {\n                            Layout.fillWidth: true\n  "
-                "                          Layout.minimumWidth: 0")) >= 3);
+    QVERIFY(compactSource(sidePanelSource + textPresetsSectionSource)
+                .count(compactSource(QStringLiteral(
+                    "Flow { Layout.fillWidth: true; Layout.minimumWidth: 0"))) >=
+            3);
     QVERIFY(rightPanelSource.contains(QStringLiteral("Pane {")));
     QVERIFY(rightPanelSource.contains(QStringLiteral("z: 1")));
     QVERIFY(rightPanelSource.contains(
@@ -289,8 +311,7 @@ private slots:
                        "true; enabled: textPropertiesSection.sectionReady }"));
     const qsizetype presetsStart = indexOfIgnoringWhitespace(
         sidePanelSource,
-        QStringLiteral("Label { text: qsTr(\"Text Presets\"); font.bold: true; "
-                       "enabled: textPresetsSection.sectionReady }"));
+        QStringLiteral("TextPresetsSection { editor: leftInspectorPanel.editor"));
     const qsizetype pageTextsStart =
         sidePanelSource.indexOf(QStringLiteral("PageTextsSection {"));
     QVERIFY(propertiesStart >= 0);

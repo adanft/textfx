@@ -171,8 +171,10 @@ QString qmlSource() {
          readQmlFile(QStringLiteral("CentralCanvasShell.qml")) +
           QLatin1Char('\n') + readQmlFile(QStringLiteral("EditorChrome.qml")) +
           QLatin1Char('\n') +
-          readQmlFile(QStringLiteral("LeftInspectorPanel.qml")) +
-          QLatin1Char('\n') + readQmlFile(QStringLiteral("LayersSection.qml")) +
+           readQmlFile(QStringLiteral("LeftInspectorPanel.qml")) +
+           QLatin1Char('\n') +
+           readQmlFile(QStringLiteral("TextPresetsSection.qml")) +
+           QLatin1Char('\n') + readQmlFile(QStringLiteral("LayersSection.qml")) +
           QLatin1Char('\n') +
           readQmlFile(QStringLiteral("NavigationSection.qml")) +
           QLatin1Char('\n') +
