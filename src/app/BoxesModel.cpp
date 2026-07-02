@@ -1,6 +1,7 @@
 #include "app/BoxesModel.h"
 
 #include "app/BoxRenderState.h"
+#include "app/EffectMetadata.h"
 
 namespace textfx {
 
@@ -61,51 +62,13 @@ QVariant BoxesModel::data(const QModelIndex &index, int role) const {
   case PathRole: return state.path;
   case PathModeRole: return state.pathMode;
   case PathPointsRole: return state.pathPoints;
+  case EffectsRole: return state.effects;
   default: return {};
   }
 }
 
 QHash<int, QByteArray> BoxesModel::roleNames() const {
-  return {{IndexRole, "boxIndex"},
-          {TextRole, "boxText"},
-          {XRole, "boxX"},
-          {YRole, "boxY"},
-          {WidthRole, "boxWidth"},
-          {HeightRole, "boxHeight"},
-          {RotationRole, "boxRotation"},
-          {FontFamilyRole, "boxFontFamily"},
-          {ResolvedFontFamilyRole, "boxResolvedFontFamily"},
-          {FontSizeRole, "boxFontSize"},
-          {ColorRole, "boxColor"},
-          {LineSpacingRole, "boxLineSpacing"},
-          {LetterSpacingRole, "boxLetterSpacing"},
-          {BoldRole, "boxBold"},
-          {ItalicRole, "boxItalic"},
-          {UppercaseRole, "boxUppercase"},
-          {LowercaseRole, "boxLowercase"},
-          {AlignmentRole, "boxAlignment"},
-          {OutlineRole, "boxOutline"},
-          {OutlineColorRole, "boxOutlineColor"},
-          {OutlineSizeRole, "boxOutlineSize"},
-          {BlurRole, "boxBlur"},
-          {BlurSizeRole, "boxBlurSize"},
-          {ShadowRole, "boxShadow"},
-          {ShadowColorRole, "boxShadowColor"},
-          {ShadowOffsetXRole, "boxShadowOffsetX"},
-          {ShadowOffsetYRole, "boxShadowOffsetY"},
-          {ShadowBlurSizeRole, "boxShadowBlurSize"},
-          {GradientRole, "boxGradient"},
-          {GradientDirectionRole, "boxGradientDirection"},
-          {GradientColorARole, "boxGradientColorA"},
-          {GradientColorBRole, "boxGradientColorB"},
-          {PerspectiveRole, "boxPerspective"},
-          {PerspectiveNwRole, "boxPerspectiveNw"},
-          {PerspectiveNeRole, "boxPerspectiveNe"},
-          {PerspectiveSeRole, "boxPerspectiveSe"},
-          {PerspectiveSwRole, "boxPerspectiveSw"},
-          {PathRole, "boxPath"},
-          {PathModeRole, "boxPathMode"},
-          {PathPointsRole, "boxPathPoints"}};
+  return boxRoleNames();
 }
 
 void BoxesModel::notifyBoxChanged(int row, const QList<int> &roles) {

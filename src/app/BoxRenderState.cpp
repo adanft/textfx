@@ -31,6 +31,39 @@ QVariantList pointList(const std::vector<Point> &points) {
   return result;
 }
 
+namespace {
+QVariantMap effectsMap(const TextEffects &effects) {
+  return {{"outline",
+           QVariantMap{{"enabled", effects.outlineEnabled},
+                       {"color", toQString(effects.outlineColor)},
+                       {"size", effects.outlineSize}}},
+          {"blur",
+           QVariantMap{{"enabled", effects.blurEnabled},
+                       {"size", effects.blurSize}}},
+          {"shadow",
+           QVariantMap{{"enabled", effects.shadowEnabled},
+                       {"color", toQString(effects.shadowColor)},
+                       {"offsetX", effects.shadowOffsetX},
+                       {"offsetY", effects.shadowOffsetY},
+                       {"blurSize", effects.shadowBlurSize}}},
+          {"gradient",
+           QVariantMap{{"enabled", effects.gradientEnabled},
+                       {"direction", effects.gradientDirection},
+                       {"colorA", toQString(effects.gradientColorA)},
+                       {"colorB", toQString(effects.gradientColorB)}}},
+          {"path",
+           QVariantMap{{"enabled", effects.pathEnabled},
+                       {"mode", effects.pathMode},
+                       {"points", pointList(effects.pathPoints)}}},
+          {"perspective",
+           QVariantMap{{"enabled", effects.perspectiveEnabled},
+                       {"nw", pointValue(effects.perspectiveNw)},
+                       {"ne", pointValue(effects.perspectiveNe)},
+                       {"se", pointValue(effects.perspectiveSe)},
+                       {"sw", pointValue(effects.perspectiveSw)}}}};
+}
+} // namespace
+
 BoxRenderState mapBoxRenderState(const TextBox &box, int index) {
   return BoxRenderState{
       .index = index,
@@ -73,6 +106,7 @@ BoxRenderState mapBoxRenderState(const TextBox &box, int index) {
       .path = box.effects.pathEnabled,
       .pathMode = box.effects.pathMode,
       .pathPoints = pointList(box.effects.pathPoints),
+      .effects = effectsMap(box.effects),
   };
 }
 

@@ -1,6 +1,7 @@
 #include "app/EditorController.h"
 
 #include "app/EditorViewModels.h"
+#include "app/EffectMetadata.h"
 #include "app/PageTextService.h"
 #include "app/ProjectExportService.h"
 #include "app/ProjectSessionService.h"
@@ -63,48 +64,6 @@ bool ensureRegularFile(const std::filesystem::path &path, std::string *error) {
   return true;
 }
 
-QList<int> allBoxRoles() {
-  return {Role::IndexRole,
-          Role::TextRole,
-          Role::XRole,
-          Role::YRole,
-          Role::WidthRole,
-          Role::HeightRole,
-          Role::RotationRole,
-          Role::FontFamilyRole,
-          Role::ResolvedFontFamilyRole,
-          Role::FontSizeRole,
-          Role::ColorRole,
-          Role::LineSpacingRole,
-          Role::LetterSpacingRole,
-          Role::BoldRole,
-          Role::ItalicRole,
-          Role::UppercaseRole,
-          Role::LowercaseRole,
-          Role::AlignmentRole,
-          Role::OutlineRole,
-          Role::OutlineColorRole,
-          Role::OutlineSizeRole,
-          Role::BlurRole,
-          Role::BlurSizeRole,
-          Role::ShadowRole,
-          Role::ShadowColorRole,
-          Role::ShadowOffsetXRole,
-          Role::ShadowOffsetYRole,
-          Role::ShadowBlurSizeRole,
-          Role::GradientRole,
-          Role::GradientDirectionRole,
-          Role::GradientColorARole,
-          Role::GradientColorBRole,
-          Role::PerspectiveRole,
-          Role::PerspectiveNwRole,
-          Role::PerspectiveNeRole,
-          Role::PerspectiveSeRole,
-          Role::PerspectiveSwRole,
-          Role::PathRole,
-          Role::PathModeRole,
-          Role::PathPointsRole};
-}
 } // namespace
 
 EditorController::EditorController(QObject *parent)
@@ -530,135 +489,133 @@ void EditorController::setSelectedRotation(double degrees) {
 void EditorController::setSelectedOutlineEnabled(bool enabled) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setOutlineEnabled(box, enabled);
-  }, {Role::OutlineRole});
+  }, effectRoles(EffectId::Outline));
 }
 
 void EditorController::setSelectedOutlineColor(const QString &color) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setOutlineColor(box, color);
-  }, {Role::OutlineColorRole});
+  }, {Role::OutlineColorRole, Role::EffectsRole});
 }
 
 void EditorController::setSelectedOutlineSize(int size) {
   editSelectedBox(
       [&](TextBox &box) { TextBoxEditingService::setOutlineSize(box, size); },
-      {Role::OutlineSizeRole});
+      {Role::OutlineSizeRole, Role::EffectsRole});
 }
 
 void EditorController::setSelectedBlurEnabled(bool enabled) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setBlurEnabled(box, enabled);
-  }, {Role::BlurRole});
+  }, effectRoles(EffectId::Blur));
 }
 
 void EditorController::setSelectedBlurSize(int size) {
   editSelectedBox(
       [&](TextBox &box) { TextBoxEditingService::setBlurSize(box, size); },
-      {Role::BlurSizeRole});
+      {Role::BlurSizeRole, Role::EffectsRole});
 }
 
 void EditorController::setSelectedShadowEnabled(bool enabled) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setShadowEnabled(box, enabled);
-  }, {Role::ShadowRole});
+  }, effectRoles(EffectId::Shadow));
 }
 
 void EditorController::setSelectedShadowColor(const QString &color) {
   editSelectedBox(
       [&](TextBox &box) { TextBoxEditingService::setShadowColor(box, color); },
-      {Role::ShadowColorRole});
+      {Role::ShadowColorRole, Role::EffectsRole});
 }
 
 void EditorController::setSelectedShadowOffsetX(int offset) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setShadowOffsetX(box, offset);
-  }, {Role::ShadowOffsetXRole});
+  }, {Role::ShadowOffsetXRole, Role::EffectsRole});
 }
 
 void EditorController::setSelectedShadowOffsetY(int offset) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setShadowOffsetY(box, offset);
-  }, {Role::ShadowOffsetYRole});
+  }, {Role::ShadowOffsetYRole, Role::EffectsRole});
 }
 
 void EditorController::setSelectedShadowBlurSize(int size) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setShadowBlurSize(box, size);
-  }, {Role::ShadowBlurSizeRole});
+  }, {Role::ShadowBlurSizeRole, Role::EffectsRole});
 }
 
 void EditorController::setSelectedGradientEnabled(bool enabled) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setGradientEnabled(box, enabled);
-  }, {Role::GradientRole});
+  }, effectRoles(EffectId::Gradient));
 }
 
 void EditorController::setSelectedGradientDirection(int direction) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setGradientDirection(box, direction);
-  }, {Role::GradientDirectionRole});
+  }, {Role::GradientDirectionRole, Role::EffectsRole});
 }
 
 void EditorController::setSelectedGradientColorA(const QString &color) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setGradientColorA(box, color);
-  }, {Role::GradientColorARole});
+  }, {Role::GradientColorARole, Role::EffectsRole});
 }
 
 void EditorController::setSelectedGradientColorB(const QString &color) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setGradientColorB(box, color);
-  }, {Role::GradientColorBRole});
+  }, {Role::GradientColorBRole, Role::EffectsRole});
 }
 
 void EditorController::setSelectedPerspectiveEnabled(bool enabled) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setPerspectiveEnabled(box, enabled);
-  }, {Role::PerspectiveRole});
+  }, effectRoles(EffectId::Perspective));
 }
 
 void EditorController::setSelectedPathEnabled(bool enabled) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setPathEnabled(box, enabled);
-  }, {Role::PathRole, Role::PathPointsRole});
+  }, effectRoles(EffectId::Path));
 }
 
 void EditorController::setSelectedPathMode(int mode) {
   editSelectedBox(
       [&](TextBox &box) { TextBoxEditingService::setPathMode(box, mode); },
-      {Role::PathModeRole});
+      {Role::PathModeRole, Role::EffectsRole});
 }
 
 void EditorController::resetSelectedPerspective() {
   editSelectedBox(
       [](TextBox &box) { TextBoxEditingService::resetPerspective(box); },
-      {Role::PerspectiveRole, Role::PerspectiveNwRole, Role::PerspectiveNeRole,
-       Role::PerspectiveSeRole, Role::PerspectiveSwRole});
+      effectRoles(EffectId::Perspective));
 }
 
 void EditorController::resetSelectedPath() {
   editSelectedBox([](TextBox &box) { TextBoxEditingService::resetPath(box); },
-                  {Role::PathRole, Role::PathModeRole, Role::PathPointsRole});
+                  effectRoles(EffectId::Path));
 }
 
 void EditorController::addSelectedPathPoint() {
   editSelectedBox(
       [](TextBox &box) { TextBoxEditingService::addPathPoint(box); },
-      {Role::PathPointsRole});
+      {Role::PathPointsRole, Role::EffectsRole});
 }
 
 void EditorController::setPerspectiveHandle(const QString &corner, double x,
                                             double y) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setPerspectiveHandle(box, corner, x, y);
-  }, {Role::PerspectiveRole, Role::PerspectiveNwRole, Role::PerspectiveNeRole,
-      Role::PerspectiveSeRole, Role::PerspectiveSwRole});
+  }, effectRoles(EffectId::Perspective));
 }
 
 void EditorController::setPathHandle(int index, double x, double y) {
   editSelectedBoxIf([&](TextBox &box) {
     return TextBoxEditingService::setPathHandle(box, index, x, y);
-  }, {Role::PathPointsRole});
+  }, {Role::PathRole, Role::PathPointsRole, Role::EffectsRole});
 }
 
 bool EditorController::leftMouseButtonDown() const {

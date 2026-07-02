@@ -55,6 +55,7 @@ QVariantMap textBoxMap(const TextBox &box, int index) {
       {"path", state.path},
       {"pathMode", state.pathMode},
       {"pathPoints", state.pathPoints},
+      {"effects", state.effects},
   };
 }
 

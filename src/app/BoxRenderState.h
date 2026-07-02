@@ -3,6 +3,7 @@
 #include "core/DocumentModel.h"
 
 #include <QString>
+#include <QVariantMap>
 #include <QVariantList>
 
 namespace textfx {
@@ -48,6 +49,7 @@ struct BoxRenderState {
   bool path = false;
   int pathMode = 0;
   QVariantList pathPoints;
+  QVariantMap effects;
 };
 
 BoxRenderState mapBoxRenderState(const TextBox &box, int index);

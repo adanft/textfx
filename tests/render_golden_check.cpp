@@ -162,6 +162,13 @@ int main(int argc, char **argv) {
   mappedBox.effects.perspectiveSw = {7.0, 8.0};
 
   const BoxRenderState renderState = mapBoxRenderState(mappedBox, 4);
+  const QVariantMap groupedEffects = renderState.effects;
+  const QVariantMap groupedOutline = groupedEffects.value(QStringLiteral("outline")).toMap();
+  const QVariantMap groupedBlur = groupedEffects.value(QStringLiteral("blur")).toMap();
+  const QVariantMap groupedShadow = groupedEffects.value(QStringLiteral("shadow")).toMap();
+  const QVariantMap groupedGradient = groupedEffects.value(QStringLiteral("gradient")).toMap();
+  const QVariantMap groupedPath = groupedEffects.value(QStringLiteral("path")).toMap();
+  const QVariantMap groupedPerspective = groupedEffects.value(QStringLiteral("perspective")).toMap();
   if (renderState.index != 4 || renderState.text != QStringLiteral("Mapped") ||
       renderState.x != 12.0 || renderState.y != 34.0 ||
       renderState.width != 156.0 || renderState.height != 78.0 ||
@@ -181,7 +188,27 @@ int main(int argc, char **argv) {
       renderState.gradientColorB != QStringLiteral("654321ff") ||
       !renderState.path || renderState.pathMode != 1 ||
       renderState.pathPoints.size() != 3 || !renderState.perspective ||
-      renderState.perspectiveNe.at(0).toDouble() != 3.0) {
+      renderState.perspectiveNe.at(0).toDouble() != 3.0 ||
+      !groupedOutline.value(QStringLiteral("enabled")).toBool() ||
+      groupedOutline.value(QStringLiteral("color")).toString() != QStringLiteral("111111ff") ||
+      groupedOutline.value(QStringLiteral("size")).toInt() != 4 ||
+      !groupedBlur.value(QStringLiteral("enabled")).toBool() ||
+      groupedBlur.value(QStringLiteral("size")).toInt() != 5 ||
+      !groupedShadow.value(QStringLiteral("enabled")).toBool() ||
+      groupedShadow.value(QStringLiteral("color")).toString() != QStringLiteral("222222ff") ||
+      groupedShadow.value(QStringLiteral("offsetX")).toDouble() != -3.0 ||
+      groupedShadow.value(QStringLiteral("offsetY")).toDouble() != 8.0 ||
+      groupedShadow.value(QStringLiteral("blurSize")).toInt() != 9 ||
+      !groupedGradient.value(QStringLiteral("enabled")).toBool() ||
+      groupedGradient.value(QStringLiteral("direction")).toInt() != 1 ||
+      groupedGradient.value(QStringLiteral("colorA")).toString() != QStringLiteral("123456ff") ||
+      groupedGradient.value(QStringLiteral("colorB")).toString() != QStringLiteral("654321ff") ||
+      !groupedPath.value(QStringLiteral("enabled")).toBool() ||
+      groupedPath.value(QStringLiteral("mode")).toInt() != 1 ||
+      groupedPath.value(QStringLiteral("points")).toList().size() != 3 ||
+      !groupedPerspective.value(QStringLiteral("enabled")).toBool() ||
+      groupedPerspective.value(QStringLiteral("ne")).toList().at(0).toDouble() != 3.0 ||
+      groupedPerspective.value(QStringLiteral("sw")).toList().at(1).toDouble() != 8.0) {
     std::cerr << "Expected BoxRenderState to preserve styled/path/perspective box semantics\n";
     return 1;
   }
@@ -196,7 +223,8 @@ int main(int argc, char **argv) {
       viewModel.value(QStringLiteral("pathPoints")).toList() !=
           renderState.pathPoints ||
       viewModel.value(QStringLiteral("perspectiveSw")).toList() !=
-          renderState.perspectiveSw) {
+          renderState.perspectiveSw ||
+      viewModel.value(QStringLiteral("effects")).toMap() != renderState.effects) {
     std::cerr << "Expected legacy box map to use BoxRenderState-equivalent values\n";
     return 1;
   }

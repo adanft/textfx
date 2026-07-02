@@ -52,6 +52,7 @@ public:
     PathRole,
     PathModeRole,
     PathPointsRole,
+    EffectsRole,
   };
 
   explicit BoxesModel(DocumentModel &document, QObject *parent = nullptr);

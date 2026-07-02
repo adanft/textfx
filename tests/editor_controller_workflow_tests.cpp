@@ -1,4 +1,5 @@
 #include "app/EditorController.h"
+#include "app/EffectMetadata.h"
 #include "fonts/FontResolver.h"
 #include "qt_test_helpers.h"
 
@@ -123,6 +124,37 @@ private slots:
                  .at(0)
                  .toDouble(),
              0.3);
+    const auto effects = model->data(first, roleForName(*model, "boxEffects"))
+                             .toMap();
+    QVERIFY(effects.value(QStringLiteral("outline")).toMap()
+                .value(QStringLiteral("enabled"))
+                .toBool());
+    QCOMPARE(effects.value(QStringLiteral("path")).toMap()
+                 .value(QStringLiteral("points"))
+                 .toList()
+                 .size(),
+             3);
+  }
+
+  void effectMetadataKeepsLegacyRolesAndGroupedRoleTogether() {
+    EditorController editor;
+    auto *model = qobject_cast<QAbstractItemModel *>(editor.boxesModel());
+    QVERIFY(model);
+
+    const auto names = model->roleNames();
+    QVERIFY(names.values().contains("boxOutline"));
+    QVERIFY(names.values().contains("boxShadowBlurSize"));
+    QVERIFY(names.values().contains("boxPathPoints"));
+    QVERIFY(names.values().contains("boxEffects"));
+
+    const int effectsRole = roleForName(*model, "boxEffects");
+    QVERIFY(effectRoles(EffectId::Outline)
+                .contains(roleForName(*model, "boxOutline")));
+    QVERIFY(effectRoles(EffectId::Outline).contains(effectsRole));
+    QVERIFY(effectRoles(EffectId::Perspective)
+                .contains(roleForName(*model, "boxPerspectiveSw")));
+    QVERIFY(effectRoles(EffectId::Perspective).contains(effectsRole));
+    QVERIFY(allEffectRoles().contains(effectsRole));
   }
 
   void boxesModelEmitsPreciseLiveRoleChangesAndStructuralSignals() {
@@ -163,7 +195,17 @@ private slots:
     editor.setSelectedOutlineEnabled(true);
     changedRoles = dataChanged.takeLast().at(2).value<QList<int>>();
     QVERIFY(changedRoles.contains(roleForName(*model, "boxOutline")));
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxOutlineColor")));
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxOutlineSize")));
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxEffects")));
     QVERIFY(!changedRoles.contains(roleForName(*model, "boxX")));
+
+    editor.setSelectedPathEnabled(true);
+    changedRoles = dataChanged.takeLast().at(2).value<QList<int>>();
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxPath")));
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxPathMode")));
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxPathPoints")));
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxEffects")));
 
     editor.deleteSelected();
     QCOMPARE(rowsRemoved.count(), 1);
