@@ -157,6 +157,8 @@ QString readQmlFile(const QString &name) {
 
 QString qmlSource() {
   return readQmlFile(QStringLiteral("Main.qml")) + QLatin1Char('\n') +
+         readQmlFile(QStringLiteral("BoxEffectsSection.qml")) +
+         QLatin1Char('\n') +
          readQmlFile(QStringLiteral("BoxMoveInteractionState.qml")) +
          QLatin1Char('\n') +
          readQmlFile(QStringLiteral("BoxRotateInteractionState.qml")) +

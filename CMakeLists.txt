@@ -93,6 +93,7 @@ qt_add_qml_module(textfx
     VERSION 1.0
     QML_FILES
         qml/Main.qml
+        qml/BoxEffectsSection.qml
         qml/BoxMoveInteractionState.qml
         qml/BoxRotateInteractionState.qml
         qml/BoxResizeInteractionState.qml

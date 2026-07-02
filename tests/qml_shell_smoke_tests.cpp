@@ -433,6 +433,8 @@ private slots:
         readQmlFile(QStringLiteral("LayersSection.qml"));
     const QString navigationSectionSource =
         readQmlFile(QStringLiteral("NavigationSection.qml"));
+    const QString boxEffectsSectionSource =
+        readQmlFile(QStringLiteral("BoxEffectsSection.qml"));
     const qsizetype rightPanelStart =
         source.indexOf(QStringLiteral("id: rightPanel"));
     QVERIFY(rightPanelStart >= 0);
@@ -560,11 +562,17 @@ private slots:
     QVERIFY(!rightPanelSource.contains(
         QStringLiteral("width: Math.max(1, rightPanel.availableWidth)")));
 
-    for (const QString &sectionId : {QStringLiteral("boxEffectsSection"),
-                                     QStringLiteral("textEffectsSection")}) {
-      QVERIFY2(rightPanelSource.contains(QStringLiteral("id: ") + sectionId),
-               qPrintable(sectionId));
-    }
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("BoxEffectsSection { editor: "
+                       "rightInspectorPanel.editor; selectedBoxData: "
+                       "rightInspectorPanel.selectedBoxData; "
+                       "Layout.fillWidth: true; Layout.minimumWidth: 0 }")));
+    QVERIFY(!rightPanelSource.contains(
+        QStringLiteral("id: boxEffectsSection")));
+    QVERIFY(rightPanelSource.contains(QStringLiteral("id: textEffectsSection")));
+    QVERIFY(boxEffectsSectionSource.contains(
+        QStringLiteral("id: boxEffectsSection")));
     QVERIFY(navigationSectionSource.contains(QStringLiteral("id: navigationSection")));
     QVERIFY(layersSectionSource.contains(QStringLiteral("id: layersSection")));
     QVERIFY(rightPanelSource.contains(QStringLiteral("LayersSection {")));
@@ -578,7 +586,7 @@ private slots:
         QStringLiteral("Label { text: qsTr(\"Navigation\"); font.bold: true; "
                        "enabled: navigationSection.sectionReady }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        rightPanelSource,
+        boxEffectsSectionSource,
         QStringLiteral("Label { text: qsTr(\"Box Effects\"); font.bold: true; "
                        "enabled: boxEffectsSection.sectionReady }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
@@ -608,7 +616,8 @@ private slots:
                 QStringLiteral("display: AbstractButton.IconOnly")) >= 2);
     QVERIFY(layersSectionSource.count(
                 QStringLiteral("display: AbstractButton.IconOnly")) >= 2);
-    QVERIFY(rightPanelSource.count(QStringLiteral("GroupBox {")) >= 2);
+    QVERIFY((rightPanelSource + boxEffectsSectionSource)
+                .count(QStringLiteral("GroupBox {")) >= 2);
     QVERIFY(navigationSectionSource.count(QStringLiteral("GroupBox {")) >= 1);
     QVERIFY(rightPanelSource.count(QStringLiteral("Layout.minimumWidth: 0")) >=
             14);
@@ -630,14 +639,16 @@ private slots:
     QVERIFY(pageNameStart > zoomLabelStart);
 
     const qsizetype boxStart =
-        rightPanelSource.indexOf(QStringLiteral("id: boxEffectsSection"));
+        boxEffectsSectionSource.indexOf(QStringLiteral("id: boxEffectsSection"));
     const qsizetype textStart = rightPanelSource.indexOf(
-        QStringLiteral("id: textEffectsSection"), boxStart);
+        QStringLiteral("id: textEffectsSection"));
     QVERIFY(boxStart >= 0);
-    QVERIFY(textStart > boxStart);
+    QVERIFY(textStart >= 0);
     const QString boxEffectsSource =
-        rightPanelSource.mid(boxStart, textStart - boxStart);
+        boxEffectsSectionSource.mid(boxStart);
     QVERIFY(boxEffectsSource.contains(QStringLiteral("id: boxEffectsTabs")));
+    QVERIFY(boxEffectsSource.contains(QStringLiteral(
+        "property var selectedBoxData")));
     QVERIFY(boxEffectsSource.contains(QStringLiteral("StackLayout")));
     QVERIFY(!boxEffectsSource.contains(QStringLiteral("TabButton { width:")));
     QVERIFY(!boxEffectsSource.contains(QStringLiteral("boxEffectsTabs.width")));
@@ -649,11 +660,11 @@ private slots:
         boxEffectsSource,
         QStringLiteral("TabButton { text: qsTr(\"Perspective\") }")));
     QVERIFY(boxEffectsSource.contains(QStringLiteral(
-        "rightInspectorPanel.editor.setSelectedRotation(value)")));
+        "boxEffectsSection.editor.setSelectedRotation(value)")));
     QVERIFY(boxEffectsSource.contains(QStringLiteral(
-        "rightInspectorPanel.editor.setSelectedPerspectiveEnabled(checked)")));
+        "boxEffectsSection.editor.setSelectedPerspectiveEnabled(checked)")));
     QVERIFY(boxEffectsSource.contains(QStringLiteral(
-        "rightInspectorPanel.editor.resetSelectedPerspective()")));
+        "boxEffectsSection.editor.resetSelectedPerspective()")));
 
     const qsizetype layersStart =
         rightPanelSource.indexOf(QStringLiteral("LayersSection {"), textStart);
