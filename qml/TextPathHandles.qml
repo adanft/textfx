@@ -6,9 +6,14 @@ Item {
     property var boxRef
     property var canvasItem
     property var rootWindow: boxRef.rootWindow
+    readonly property int zPathHandles: 20
+    readonly property real handleViewSize: Math.max(1, rootWindow.documentToViewLength(10))
+    readonly property real minimumTouchMargin: 8
+    readonly property color handleColor: "#ffb000"
+    readonly property color handleBorderColor: "#202020"
 
     anchors.fill: parent
-    z: 20
+    z: zPathHandles
 
 
     Repeater {
@@ -24,17 +29,17 @@ Item {
             property var editorRef: boxRef.editorRef
 
             objectName: "pathHandle"
-            width: Math.max(1, rootWindow.documentToViewLength(10))
+            width: pathPlane.handleViewSize
             height: width
-            color: "#ffb000"
-            border.color: "#202020"
+            color: pathPlane.handleColor
+            border.color: pathPlane.handleBorderColor
             visible: boxRef.selected && boxRef.boxModel.path
             x: rootWindow.pointValue(modelData, 0, 0.5) * pathPlane.width - width / 2
             y: rootWindow.pointValue(modelData, 1, 0.5) * pathPlane.height - height / 2
 
             MouseArea {
                 anchors.fill: parent
-                anchors.margins: -Math.max(8, pathHandle.width)
+                anchors.margins: -Math.max(pathHandle.pathPlane.minimumTouchMargin, pathHandle.width)
                 acceptedButtons: Qt.LeftButton
                 preventStealing: true
                 onPressed: (mouse) => {

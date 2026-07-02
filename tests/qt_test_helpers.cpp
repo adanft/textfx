@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QQuickItem>
+#include <QStringList>
 #include <QTest>
 #include <QVector>
 #include <QWindow>
@@ -155,60 +156,50 @@ QString readQmlFile(const QString &name) {
   return QString::fromUtf8(file.readAll());
 }
 
+QStringList qmlSourceFiles() {
+  return {
+      QStringLiteral("Main.qml"),
+      QStringLiteral("BoxEffectsSection.qml"),
+      QStringLiteral("BoxMoveInteractionState.qml"),
+      QStringLiteral("BoxRotateInteractionState.qml"),
+      QStringLiteral("BoxResizeInteractionState.qml"),
+      QStringLiteral("CanvasInteractionState.qml"),
+      QStringLiteral("ColorButton.qml"),
+      QStringLiteral("CentralCanvasShell.qml"),
+      QStringLiteral("EditorChrome.qml"),
+      QStringLiteral("LeftInspectorPanel.qml"),
+      QStringLiteral("TextPropertiesSection.qml"),
+      QStringLiteral("TextPresetsSection.qml"),
+      QStringLiteral("LayersSection.qml"),
+      QStringLiteral("NavigationSection.qml"),
+      QStringLiteral("PageTextsSection.qml"),
+      QStringLiteral("PathHandleInteractionState.qml"),
+      QStringLiteral("PerspectiveGeometry.qml"),
+      QStringLiteral("PerspectiveInteractionState.qml"),
+      QStringLiteral("RightInspectorPanel.qml"),
+      QStringLiteral("ShortcutMenuItem.qml"),
+      QStringLiteral("SelectedBoxState.qml"),
+      QStringLiteral("TextEffectsSection.qml"),
+      QStringLiteral("TextBoxDelegate.qml"),
+      QStringLiteral("TextBoxMoveArea.qml"),
+      QStringLiteral("TextEditOverlay.qml"),
+      QStringLiteral("TextPathGuide.qml"),
+      QStringLiteral("TextResizeHandles.qml"),
+      QStringLiteral("TextRotateHandle.qml"),
+      QStringLiteral("TextPathHandles.qml"),
+      QStringLiteral("TextStyleButton.qml"),
+      QStringLiteral("ViewportMetrics.qml"),
+  };
+}
+
 QString qmlSource() {
-  return readQmlFile(QStringLiteral("Main.qml")) + QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("BoxEffectsSection.qml")) +
-         QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("BoxMoveInteractionState.qml")) +
-         QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("BoxRotateInteractionState.qml")) +
-         QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("BoxResizeInteractionState.qml")) +
-         QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("CanvasInteractionState.qml")) +
-         QLatin1Char('\n') + readQmlFile(QStringLiteral("ColorButton.qml")) +
-         QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("CentralCanvasShell.qml")) +
-          QLatin1Char('\n') + readQmlFile(QStringLiteral("EditorChrome.qml")) +
-          QLatin1Char('\n') +
-           readQmlFile(QStringLiteral("LeftInspectorPanel.qml")) +
-           QLatin1Char('\n') +
-            readQmlFile(QStringLiteral("TextPropertiesSection.qml")) +
-            QLatin1Char('\n') +
-            readQmlFile(QStringLiteral("TextPresetsSection.qml")) +
-           QLatin1Char('\n') + readQmlFile(QStringLiteral("LayersSection.qml")) +
-          QLatin1Char('\n') +
-          readQmlFile(QStringLiteral("NavigationSection.qml")) +
-          QLatin1Char('\n') +
-          readQmlFile(QStringLiteral("PageTextsSection.qml")) +
-          QLatin1Char('\n') +
-          readQmlFile(QStringLiteral("PathHandleInteractionState.qml")) +
-         QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("PerspectiveGeometry.qml")) +
-         QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("PerspectiveInteractionState.qml")) +
-         QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("RightInspectorPanel.qml")) +
-         QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("ShortcutMenuItem.qml")) +
-         QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("SelectedBoxState.qml")) +
-         QLatin1Char('\n') +
-         readQmlFile(QStringLiteral("TextEffectsSection.qml")) +
-          QLatin1Char('\n') +
-           readQmlFile(QStringLiteral("TextBoxDelegate.qml")) +
-           QLatin1Char('\n') + readQmlFile(QStringLiteral("TextBoxMoveArea.qml")) +
-           QLatin1Char('\n') + readQmlFile(QStringLiteral("TextEditOverlay.qml")) +
-          QLatin1Char('\n') + readQmlFile(QStringLiteral("TextPathGuide.qml")) +
-          QLatin1Char('\n') +
-          readQmlFile(QStringLiteral("TextResizeHandles.qml")) +
-          QLatin1Char('\n') +
-          readQmlFile(QStringLiteral("TextRotateHandle.qml")) +
-          QLatin1Char('\n') +
-          readQmlFile(QStringLiteral("TextPathHandles.qml")) +
-          QLatin1Char('\n') +
-          readQmlFile(QStringLiteral("TextStyleButton.qml")) +
-         QLatin1Char('\n') + readQmlFile(QStringLiteral("ViewportMetrics.qml"));
+  QString source;
+  for (const QString &fileName : qmlSourceFiles()) {
+    if (!source.isEmpty())
+      source += QLatin1Char('\n');
+    source += readQmlFile(fileName);
+  }
+  return source;
 }
 
 QString compactSource(QStringView source) {

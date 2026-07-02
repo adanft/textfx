@@ -12,6 +12,10 @@ ColumnLayout {
         return hex;
     }
     readonly property bool sectionReady: editor && editor.selectedIndex >= 0
+    readonly property int gradientVertical: 0
+    readonly property int gradientHorizontal: 1
+    readonly property int pathModeStraight: 0
+    readonly property int pathModeSmooth: 1
 
     signal colorDialogRequested(string hex, string setter)
 
@@ -207,7 +211,7 @@ ColumnLayout {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
                         model: [qsTr("Vertical"), qsTr("Horizontal")]
-                        currentIndex: Math.min(textEffectsSection.selectedBoxData.gradientDirection, 1)
+                        currentIndex: Math.min(textEffectsSection.selectedBoxData.gradientDirection, textEffectsSection.gradientHorizontal)
                         onActivated: textEffectsSection.editor.setSelectedGradientDirection(currentIndex)
                     }
 
@@ -252,7 +256,7 @@ ColumnLayout {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
                         model: [qsTr("Straight"), qsTr("Smooth")]
-                        currentIndex: Math.min(textEffectsSection.selectedBoxData.pathMode, 1)
+                        currentIndex: Math.min(textEffectsSection.selectedBoxData.pathMode, textEffectsSection.pathModeSmooth)
                         onActivated: textEffectsSection.editor.setSelectedPathMode(currentIndex)
                     }
 

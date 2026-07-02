@@ -99,10 +99,20 @@ Rectangle {
     property real visualDocW: boxModel.w
     property real visualDocH: boxModel.h
     readonly property bool textOverflow: boxOutlinedText.overflow
+    readonly property int zTextContent: 1
+    readonly property int zPerspectiveBorder: 19
 
     function modelPreviewText() {
         return boxModel.uppercase ? String(boxModel.text).toUpperCase() : boxModel.lowercase ? String(boxModel.text).toLowerCase() : boxModel.text;
     }
+
+    function textHorizontalAlignment(alignment) {
+        return alignment === textAlignCenter ? Text.AlignHCenter : alignment === textAlignRight ? Text.AlignRight : Text.AlignLeft;
+    }
+
+    readonly property int textAlignLeft: 0
+    readonly property int textAlignCenter: 1
+    readonly property int textAlignRight: 2
 
     objectName: "textBoxDelegate"
     x: rootWindow.documentToViewX(visualDocX)
@@ -127,7 +137,7 @@ Rectangle {
         width: parent.width + margin * 2
         height: parent.height + margin * 2
         visible: boxRef.selected && boxRef.perspectiveActive
-        z: 19
+        z: boxRef.zPerspectiveBorder
         onPaint: {
             const ctx = getContext("2d");
             ctx.clearRect(0, 0, width, height);
@@ -175,7 +185,7 @@ Rectangle {
         property var rootWindow: boxRef.rootWindow
         property var editorRef: boxRef.editorRef
 
-        z: 1
+        z: boxRef.zTextContent
         anchors.fill: parent
         clip: true
 
@@ -199,7 +209,7 @@ Rectangle {
             italic: boxRef.boxModel.italic
             letterSpacing: boxRef.boxModel.letterSpacing
             lineSpacing: boxRef.boxModel.lineSpacing
-            horizontalAlignment: boxRef.boxModel.alignment === 1 ? Text.AlignHCenter : boxRef.boxModel.alignment === 2 ? Text.AlignRight : Text.AlignLeft
+            horizontalAlignment: boxRef.textHorizontalAlignment(boxRef.boxModel.alignment)
             outlineColor: rootWindow.qmlColor(boxRef.boxModel.outlineColor)
             outlineSize: boxRef.boxModel.outline && boxRef.boxModel.outlineSize > 0 ? boxRef.boxModel.outlineSize : 0
             blurSize: boxRef.boxModel.blur && boxRef.boxModel.blurSize > 0 ? boxRef.boxModel.blurSize : 0

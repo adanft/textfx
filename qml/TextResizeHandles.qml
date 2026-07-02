@@ -5,9 +5,10 @@ Item {
 
     property var boxRef
     property var canvasItem
+    readonly property int zResizeHandles: 20
 
     anchors.fill: parent
-    z: 20
+    z: zResizeHandles
 
 
     Repeater {
@@ -36,15 +37,16 @@ Item {
             property var canvasItem: resizeHandles.canvasItem
             property var rootWindow: boxRef.rootWindow
             property var editorRef: boxRef.editorRef
+            readonly property var visualPosition: rootWindow.visualHandlePosition(boxRef.boxModel, modelData.name, boxRef.width, boxRef.height)
 
             objectName: "resizeHandle_" + modelData.name
-            z: 20
+            z: resizeHandles.zResizeHandles
             width: rootWindow.handleSize()
             height: width
             radius: width / 2
             color: rootWindow.palette.highlight
-            x: rootWindow.visualHandlePosition(boxRef.boxModel, modelData.name, boxRef.width, boxRef.height).x - width / 2
-            y: rootWindow.visualHandlePosition(boxRef.boxModel, modelData.name, boxRef.width, boxRef.height).y - height / 2
+            x: visualPosition.x - width / 2
+            y: visualPosition.y - height / 2
             visible: boxRef.selected
 
             MouseArea {

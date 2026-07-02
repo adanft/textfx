@@ -14,8 +14,10 @@ MouseArea {
         "width": boxRef.width,
         "height": boxRef.height
     })
+    readonly property int zBehindEditOverlay: -1
+    readonly property int zMoveArea: 10
 
-    z: boxRef.selected && editorRef.editingText ? -1 : 10
+    z: boxRef.selected && editorRef.editingText ? zBehindEditOverlay : zMoveArea
     x: visualBounds.x
     y: visualBounds.y
     width: visualBounds.width

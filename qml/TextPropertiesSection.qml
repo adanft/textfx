@@ -15,6 +15,9 @@ ColumnLayout {
         return hex;
     }
     readonly property bool sectionReady: textPropertiesSection.editor && textPropertiesSection.editor.selectedIndex >= 0
+    readonly property int textAlignLeft: 0
+    readonly property int textAlignCenter: 1
+    readonly property int textAlignRight: 2
 
     signal colorDialogRequested(string hex, string setter)
 
@@ -184,22 +187,22 @@ ColumnLayout {
                 TextStyleButton {
                     iconSource: "qrc:/qt/qml/TextFX/assets/icons/flat/align-left.svg"
                     accessibleLabel: qsTr("Align Left")
-                    checked: textPropertiesSection.selectedBoxData.alignment === 0
-                    onClicked: textPropertiesSection.editor.setSelectedAlignment(0)
+                    checked: textPropertiesSection.selectedBoxData.alignment === textPropertiesSection.textAlignLeft
+                    onClicked: textPropertiesSection.editor.setSelectedAlignment(textPropertiesSection.textAlignLeft)
                 }
 
                 TextStyleButton {
                     iconSource: "qrc:/qt/qml/TextFX/assets/icons/flat/align-center.svg"
                     accessibleLabel: qsTr("Align Center")
-                    checked: textPropertiesSection.selectedBoxData.alignment === 1
-                    onClicked: textPropertiesSection.editor.setSelectedAlignment(1)
+                    checked: textPropertiesSection.selectedBoxData.alignment === textPropertiesSection.textAlignCenter
+                    onClicked: textPropertiesSection.editor.setSelectedAlignment(textPropertiesSection.textAlignCenter)
                 }
 
                 TextStyleButton {
                     iconSource: "qrc:/qt/qml/TextFX/assets/icons/flat/align-right.svg"
                     accessibleLabel: qsTr("Align Right")
-                    checked: textPropertiesSection.selectedBoxData.alignment === 2
-                    onClicked: textPropertiesSection.editor.setSelectedAlignment(2)
+                    checked: textPropertiesSection.selectedBoxData.alignment === textPropertiesSection.textAlignRight
+                    onClicked: textPropertiesSection.editor.setSelectedAlignment(textPropertiesSection.textAlignRight)
                 }
 
             }

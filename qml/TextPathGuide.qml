@@ -8,6 +8,9 @@ Canvas {
     property var editorRef: boxRef.editorRef
     property int pathMode: boxRef.boxModel.pathMode
     property var pathPoints: boxRef.boxModel.pathPoints
+    readonly property int pathModeStraight: 0
+    readonly property int pathModeSmooth: 1
+    readonly property int zPathGuide: 18
 
     objectName: "pathGuide"
     function guidePoint(point) {
@@ -38,7 +41,7 @@ Canvas {
 
     anchors.fill: parent
     visible: boxRef.selected && boxRef.boxModel.path && boxRef.boxModel.pathPoints.length > 1
-    z: 18
+    z: zPathGuide
     onPaint: {
         const ctx = getContext("2d");
         ctx.clearRect(0, 0, width, height);
@@ -46,7 +49,7 @@ Canvas {
         if (!points || points.length < 2)
             return ;
 
-        const guidePoints = pathMode === 1 ? smoothGuidePoints(points) : points.map((point) => {
+        const guidePoints = pathMode === pathModeSmooth ? smoothGuidePoints(points) : points.map((point) => {
             return guidePoint(point);
         });
         const lineWidth = guideLineWidth();

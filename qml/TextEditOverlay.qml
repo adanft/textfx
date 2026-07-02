@@ -16,6 +16,11 @@ TextArea {
     readonly property real editLayoutTabStopDistance: outlinedTextItem.editLayoutTabStopDistance
     readonly property real editLayoutPaintOffsetX: editLayoutAligned ? outlinedTextItem.editLayoutPaintOffsetX : 0
     readonly property real editLayoutPaintOffsetY: editLayoutAligned ? outlinedTextItem.editLayoutPaintOffsetY : 0
+    readonly property int zEditOverlay: 1
+
+    function editHorizontalAlignment(alignment) {
+        return alignment === boxRef.textAlignCenter ? TextEdit.AlignHCenter : alignment === boxRef.textAlignRight ? TextEdit.AlignRight : TextEdit.AlignLeft;
+    }
 
     function focusForEdit() {
         if (boxRef.selected && editorRef.editingText && !activeFocus)
@@ -72,7 +77,7 @@ TextArea {
     }
 
     objectName: "boxTextArea"
-    z: 1
+    z: zEditOverlay
     x: editLayoutPaintOffsetX * rootWindow.viewDocScale()
     y: editLayoutPaintOffsetY * rootWindow.viewDocScale()
     width: boxRef.visualDocW
@@ -92,7 +97,7 @@ TextArea {
     font.weight: boxRef.boxModel.bold ? Font.Bold : Font.Normal
     font.italic: boxRef.boxModel.italic
     font.letterSpacing: boxRef.boxModel.letterSpacing
-    horizontalAlignment: boxRef.boxModel.alignment === 1 ? TextEdit.AlignHCenter : boxRef.boxModel.alignment === 2 ? TextEdit.AlignRight : TextEdit.AlignLeft
+    horizontalAlignment: editHorizontalAlignment(boxRef.boxModel.alignment)
     padding: 0
     topPadding: editLayoutTopPadding
     leftPadding: editLayoutLeftPadding

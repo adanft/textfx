@@ -7,14 +7,16 @@ Rectangle {
     property var canvasItem
     property var rootWindow: boxRef.rootWindow
     property var editorRef: boxRef.editorRef
+    readonly property int zRotateHandle: 20
+    readonly property var visualPosition: rootWindow.rotateHandlePosition(boxRef.boxModel, boxRef.width, boxRef.height)
 
-    z: 20
+    z: zRotateHandle
     width: rootWindow.handleSize()
     height: width
     radius: width / 2
     color: rootWindow.palette.highlight
-    x: rootWindow.rotateHandlePosition(boxRef.boxModel, boxRef.width, boxRef.height).x - width / 2
-    y: rootWindow.rotateHandlePosition(boxRef.boxModel, boxRef.width, boxRef.height).y - height / 2
+    x: visualPosition.x - width / 2
+    y: visualPosition.y - height / 2
     visible: boxRef.selected
 
     MouseArea {

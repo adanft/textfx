@@ -115,7 +115,7 @@ private slots:
     QVERIFY(
         source.contains(QStringLiteral("function smoothGuidePoints(points)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        source, QStringLiteral("pathMode === 1 ? smoothGuidePoints(points) : "
+        source, QStringLiteral("pathMode === pathModeSmooth ? smoothGuidePoints(points) : "
                                "points.map((point)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         source, QStringLiteral("return guidePoint(point)")));
@@ -513,7 +513,8 @@ private slots:
     QVERIFY(cmakeSource.contains(QStringLiteral("qml/TextBoxMoveArea.qml")));
 
     const qsizetype moveStart = moveAreaSource.indexOf(QStringLiteral(
-        "z: boxRef.selected && editorRef.editingText ? -1 : 10"));
+        "z: boxRef.selected && editorRef.editingText ? zBehindEditOverlay : "
+        "zMoveArea"));
     QVERIFY(moveStart >= 0);
     const QString moveSource = moveAreaSource.mid(moveStart);
 
@@ -667,7 +668,8 @@ private slots:
     QVERIFY(!moveSource.contains(QStringLiteral("beginPerspectiveDrag")));
 
     const qsizetype handleZ =
-        source.indexOf(QStringLiteral("z: 20"), handlesStart);
+        source.indexOf(QStringLiteral("z: resizeHandles.zResizeHandles"),
+                       handlesStart);
     QVERIFY(handleZ > handlesStart);
   }
 
@@ -1020,25 +1022,25 @@ private slots:
         QStringLiteral(
             "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/align-left.svg\"; accessibleLabel: qsTr(\"Align "
             "Left\"); checked: "
-            "textPropertiesSection.selectedBoxData.alignment === 0; "
+            "textPropertiesSection.selectedBoxData.alignment === textPropertiesSection.textAlignLeft; "
             "onClicked: "
-            "textPropertiesSection.editor.setSelectedAlignment(0)")));
+            "textPropertiesSection.editor.setSelectedAlignment(textPropertiesSection.textAlignLeft)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
             "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/align-center.svg\"; accessibleLabel: qsTr(\"Align "
             "Center\"); checked: "
-            "textPropertiesSection.selectedBoxData.alignment === 1; "
+            "textPropertiesSection.selectedBoxData.alignment === textPropertiesSection.textAlignCenter; "
             "onClicked: "
-            "textPropertiesSection.editor.setSelectedAlignment(1)")));
+            "textPropertiesSection.editor.setSelectedAlignment(textPropertiesSection.textAlignCenter)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
             "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/align-right.svg\"; accessibleLabel: qsTr(\"Align "
             "Right\"); checked: "
-            "textPropertiesSection.selectedBoxData.alignment === 2; "
+            "textPropertiesSection.selectedBoxData.alignment === textPropertiesSection.textAlignRight; "
             "onClicked: "
-            "textPropertiesSection.editor.setSelectedAlignment(2)")));
+            "textPropertiesSection.editor.setSelectedAlignment(textPropertiesSection.textAlignRight)")));
     QVERIFY(!source.contains(
         QStringLiteral("CheckBox { checked: window.selectedBox() ? "
                        "window.selectedBox().bold")));
@@ -1563,8 +1565,9 @@ private slots:
         "boxTextPerspective.width, boxTextPerspective.height, "
         "rootWindow.viewDocScale(), boxRef.perspectiveActive) }")));
     QVERIFY(source.contains(
-        QStringLiteral("rootWindow.visualHandlePosition(boxRef.boxModel, "
-                       "modelData.name, boxRef.width, boxRef.height).x")));
+        QStringLiteral("readonly property var visualPosition: "
+                       "rootWindow.visualHandlePosition(boxRef.boxModel, "
+                       "modelData.name, boxRef.width, boxRef.height)")));
     QVERIFY(source.contains(
         QStringLiteral("if (resizeHandle.boxRef.perspectiveActive)")));
     QVERIFY(source.contains(QStringLiteral(
@@ -1649,8 +1652,7 @@ private slots:
         source.mid(resizeStart, rotateUse - resizeStart);
 
     QVERIFY(resizeSource.contains(QStringLiteral(
-        "x: rootWindow.visualHandlePosition(boxRef.boxModel, modelData.name, "
-        "boxRef.width, boxRef.height).x - width / 2")));
+        "x: visualPosition.x - width / 2")));
     QVERIFY(resizeSource.contains(QStringLiteral(
         "const point = mapToItem(canvasItem, mouse.x, mouse.y)")));
     const qsizetype perspectiveBranch = resizeSource.indexOf(
@@ -1749,8 +1751,9 @@ private slots:
     QVERIFY(rotateUse > resizeStart);
     QVERIFY(source.mid(resizeStart, rotateUse - resizeStart)
                 .contains(QStringLiteral(
+                    "readonly property var visualPosition: "
                     "rootWindow.visualHandlePosition(boxRef.boxModel, "
-                    "modelData.name, boxRef.width, boxRef.height).x")));
+                    "modelData.name, boxRef.width, boxRef.height)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         source.mid(resizeStart, rotateUse - resizeStart),
         QStringLiteral("width: rootWindow.handleSize(); height: width; radius: "
