@@ -52,8 +52,6 @@ public:
   static bool naturalLess(const std::filesystem::path &a,
                           const std::filesystem::path &b);
   static std::string lower(std::string value);
-  static std::vector<TextPreset> defaultTextPresets();
-  static bool isDefaultTextPresetName(const std::string &name);
 
 private:
   static bool isImagePath(const std::filesystem::path &path);

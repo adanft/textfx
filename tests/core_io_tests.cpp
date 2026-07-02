@@ -337,7 +337,6 @@ TEST_CASE("Missing project presets returns no presets without writing a file") {
   CHECK_FALSE(std::filesystem::exists(ProjectStore(folder).presetsPath()));
   CHECK(document.presets().empty());
   CHECK(projectPresets.empty());
-  CHECK(ProjectStore::defaultTextPresets().empty());
   std::filesystem::remove_all(folder);
 }
 

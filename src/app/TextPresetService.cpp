@@ -1,7 +1,5 @@
 #include "app/TextPresetService.h"
 
-#include "core/ProjectStore.h"
-
 #include <algorithm>
 #include <utility>
 
@@ -76,8 +74,7 @@ bool TextPresetService::renameSelectedPreset(
   const auto oldName =
       presets.at(static_cast<std::size_t>(selectedPresetIndex)).name;
   const auto newName = cleanPresetName(name);
-  if (newName.empty() || ProjectStore::isDefaultTextPresetName(oldName) ||
-      ProjectStore::isDefaultTextPresetName(newName))
+  if (newName.empty())
     return false;
   if (std::ranges::any_of(presets, [&](const TextPreset &item) {
         return item.name == newName;
@@ -101,8 +98,6 @@ bool TextPresetService::deleteSelectedPreset(
 
   const auto name =
       presets.at(static_cast<std::size_t>(selectedPresetIndex)).name;
-  if (ProjectStore::isDefaultTextPresetName(name))
-    return false;
 
   const auto oldSize = projectPresets.size();
   std::erase_if(projectPresets,

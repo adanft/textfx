@@ -261,12 +261,4 @@ std::string ProjectStore::lower(std::string value) {
   return value;
 }
 
-std::vector<TextPreset> ProjectStore::defaultTextPresets() {
-  return {};
-}
-
-bool ProjectStore::isDefaultTextPresetName(const std::string & /*name*/) {
-  return false;
-}
-
 } // namespace textfx

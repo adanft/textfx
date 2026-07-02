@@ -1171,13 +1171,8 @@ private slots:
         QStringLiteral("readonly property bool hasSelectedPreset: "
                        "selectedPresetIndex >= 0 && "
                        "selectedPresetIndex < presetCount")));
-    QVERIFY(source.contains(
-        QStringLiteral("readonly property var selectedPreset: "
-                       "hasSelectedPreset ? editor.presets[selectedPresetIndex] "
-                       ": null")));
-    QVERIFY(source.contains(
-        QStringLiteral("readonly property bool selectedPresetIsDefault: "
-                       "selectedPreset ? selectedPreset.isDefault : false")));
+    QVERIFY(!source.contains(QStringLiteral("selectedPresetIsDefault")));
+    QVERIFY(!source.contains(QStringLiteral("selectedPreset.isDefault")));
     QVERIFY(presetsSource.contains(
         QStringLiteral("enabled: textPresetsSection.sectionReady")));
     QVERIFY(sourceContainsIgnoringWhitespace(

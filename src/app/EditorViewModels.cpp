@@ -1,8 +1,6 @@
 #include "app/EditorViewModels.h"
 
 #include "app/BoxRenderState.h"
-#include "core/ProjectStore.h"
-
 namespace textfx::EditorViewModels {
 namespace {
 QString toQString(const std::string &value) { return QString::fromStdString(value); }
@@ -78,8 +76,7 @@ QVariantList layerList(const std::vector<TextBox> &boxes) {
 QVariantMap presetMap(const TextPreset &preset) {
   return {{"name", toQString(preset.name)},
           {"fontFamily", toQString(preset.style.fontFamily)},
-          {"fontSize", preset.style.fontSize},
-          {"isDefault", ProjectStore::isDefaultTextPresetName(preset.name)}};
+          {"fontSize", preset.style.fontSize}};
 }
 
 QVariantList presetList(const std::vector<TextPreset> &presets) {

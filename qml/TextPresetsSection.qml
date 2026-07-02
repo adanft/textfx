@@ -10,8 +10,6 @@ ColumnLayout {
     readonly property int presetCount: editor && editor.presets ? editor.presets.length : 0
     readonly property int selectedPresetIndex: editor ? editor.selectedPresetIndex : -1
     readonly property bool hasSelectedPreset: selectedPresetIndex >= 0 && selectedPresetIndex < presetCount
-    readonly property var selectedPreset: hasSelectedPreset ? editor.presets[selectedPresetIndex] : null
-    readonly property bool selectedPresetIsDefault: selectedPreset ? selectedPreset.isDefault : false
 
     signal textInputFocusChanged(bool active)
 
@@ -98,7 +96,7 @@ ColumnLayout {
 
                 Button {
                     text: qsTr("Rename")
-                    enabled: textPresetsSection.sectionReady && textPresetsSection.hasSelectedPreset && presetNameField.text.trim().length > 0 && !textPresetsSection.selectedPresetIsDefault
+                    enabled: textPresetsSection.sectionReady && textPresetsSection.hasSelectedPreset && presetNameField.text.trim().length > 0
                     onClicked: {
                         textPresetsSection.editor.renameSelectedPreset(presetNameField.text);
                         presetNameField.text = "";
@@ -107,7 +105,7 @@ ColumnLayout {
 
                 Button {
                     text: qsTr("Delete")
-                    enabled: textPresetsSection.sectionReady && textPresetsSection.hasSelectedPreset && !textPresetsSection.selectedPresetIsDefault
+                    enabled: textPresetsSection.sectionReady && textPresetsSection.hasSelectedPreset
                     onClicked: textPresetsSection.editor.deleteSelectedPreset()
                 }
 
