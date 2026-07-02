@@ -24,6 +24,7 @@ struct BoxRenderState {
   bool bold = false;
   bool italic = false;
   bool uppercase = false;
+  bool lowercase = false;
   int alignment = 0;
   bool outline = false;
   QString outlineColor;

@@ -49,6 +49,7 @@ BoxRenderState mapBoxRenderState(const TextBox &box, int index) {
       .bold = box.style.bold,
       .italic = box.style.italic,
       .uppercase = box.style.uppercase,
+      .lowercase = box.style.lowercase && !box.style.uppercase,
       .alignment = static_cast<int>(box.style.alignment),
       .outline = box.effects.outlineEnabled,
       .outlineColor = toQString(box.effects.outlineColor),

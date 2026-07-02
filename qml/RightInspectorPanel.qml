@@ -79,6 +79,8 @@ Pane {
 
         ColumnLayout {
             width: rightPanelScroll.availableWidth
+            // Keep the layout at least viewport-tall so Layers can consume spare vertical space.
+            height: Math.max(implicitHeight, rightPanelScroll.availableHeight)
             spacing: 8
 
             ColumnLayout {
@@ -158,6 +160,11 @@ Pane {
                             Button {
                                 text: qsTr("Previous")
                                 enabled: rightInspectorPanel.editor.canGoPrevious
+                                display: AbstractButton.IconOnly
+                                icon.source: "qrc:/qt/qml/TextFX/assets/icons/flat/arrow-left.svg"
+                                icon.width: 20
+                                icon.height: 20
+                                icon.color: !enabled ? palette.mid : palette.buttonText
                                 onClicked: rightInspectorPanel.editor.previousPage()
                             }
 
@@ -165,6 +172,11 @@ Pane {
                                 objectName: "rightInspectorNextPageButton"
                                 text: qsTr("Next")
                                 enabled: rightInspectorPanel.editor.canGoNext
+                                display: AbstractButton.IconOnly
+                                icon.source: "qrc:/qt/qml/TextFX/assets/icons/flat/arrow-right.svg"
+                                icon.width: 20
+                                icon.height: 20
+                                icon.color: !enabled ? palette.mid : palette.buttonText
                                 onClicked: rightInspectorPanel.editor.nextPage()
                             }
 
@@ -593,58 +605,92 @@ Pane {
                 Layout.fillHeight: true
                 enabled: sectionReady
 
-                Label {
-                    text: qsTr("Layers")
-                    font.bold: true
-                    enabled: layersSection.sectionReady
-                }
-
-                GroupBox {
+                RowLayout {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
+
+                    Label {
+                        text: qsTr("Layers")
+                        font.bold: true
+                        enabled: layersSection.sectionReady
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignRight
+                        text: rightInspectorPanel.editor.layers.length
+                        enabled: layersSection.sectionReady
+                    }
+
+                }
+
+                ColumnLayout {
+                    id: layersContent
+
+                    readonly property real minimumListHeight: 200
+
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    Layout.minimumHeight: layersControls.implicitHeight + spacing + minimumListHeight
                     Layout.fillHeight: true
+                    spacing: 6
                     enabled: layersSection.sectionReady
 
-                    ColumnLayout {
-                        anchors.fill: parent
+                    Flow {
+                        id: layersControls
+
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
                         spacing: 6
 
-                        Flow {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            spacing: 6
-
-                            Button {
-                                objectName: "rightInspectorLayerUpButton"
-                                text: qsTr("Up")
-                                enabled: rightInspectorPanel.editor.selectedIndex >= 0 && rightInspectorPanel.editor.selectedIndex < rightInspectorPanel.editor.boxCount - 1
-                                onClicked: rightInspectorPanel.editor.moveLayer(rightInspectorPanel.editor.selectedIndex + 1)
-                            }
-
-                            Button {
-                                objectName: "rightInspectorLayerDownButton"
-                                text: qsTr("Down")
-                                enabled: rightInspectorPanel.editor.selectedIndex > 0
-                                onClicked: rightInspectorPanel.editor.moveLayer(rightInspectorPanel.editor.selectedIndex - 1)
-                            }
-
+                        Button {
+                            objectName: "rightInspectorLayerUpButton"
+                            text: qsTr("Up")
+                            enabled: rightInspectorPanel.editor.selectedIndex >= 0 && rightInspectorPanel.editor.selectedIndex < rightInspectorPanel.editor.boxCount - 1
+                            display: AbstractButton.IconOnly
+                            icon.source: "qrc:/qt/qml/TextFX/assets/icons/flat/arrow-up.svg"
+                            icon.width: 20
+                            icon.height: 20
+                            icon.color: !enabled ? palette.mid : palette.buttonText
+                            onClicked: rightInspectorPanel.editor.moveLayer(rightInspectorPanel.editor.selectedIndex + 1)
                         }
+
+                        Button {
+                            objectName: "rightInspectorLayerDownButton"
+                            text: qsTr("Down")
+                            enabled: rightInspectorPanel.editor.selectedIndex > 0
+                            display: AbstractButton.IconOnly
+                            icon.source: "qrc:/qt/qml/TextFX/assets/icons/flat/arrow-down.svg"
+                            icon.width: 20
+                            icon.height: 20
+                            icon.color: !enabled ? palette.mid : palette.buttonText
+                            onClicked: rightInspectorPanel.editor.moveLayer(rightInspectorPanel.editor.selectedIndex - 1)
+                        }
+
+                    }
+
+                    GroupBox {
+                        id: layersListFrame
+
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        Layout.preferredHeight: layersContent.minimumListHeight
+                        Layout.fillHeight: true
 
                         ListView {
                             objectName: "rightInspectorLayersListView"
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            Layout.preferredHeight: 160
-                            Layout.fillHeight: true
+                            anchors.fill: parent
                             clip: true
                             model: rightInspectorPanel.editor.layers
 
                             delegate: ItemDelegate {
                                 id: layerDelegate
 
+                                readonly property string layerText: String(modelData.text).replace(/\s+/g, " ").trim()
+
                                 objectName: "rightInspectorLayerDelegate"
                                 width: ListView.view.width
-                                text: qsTr("Layer %1 — %2").arg(modelData.index + 1).arg(modelData.text.length > 0 ? modelData.text : qsTr("Text"))
+                                text: qsTr("Layer %1 — %2").arg(modelData.index + 1).arg(layerText.length > 0 ? layerText : qsTr("Text"))
                                 highlighted: modelData.index === rightInspectorPanel.editor.selectedIndex
                                 onClicked: rightInspectorPanel.editor.selectBox(modelData.index)
 
@@ -653,6 +699,7 @@ Pane {
                                     font: layerDelegate.font
                                     enabled: layerDelegate.enabled
                                     elide: Text.ElideRight
+                                    maximumLineCount: 1
                                     verticalAlignment: Text.AlignVCenter
                                 }
 
@@ -661,6 +708,7 @@ Pane {
                         }
 
                     }
+
 
                 }
 

@@ -32,6 +32,11 @@ std::string readText(const std::filesystem::path &path) {
   output << input.rdbuf();
   return output.str();
 }
+
+void writeText(const std::filesystem::path &path, const std::string &text) {
+  std::filesystem::create_directories(path.parent_path());
+  std::ofstream(path) << text;
+}
 } // namespace
 
 TEST_CASE("Project pages are naturally sorted") {
@@ -161,10 +166,42 @@ TEST_CASE("Compatible page save preserves MVP editable fields") {
   CHECK(loadedBox.bounds.w == 30.0);
   CHECK(loadedBox.style.fontFamily == "TextFX Custom Missing Family");
   CHECK(loadedBox.style.alignment == TextAlignment::Center);
+  CHECK(loadedBox.style.lowercase == false);
   CHECK(loadedBox.effects.shadowBlurSize == 7);
   CHECK(loadedBox.effects.gradientColorB == "0000ffff");
   CHECK(loadedBox.effects.pathPoints.size() == 3);
   CHECK(loadedBox.effects.perspectiveNw.x == 1.0);
+  std::filesystem::remove_all(folder);
+}
+
+TEST_CASE("Compatible page load defaults missing lowercase to false") {
+  const auto folder = makeTempDir("textfx-compatible-lowercase-default-");
+  const auto page = folder / "001.png";
+  touch(page);
+  std::filesystem::create_directories(folder / ".textfx");
+  writeText(folder / ".textfx/001.json",
+            R"({"format":"textfx.page-boxes.v1","page":"001.png","boxes":[{"text":"Hello","x":1,"y":2,"w":30,"h":40,"uppercase":false}]})");
+
+  DocumentModel loaded;
+  REQUIRE(ProjectStore(folder).loadPage(page, loaded));
+  REQUIRE(loaded.textBoxes().size() == 1);
+  CHECK_FALSE(loaded.textBoxes().front().style.lowercase);
+  std::filesystem::remove_all(folder);
+}
+
+TEST_CASE("Compatible page load prefers uppercase when both case transforms are present") {
+  const auto folder = makeTempDir("textfx-compatible-case-conflict-");
+  const auto page = folder / "001.png";
+  touch(page);
+  std::filesystem::create_directories(folder / ".textfx");
+  writeText(folder / ".textfx/001.json",
+            R"({"format":"textfx.page-boxes.v1","page":"001.png","boxes":[{"text":"Hello","x":1,"y":2,"w":30,"h":40,"uppercase":true,"lowercase":true}]})");
+
+  DocumentModel loaded;
+  REQUIRE(ProjectStore(folder).loadPage(page, loaded));
+  REQUIRE(loaded.textBoxes().size() == 1);
+  CHECK(loaded.textBoxes().front().style.uppercase);
+  CHECK_FALSE(loaded.textBoxes().front().style.lowercase);
   std::filesystem::remove_all(folder);
 }
 

@@ -896,6 +896,7 @@ private slots:
     editor.setSelectedBold(true);
     editor.setSelectedItalic(true);
     editor.setSelectedUppercase(true);
+    editor.setSelectedLowercase(true);
     editor.setSelectedAlignment(1);
     editor.setSelectedLineSpacing(12);
     editor.setSelectedLetterSpacing(3);
@@ -913,12 +914,30 @@ private slots:
              QStringLiteral("ff00aaff"));
     QVERIFY(box.value(QStringLiteral("bold")).toBool());
     QVERIFY(box.value(QStringLiteral("italic")).toBool());
-    QVERIFY(box.value(QStringLiteral("uppercase")).toBool());
+    QVERIFY(!box.value(QStringLiteral("uppercase")).toBool());
+    QVERIFY(box.value(QStringLiteral("lowercase")).toBool());
     QCOMPARE(box.value(QStringLiteral("alignment")).toInt(), 1);
     QCOMPARE(box.value(QStringLiteral("lineSpacing")).toInt(), 12);
     QCOMPARE(box.value(QStringLiteral("letterSpacing")).toInt(), 3);
     QVERIFY(editor.dirty());
   }
+
+  void uppercaseAndLowercaseAreMutuallyExclusive() {
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(1, 2, 80, 40);
+
+    editor.setSelectedLowercase(true);
+    auto box = editor.boxes().at(0).toMap();
+    QVERIFY(box.value(QStringLiteral("lowercase")).toBool());
+    QVERIFY(!box.value(QStringLiteral("uppercase")).toBool());
+
+    editor.setSelectedUppercase(true);
+    box = editor.boxes().at(0).toMap();
+    QVERIFY(box.value(QStringLiteral("uppercase")).toBool());
+    QVERIFY(!box.value(QStringLiteral("lowercase")).toBool());
+  }
+
   void effectControlsUpdateSelectedBox() {
     EditorController editor;
     editor.newDocument();
@@ -1081,7 +1100,7 @@ private slots:
     EditorController editor;
     editor.openProject(dir.path());
     editor.createTextBox(1, 2, 80, 40);
-    editor.setSelectedUppercase(true);
+    editor.setSelectedLowercase(true);
     editor.setSelectedAlignment(2);
     editor.setSelectedLineSpacing(9);
     editor.setSelectedLetterSpacing(4);
@@ -1101,7 +1120,8 @@ private slots:
             .toArray()
             .at(0)
             .toObject();
-    QVERIFY(box.value(QStringLiteral("uppercase")).toBool());
+    QVERIFY(box.value(QStringLiteral("lowercase")).toBool());
+    QVERIFY(!box.value(QStringLiteral("uppercase")).toBool());
     QCOMPARE(box.value(QStringLiteral("alignment")).toInt(), 2);
     QCOMPARE(box.value(QStringLiteral("line_spacing")).toInt(), 9);
     QCOMPARE(box.value(QStringLiteral("letter_spacing")).toInt(), 4);
@@ -1222,20 +1242,30 @@ private slots:
                          {QStringLiteral("properties"),
                           QJsonObject{{QStringLiteral("font_family"),
                                        QStringLiteral("Inter")},
-                                      {QStringLiteral("font_size"), 24}}}}}}});
+                                      {QStringLiteral("font_size"), 24},
+                                      {QStringLiteral("lowercase"), true}}}}}}});
 
     EditorController editor;
     editor.openProject(dir.path());
     editor.createTextBox(1, 2, 80, 40);
     editor.selectPreset(0);
 
+    auto *model = qobject_cast<QAbstractItemModel *>(editor.boxesModel());
+    QVERIFY(model);
+    QSignalSpy dataChanged(model, &QAbstractItemModel::dataChanged);
+
     QVERIFY(editor.applySelectedPreset());
+    QCOMPARE(dataChanged.count(), 1);
+    const auto changedRoles = dataChanged.takeLast().at(2).value<QList<int>>();
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxLowercase")));
     QCOMPARE(editor.boxes()
                  .first()
                  .toMap()
                  .value(QStringLiteral("fontFamily"))
                  .toString(),
              QStringLiteral("Inter"));
+    QVERIFY(model->data(model->index(0, 0), roleForName(*model, "boxLowercase"))
+                .toBool());
     editor.setSelectedFontFamily(QStringLiteral("Custom Bubble"));
     QVERIFY(editor.updateSelectedPreset());
 

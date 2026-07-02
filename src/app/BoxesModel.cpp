@@ -37,6 +37,7 @@ QVariant BoxesModel::data(const QModelIndex &index, int role) const {
   case BoldRole: return state.bold;
   case ItalicRole: return state.italic;
   case UppercaseRole: return state.uppercase;
+  case LowercaseRole: return state.lowercase;
   case AlignmentRole: return state.alignment;
   case OutlineRole: return state.outline;
   case OutlineColorRole: return state.outlineColor;
@@ -81,6 +82,7 @@ QHash<int, QByteArray> BoxesModel::roleNames() const {
           {BoldRole, "boxBold"},
           {ItalicRole, "boxItalic"},
           {UppercaseRole, "boxUppercase"},
+          {LowercaseRole, "boxLowercase"},
           {AlignmentRole, "boxAlignment"},
           {OutlineRole, "boxOutline"},
           {OutlineColorRole, "boxOutlineColor"},

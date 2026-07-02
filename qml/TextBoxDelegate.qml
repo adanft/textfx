@@ -21,6 +21,7 @@ Rectangle {
     required property bool boxBold
     required property bool boxItalic
     required property bool boxUppercase
+    required property bool boxLowercase
     required property int boxAlignment
     required property bool boxOutline
     required property string boxOutlineColor
@@ -67,6 +68,7 @@ Rectangle {
         bold: boxBold,
         italic: boxItalic,
         uppercase: boxUppercase,
+        lowercase: boxLowercase,
         alignment: boxAlignment,
         outline: boxOutline,
         outlineColor: boxOutlineColor,
@@ -99,7 +101,7 @@ Rectangle {
     readonly property bool textOverflow: boxOutlinedText.overflow
 
     function modelPreviewText() {
-        return boxModel.uppercase ? String(boxModel.text).toUpperCase() : boxModel.text;
+        return boxModel.uppercase ? String(boxModel.text).toUpperCase() : boxModel.lowercase ? String(boxModel.text).toLowerCase() : boxModel.text;
     }
 
     objectName: "textBoxDelegate"

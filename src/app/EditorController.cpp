@@ -80,6 +80,7 @@ QList<int> allBoxRoles() {
           Role::BoldRole,
           Role::ItalicRole,
           Role::UppercaseRole,
+          Role::LowercaseRole,
           Role::AlignmentRole,
           Role::OutlineRole,
           Role::OutlineColorRole,
@@ -468,7 +469,13 @@ void EditorController::setSelectedItalic(bool enabled) {
 void EditorController::setSelectedUppercase(bool enabled) {
   editSelectedBox(
       [&](TextBox &box) { TextBoxEditingService::setUppercase(box, enabled); },
-      {Role::UppercaseRole});
+      {Role::UppercaseRole, Role::LowercaseRole});
+}
+
+void EditorController::setSelectedLowercase(bool enabled) {
+  editSelectedBox(
+      [&](TextBox &box) { TextBoxEditingService::setLowercase(box, enabled); },
+      {Role::LowercaseRole, Role::UppercaseRole});
 }
 
 void EditorController::setSelectedAlignment(int alignment) {

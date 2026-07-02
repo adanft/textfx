@@ -74,6 +74,20 @@ target_link_libraries(textfx_core
         Qt6::Quick
 )
 
+set(TEXTFX_ICON_RESOURCES
+    assets/icons/flat/align-center.svg
+    assets/icons/flat/align-left.svg
+    assets/icons/flat/align-right.svg
+    assets/icons/flat/arrow-down.svg
+    assets/icons/flat/arrow-left.svg
+    assets/icons/flat/arrow-right.svg
+    assets/icons/flat/arrow-up.svg
+    assets/icons/flat/bold.svg
+    assets/icons/flat/italic.svg
+    assets/icons/flat/lowercase.svg
+    assets/icons/flat/uppercase.svg
+)
+
 qt_add_qml_module(textfx
     URI TextFX
     VERSION 1.0
@@ -95,6 +109,8 @@ qt_add_qml_module(textfx
         qml/TextBoxDelegate.qml
         qml/TextStyleButton.qml
         qml/ViewportMetrics.qml
+    RESOURCES
+        ${TEXTFX_ICON_RESOURCES}
 )
 
 target_link_libraries(textfx
@@ -137,6 +153,13 @@ if(BUILD_TESTING)
         QT_QUICK_BACKEND=software
         QSG_RHI_BACKEND=software
     )
+
+    function(textfx_add_test_icon_resources target)
+        qt_add_resources(${target} "${target}_icon_resources"
+            PREFIX "/qt/qml/TextFX"
+            FILES ${TEXTFX_ICON_RESOURCES}
+        )
+    endfunction()
 
     add_executable(textfx_serialization_check
         tests/serialization_check.cpp
@@ -211,6 +234,7 @@ if(BUILD_TESTING)
             TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
             TEXTFX_TESTING=1
         )
+        textfx_add_test_icon_resources(textfx_qt_smoke_tests)
 
         add_test(NAME textfx_qt_smoke_tests COMMAND textfx_qt_smoke_tests)
         set_tests_properties(textfx_qt_smoke_tests PROPERTIES
@@ -267,6 +291,7 @@ if(BUILD_TESTING)
             TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
             TEXTFX_TESTING=1
         )
+        textfx_add_test_icon_resources(textfx_qml_shell_smoke_tests)
 
         add_test(NAME textfx_qml_shell_smoke_tests COMMAND textfx_qml_shell_smoke_tests)
         set_tests_properties(textfx_qml_shell_smoke_tests PROPERTIES
@@ -297,6 +322,7 @@ if(BUILD_TESTING)
             TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
             TEXTFX_TESTING=1
         )
+        textfx_add_test_icon_resources(textfx_qml_interaction_smoke_tests)
 
         add_test(NAME textfx_qml_interaction_smoke_tests COMMAND textfx_qml_interaction_smoke_tests)
         set_tests_properties(textfx_qml_interaction_smoke_tests PROPERTIES
@@ -327,6 +353,7 @@ if(BUILD_TESTING)
             TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
             TEXTFX_TESTING=1
         )
+        textfx_add_test_icon_resources(textfx_qml_text_box_delegate_smoke_tests)
 
         add_test(NAME textfx_qml_text_box_delegate_smoke_tests COMMAND textfx_qml_text_box_delegate_smoke_tests)
         set_tests_properties(textfx_qml_text_box_delegate_smoke_tests PROPERTIES

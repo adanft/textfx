@@ -28,6 +28,7 @@ struct TextStyle {
   bool bold = false;
   bool italic = false;
   bool uppercase = false;
+  bool lowercase = false;
   TextAlignment alignment = TextAlignment::Left;
 };
 

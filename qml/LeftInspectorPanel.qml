@@ -17,6 +17,7 @@ Pane {
         bold: selectedBoxValue("boxBold", false),
         italic: selectedBoxValue("boxItalic", false),
         uppercase: selectedBoxValue("boxUppercase", false),
+        lowercase: selectedBoxValue("boxLowercase", false),
         alignment: selectedBoxValue("boxAlignment", 0)
     })
     property var fontFamilyOptionsProvider: function(selected) {
@@ -193,24 +194,31 @@ Pane {
 
                             TextStyleButton {
                                 objectName: "leftInspectorBoldButton"
-                                text: String.fromCodePoint(983652)
+                                iconSource: "qrc:/qt/qml/TextFX/assets/icons/flat/bold.svg"
                                 accessibleLabel: qsTr("Bold")
                                 checked: leftInspectorPanel.selectedBoxData.bold
                                 onClicked: leftInspectorPanel.editor.setSelectedBold(checked)
                             }
 
                             TextStyleButton {
-                                text: String.fromCodePoint(983671)
+                                iconSource: "qrc:/qt/qml/TextFX/assets/icons/flat/italic.svg"
                                 accessibleLabel: qsTr("Italic")
                                 checked: leftInspectorPanel.selectedBoxData.italic
                                 onClicked: leftInspectorPanel.editor.setSelectedItalic(checked)
                             }
 
                             TextStyleButton {
-                                text: String.fromCodePoint(985910)
+                                iconSource: "qrc:/qt/qml/TextFX/assets/icons/flat/uppercase.svg"
                                 accessibleLabel: qsTr("Uppercase")
                                 checked: leftInspectorPanel.selectedBoxData.uppercase
                                 onClicked: leftInspectorPanel.editor.setSelectedUppercase(checked)
+                            }
+
+                            TextStyleButton {
+                                iconSource: "qrc:/qt/qml/TextFX/assets/icons/flat/lowercase.svg"
+                                accessibleLabel: qsTr("Lowercase")
+                                checked: leftInspectorPanel.selectedBoxData.lowercase
+                                onClicked: leftInspectorPanel.editor.setSelectedLowercase(checked)
                             }
 
                         }
@@ -225,21 +233,21 @@ Pane {
                             spacing: 6
 
                             TextStyleButton {
-                                text: String.fromCodePoint(983650)
+                                iconSource: "qrc:/qt/qml/TextFX/assets/icons/flat/align-left.svg"
                                 accessibleLabel: qsTr("Align Left")
                                 checked: leftInspectorPanel.selectedBoxData.alignment === 0
                                 onClicked: leftInspectorPanel.editor.setSelectedAlignment(0)
                             }
 
                             TextStyleButton {
-                                text: String.fromCodePoint(983648)
+                                iconSource: "qrc:/qt/qml/TextFX/assets/icons/flat/align-center.svg"
                                 accessibleLabel: qsTr("Align Center")
                                 checked: leftInspectorPanel.selectedBoxData.alignment === 1
                                 onClicked: leftInspectorPanel.editor.setSelectedAlignment(1)
                             }
 
                             TextStyleButton {
-                                text: String.fromCodePoint(983651)
+                                iconSource: "qrc:/qt/qml/TextFX/assets/icons/flat/align-right.svg"
                                 accessibleLabel: qsTr("Align Right")
                                 checked: leftInspectorPanel.selectedBoxData.alignment === 2
                                 onClicked: leftInspectorPanel.editor.setSelectedAlignment(2)
@@ -395,7 +403,7 @@ Pane {
 
                 }
 
-                Frame {
+                GroupBox {
                     id: pageTextsFrame
 
                     readonly property real minimumListHeight: 200
@@ -440,12 +448,6 @@ Pane {
 
                         }
 
-                    }
-
-                    background: Rectangle {
-                        color: pageTextsFrame.palette.base
-                        border.color: pageTextsFrame.palette.mid
-                        border.width: 1
                     }
 
                 }

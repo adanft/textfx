@@ -91,8 +91,9 @@ void fillShadow(QPainter &painter, const QPainterPath &path,
 }
 
 TextLayoutOptions layoutOptionsFor(const TextBox &box, qreal inset) {
-  return {box.style.uppercase ? QString::fromStdString(box.text).toUpper()
-                              : QString::fromStdString(box.text),
+  const QString text = QString::fromStdString(box.text);
+  return {box.style.uppercase ? text.toUpper()
+                              : box.style.lowercase ? text.toLower() : text,
           box.bounds.w,
           box.bounds.h,
           inset,

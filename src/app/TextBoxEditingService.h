@@ -14,6 +14,7 @@ public:
   static void setBold(TextBox &box, bool enabled);
   static void setItalic(TextBox &box, bool enabled);
   static void setUppercase(TextBox &box, bool enabled);
+  static void setLowercase(TextBox &box, bool enabled);
   static void setAlignment(TextBox &box, int alignment);
   static void setLineSpacing(TextBox &box, int spacing);
   static void setLetterSpacing(TextBox &box, int spacing);

@@ -28,6 +28,7 @@ public:
     BoldRole,
     ItalicRole,
     UppercaseRole,
+    LowercaseRole,
     AlignmentRole,
     OutlineRole,
     OutlineColorRole,

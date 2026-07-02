@@ -31,6 +31,7 @@ QVariantMap textBoxMap(const TextBox &box, int index) {
       {"bold", state.bold},
       {"italic", state.italic},
       {"uppercase", state.uppercase},
+      {"lowercase", state.lowercase},
       {"alignment", state.alignment},
       {"outline", state.outline},
       {"outlineColor", state.outlineColor},

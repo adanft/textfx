@@ -136,6 +136,7 @@ int main(int argc, char **argv) {
   mappedBox.style.bold = true;
   mappedBox.style.italic = true;
   mappedBox.style.uppercase = true;
+  mappedBox.style.lowercase = true;
   mappedBox.style.alignment = TextAlignment::Right;
   mappedBox.effects.outlineEnabled = true;
   mappedBox.effects.outlineColor = "111111ff";
@@ -168,7 +169,7 @@ int main(int argc, char **argv) {
       renderState.color != QStringLiteral("abcdef99") ||
       renderState.lineSpacing != 6 || renderState.letterSpacing != 2 ||
       !renderState.bold || !renderState.italic || !renderState.uppercase ||
-      renderState.alignment != 2 || !renderState.outline ||
+      renderState.lowercase || renderState.alignment != 2 || !renderState.outline ||
       renderState.outlineColor != QStringLiteral("111111ff") ||
       renderState.outlineSize != 4 || !renderState.blur ||
       renderState.blurSize != 5 || !renderState.shadow ||
@@ -424,6 +425,34 @@ int main(int argc, char **argv) {
     std::cerr << "Export text is too small or shifted: bounds="
               << textBounds.x() << ',' << textBounds.y() << ' '
               << textBounds.width() << 'x' << textBounds.height() << '\n';
+    return 1;
+  }
+
+  TextBox lowercaseBox;
+  lowercaseBox.text = "MIXED CASE";
+  lowercaseBox.bounds = {20.0, 30.0, 180.0, 70.0};
+  lowercaseBox.style.fontSize = 32;
+  lowercaseBox.style.textColor = "000000ff";
+  lowercaseBox.style.lowercase = true;
+  DocumentModel lowercaseDocument;
+  lowercaseDocument.addTextBox(lowercaseBox);
+
+  TextBox explicitLowercaseBox = lowercaseBox;
+  explicitLowercaseBox.text = "mixed case";
+  explicitLowercaseBox.style.lowercase = false;
+  DocumentModel explicitLowercaseDocument;
+  explicitLowercaseDocument.addTextBox(explicitLowercaseBox);
+
+  const auto lowercasePath = tempPath / "lowercase-export.png";
+  const auto explicitLowercasePath = tempPath / "explicit-lowercase-export.png";
+  const QImage lowercaseExport =
+      exportedImage(graph, lowercaseDocument, pagePath, lowercasePath);
+  const QImage explicitLowercaseExport = exportedImage(
+      graph, explicitLowercaseDocument, pagePath, explicitLowercasePath);
+  if (lowercaseExport.isNull() || explicitLowercaseExport.isNull() ||
+      imagesDiffer(lowercaseExport, explicitLowercaseExport)) {
+    std::cerr << "Expected lowercase export to render the same pixels as "
+                 "explicit lowercase text\n";
     return 1;
   }
 

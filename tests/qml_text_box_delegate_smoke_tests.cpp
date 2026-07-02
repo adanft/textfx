@@ -917,6 +917,47 @@ private slots:
         QStringLiteral("MIXEDX"));
   }
 
+  void qmlLowercaseEditPreviewAndModelStayInSync() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 220, 90);
+    editor.updateSelectedText(QStringLiteral("MIXED"));
+    editor.setSelectedLowercase(true);
+    editor.beginTextEdit();
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QObject *textAreaObject = nullptr;
+    QObject *outlinedObject = nullptr;
+    QTRY_VERIFY(textAreaObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxTextArea")));
+    QTRY_VERIFY(outlinedObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxOutlinedText")));
+    QTRY_VERIFY(textAreaObject->property("visible").toBool());
+    QTRY_VERIFY(textAreaObject->property("activeFocus").toBool());
+    QCOMPARE(textAreaObject->property("text").toString(),
+             QStringLiteral("mixed"));
+    QCOMPARE(outlinedObject->property("text").toString(),
+             QStringLiteral("mixed"));
+
+    textAreaObject->setProperty("cursorPosition", 5);
+    typeText(window, u"x");
+    QTRY_COMPARE(outlinedObject->property("text").toString(),
+                 QStringLiteral("mixedx"));
+    QTRY_COMPARE(
+        editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
+        QStringLiteral("mixedx"));
+  }
+
   void qmlPerspectiveUsesLiveClippedRendererWithoutPreviewArtifact() {
     QTemporaryDir dir;
     QVERIFY(dir.isValid());

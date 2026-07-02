@@ -99,6 +99,7 @@ public:
   Q_INVOKABLE void setSelectedBold(bool enabled);
   Q_INVOKABLE void setSelectedItalic(bool enabled);
   Q_INVOKABLE void setSelectedUppercase(bool enabled);
+  Q_INVOKABLE void setSelectedLowercase(bool enabled);
   Q_INVOKABLE void setSelectedAlignment(int alignment);
   Q_INVOKABLE void setSelectedLineSpacing(int spacing);
   Q_INVOKABLE void setSelectedLetterSpacing(int spacing);

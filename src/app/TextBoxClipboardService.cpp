@@ -71,6 +71,9 @@ TextBox boxFromClipboardJson(const QJsonObject &object) {
   style.bold = boolFromJson(object, "bold", style.bold);
   style.italic = boolFromJson(object, "italic", style.italic);
   style.uppercase = boolFromJson(object, "uppercase", style.uppercase);
+  style.lowercase = boolFromJson(object, "lowercase", style.lowercase);
+  if (style.uppercase)
+    style.lowercase = false;
   style.alignment = static_cast<TextAlignment>(
       intFromJson(object, "alignment", static_cast<int>(style.alignment)));
 

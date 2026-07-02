@@ -553,7 +553,24 @@ private slots:
         rightPanelSource,
         QStringLiteral("Label { text: qsTr(\"Layers\"); font.bold: true; "
                        "enabled: layersSection.sectionReady }")));
-    QVERIFY(rightPanelSource.count(QStringLiteral("GroupBox {")) >= 4);
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("horizontalAlignment: Text.AlignRight; text: "
+                       "rightInspectorPanel.editor.layers.length; enabled: "
+                       "layersSection.sectionReady")));
+    QVERIFY(rightPanelSource.contains(QStringLiteral(
+        "icon.source: \"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-left.svg\"")));
+    QVERIFY(rightPanelSource.contains(QStringLiteral(
+        "icon.source: \"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-right.svg\"")));
+    QVERIFY(rightPanelSource.contains(QStringLiteral(
+        "icon.source: \"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-up.svg\"")));
+    QVERIFY(rightPanelSource.contains(QStringLiteral(
+        "icon.source: \"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-down.svg\"")));
+    QVERIFY(rightPanelSource.contains(QStringLiteral(
+        "icon.color: !enabled ? palette.mid : palette.buttonText")));
+    QVERIFY(rightPanelSource.count(
+                QStringLiteral("display: AbstractButton.IconOnly")) >= 4);
+    QVERIFY(rightPanelSource.count(QStringLiteral("GroupBox {")) >= 3);
     QVERIFY(rightPanelSource.count(QStringLiteral("Layout.minimumWidth: 0")) >=
             20);
     QVERIFY(sourceContainsIgnoringWhitespace(

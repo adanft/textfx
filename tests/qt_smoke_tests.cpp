@@ -806,7 +806,7 @@ private slots:
         QStringLiteral("TextFX Usable Family"));
   }
 
-  void qmlTextStyleControlsUseNerdFontIconButtons() {
+  void qmlTextStyleControlsUseSvgIconButtons() {
     QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
@@ -823,23 +823,44 @@ private slots:
              .contains(QStringLiteral("component TextStyleButton: Button")));
     QVERIFY(buttonSource.contains(QStringLiteral("Button {")));
     QVERIFY(buttonSource.contains(QStringLiteral("checkable: true")));
-    QVERIFY(
-        buttonSource.contains(QStringLiteral("property int buttonSize: 24")));
-    QVERIFY(buttonSource.contains(QStringLiteral("width: buttonSize")));
-    QVERIFY(buttonSource.contains(QStringLiteral("height: buttonSize")));
-    QVERIFY(buttonSource.contains(QStringLiteral("implicitWidth: buttonSize")));
-    QVERIFY(
-        buttonSource.contains(QStringLiteral("implicitHeight: buttonSize")));
     QVERIFY(buttonSource.contains(
-        QStringLiteral("Layout.preferredWidth: buttonSize")));
+        QStringLiteral("property int minimumButtonSize: 32")));
     QVERIFY(buttonSource.contains(
-        QStringLiteral("Layout.preferredHeight: buttonSize")));
+        QStringLiteral("Layout.minimumWidth: minimumButtonSize")));
+    QVERIFY(buttonSource.contains(
+        QStringLiteral("Layout.minimumHeight: minimumButtonSize")));
+    QVERIFY(buttonSource.contains(QStringLiteral("property url iconSource")));
+    QVERIFY(buttonSource.contains(QStringLiteral("display: AbstractButton.IconOnly")));
+    QVERIFY(buttonSource.contains(QStringLiteral("icon.source: iconSource")));
+    QVERIFY(buttonSource.contains(QStringLiteral("icon.width: 20")));
+    QVERIFY(buttonSource.contains(QStringLiteral("icon.height: 20")));
     QVERIFY(
         !buttonSource.contains(QStringLiteral("Layout.preferredWidth: 32")));
     QVERIFY(
         !buttonSource.contains(QStringLiteral("Layout.preferredWidth: 40")));
     QVERIFY(
-        source.contains(QStringLiteral("font.family: \"Symbols Nerd Font\"")));
+        !source.contains(QStringLiteral("font.family: \"Symbols Nerd Font\"")));
+    QVERIFY(source.contains(QStringLiteral("iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/bold.svg\"")));
+    QVERIFY(source.contains(QStringLiteral("iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/italic.svg\"")));
+    QVERIFY(source.contains(QStringLiteral("iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/uppercase.svg\"")));
+    QVERIFY(source.contains(QStringLiteral("iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/lowercase.svg\"")));
+    QVERIFY(source.contains(QStringLiteral("iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/align-left.svg\"")));
+    QVERIFY(source.contains(QStringLiteral("iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/align-center.svg\"")));
+    QVERIFY(source.contains(QStringLiteral("iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/align-right.svg\"")));
+    for (const QString iconPath : {
+             QStringLiteral(":/qt/qml/TextFX/assets/icons/flat/bold.svg"),
+             QStringLiteral(":/qt/qml/TextFX/assets/icons/flat/italic.svg"),
+             QStringLiteral(":/qt/qml/TextFX/assets/icons/flat/uppercase.svg"),
+             QStringLiteral(":/qt/qml/TextFX/assets/icons/flat/lowercase.svg"),
+             QStringLiteral(":/qt/qml/TextFX/assets/icons/flat/align-left.svg"),
+             QStringLiteral(":/qt/qml/TextFX/assets/icons/flat/align-center.svg"),
+             QStringLiteral(":/qt/qml/TextFX/assets/icons/flat/align-right.svg"),
+         }) {
+      QVERIFY2(QFile::exists(iconPath), qPrintable(iconPath));
+    }
+    QVERIFY(!source.contains(QStringLiteral("text: qsTr(\"B\")")));
+    QVERIFY(!source.contains(QStringLiteral("text: qsTr(\"I\")")));
+    QVERIFY(!source.contains(QStringLiteral("text: qsTr(\"Aa\")")));
     QVERIFY(
         source.contains(QStringLiteral("Accessible.name: accessibleLabel")));
     QVERIFY(source.contains(QStringLiteral("ToolTip.text: accessibleLabel")));
@@ -945,29 +966,32 @@ private slots:
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
+            "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/bold.svg\"; "
             "accessibleLabel: qsTr(\"Bold\"); checked: "
             "leftInspectorPanel.selectedBoxData.bold; onClicked: "
             "leftInspectorPanel.editor.setSelectedBold(checked)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
-            "text: String.fromCodePoint(983671); accessibleLabel: "
-            "qsTr(\"Italic\"); checked: "
+            "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/italic.svg\"; "
+            "accessibleLabel: qsTr(\"Italic\"); checked: "
             "leftInspectorPanel.selectedBoxData.italic; onClicked: "
             "leftInspectorPanel.editor.setSelectedItalic(checked)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
-            "text: String.fromCodePoint(985910); accessibleLabel: "
-            "qsTr(\"Uppercase\"); checked: "
+            "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/uppercase.svg\"; "
+            "accessibleLabel: qsTr(\"Uppercase\"); checked: "
             "leftInspectorPanel.selectedBoxData.uppercase; onClicked: "
             "leftInspectorPanel.editor.setSelectedUppercase(checked)")));
-    QVERIFY(!propertiesSource.contains(
-        QStringLiteral("Label { text: qsTr(\"Bold\") }")));
-    QVERIFY(!propertiesSource.contains(
-        QStringLiteral("Label { text: qsTr(\"Italic\") }")));
-    QVERIFY(!propertiesSource.contains(
-        QStringLiteral("Label { text: qsTr(\"Uppercase\") }")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        propertiesSource,
+        QStringLiteral(
+            "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/lowercase.svg\"; "
+            "accessibleLabel: qsTr(\"Lowercase\"); checked: "
+            "leftInspectorPanel.selectedBoxData.lowercase; onClicked: "
+            "leftInspectorPanel.editor.setSelectedLowercase(checked)")));
+    QVERIFY(!propertiesSource.contains(QStringLiteral("String.fromCodePoint(")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral("Label { text: qsTr(\"Paragraph\") }")));
@@ -990,7 +1014,7 @@ private slots:
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
-            "text: String.fromCodePoint(983650); accessibleLabel: qsTr(\"Align "
+            "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/align-left.svg\"; accessibleLabel: qsTr(\"Align "
             "Left\"); checked: "
             "leftInspectorPanel.selectedBoxData.alignment === 0; "
             "onClicked: "
@@ -998,7 +1022,7 @@ private slots:
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
-            "text: String.fromCodePoint(983648); accessibleLabel: qsTr(\"Align "
+            "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/align-center.svg\"; accessibleLabel: qsTr(\"Align "
             "Center\"); checked: "
             "leftInspectorPanel.selectedBoxData.alignment === 1; "
             "onClicked: "
@@ -1006,7 +1030,7 @@ private slots:
     QVERIFY(sourceContainsIgnoringWhitespace(
         propertiesSource,
         QStringLiteral(
-            "text: String.fromCodePoint(983651); accessibleLabel: qsTr(\"Align "
+            "iconSource: \"qrc:/qt/qml/TextFX/assets/icons/flat/align-right.svg\"; accessibleLabel: qsTr(\"Align "
             "Right\"); checked: "
             "leftInspectorPanel.selectedBoxData.alignment === 2; "
             "onClicked: "
@@ -1023,9 +1047,9 @@ private slots:
     QVERIFY(!buttonSource.contains(QStringLiteral("background:")));
     QVERIFY(!buttonSource.contains(QStringLiteral("contentItem:")));
     QVERIFY(!buttonSource.contains(QStringLiteral("indicator:")));
-    QVERIFY(!buttonSource.contains(QStringLiteral("color:")));
     QVERIFY(!buttonSource.contains(QStringLiteral("border.")));
-    QVERIFY(!buttonSource.contains(QStringLiteral("palette.")));
+    QVERIFY(buttonSource.contains(QStringLiteral("checked ? palette.accent : palette.buttonText")));
+    QVERIFY(buttonSource.contains(QStringLiteral("palette.buttonText")));
   }
 
   void qmlTextPresetsUseComboBoxSelector() {
@@ -1165,13 +1189,10 @@ private slots:
         pageTextsSource,
         QStringLiteral("Label { text: qsTr(\"Page Texts\"); font.bold: true; "
                        "enabled: pageTextsSection.sectionReady }")));
-    QVERIFY(pageTextsSource.contains(QStringLiteral("Frame {")));
+    QVERIFY(pageTextsSource.contains(QStringLiteral("GroupBox {")));
     QVERIFY(pageTextsSource.contains(QStringLiteral("id: pageTextsFrame")));
-    QVERIFY(sourceContainsIgnoringWhitespace(
-        pageTextsSource,
-        QStringLiteral(
-            "background: Rectangle { color: pageTextsFrame.palette.base; "
-            "border.color: pageTextsFrame.palette.mid; border.width: 1 }")));
+    QVERIFY(!pageTextsSource.contains(
+        QStringLiteral("color: pageTextsFrame.palette.base")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         pageTextsSource,
         QStringLiteral("horizontalAlignment: Text.AlignRight; text: "
@@ -1187,7 +1208,7 @@ private slots:
                        "leftInspectorPanel.editor.pageTexts.length; enabled: "
                        "pageTextsSection.sectionReady"));
     const qsizetype pageTextsBox =
-        pageTextsSource.indexOf(QStringLiteral("Frame {"), headerCount);
+        pageTextsSource.indexOf(QStringLiteral("GroupBox {"), headerCount);
     const qsizetype listView =
         pageTextsSource.indexOf(QStringLiteral("ListView {"), pageTextsBox);
     QVERIFY(pageTextsBox > headerCount);
@@ -1783,20 +1804,36 @@ private slots:
         "Editor.rawPageUrl : Editor.currentPageUrl")));
     QVERIFY(source.contains(
         QStringLiteral("model: rightInspectorPanel.editor.layers")));
+    for (const QString iconPath : {
+             QStringLiteral(":/qt/qml/TextFX/assets/icons/flat/arrow-left.svg"),
+             QStringLiteral(":/qt/qml/TextFX/assets/icons/flat/arrow-right.svg"),
+             QStringLiteral(":/qt/qml/TextFX/assets/icons/flat/arrow-up.svg"),
+             QStringLiteral(":/qt/qml/TextFX/assets/icons/flat/arrow-down.svg"),
+         }) {
+      QVERIFY2(QFile::exists(iconPath), qPrintable(iconPath));
+    }
     QVERIFY(sourceContainsIgnoringWhitespace(
         source,
         QStringLiteral(
             "text: qsTr(\"Up\"); enabled: "
             "rightInspectorPanel.editor.selectedIndex "
             ">= 0 && rightInspectorPanel.editor.selectedIndex < "
-            "rightInspectorPanel.editor.boxCount - 1; onClicked: "
+            "rightInspectorPanel.editor.boxCount - 1; display: "
+            "AbstractButton.IconOnly; icon.source: "
+            "\"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-up.svg\"; "
+            "icon.width: 20; icon.height: 20; icon.color: !enabled ? "
+            "palette.mid : palette.buttonText; onClicked: "
             "rightInspectorPanel.editor.moveLayer(rightInspectorPanel.editor."
             "selectedIndex + 1)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         source,
         QStringLiteral(
             "text: qsTr(\"Down\"); enabled: "
-            "rightInspectorPanel.editor.selectedIndex > 0; onClicked: "
+            "rightInspectorPanel.editor.selectedIndex > 0; display: "
+            "AbstractButton.IconOnly; icon.source: "
+            "\"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-down.svg\"; "
+            "icon.width: 20; icon.height: 20; icon.color: !enabled ? "
+            "palette.mid : palette.buttonText; onClicked: "
             "rightInspectorPanel.editor.moveLayer(rightInspectorPanel.editor."
             "selectedIndex - 1)")));
   }

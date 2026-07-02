@@ -321,7 +321,7 @@ Item {
     Popup {
         id: toastPopup
 
-        x: editorChrome.hostWidth - width - 24
+        x: Math.max(24, (editorChrome.hostWidth - width) / 2)
         y: editorChrome.hostHeight - height - 24
         modal: false
         closePolicy: Popup.NoAutoClose

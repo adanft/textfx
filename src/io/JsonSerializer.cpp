@@ -84,6 +84,9 @@ TextStyle styleFromJson(const QJsonObject &object) {
   style.bold = object.value("bold").toBool(style.bold);
   style.italic = object.value("italic").toBool(style.italic);
   style.uppercase = object.value("uppercase").toBool(style.uppercase);
+  style.lowercase = object.value("lowercase").toBool(style.lowercase);
+  if (style.uppercase)
+    style.lowercase = false;
   style.alignment = static_cast<TextAlignment>(
       object.value("alignment").toInt(static_cast<int>(style.alignment)));
   return style;
@@ -98,6 +101,7 @@ QJsonObject styleToJson(const TextStyle &style) {
           {"bold", style.bold},
           {"italic", style.italic},
           {"uppercase", style.uppercase},
+          {"lowercase", style.lowercase && !style.uppercase},
           {"alignment", static_cast<int>(style.alignment)}};
 }
 

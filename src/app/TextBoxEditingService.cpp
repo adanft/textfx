@@ -84,6 +84,13 @@ void TextBoxEditingService::setItalic(TextBox &box, bool enabled) {
 }
 void TextBoxEditingService::setUppercase(TextBox &box, bool enabled) {
   box.style.uppercase = enabled;
+  if (enabled)
+    box.style.lowercase = false;
+}
+void TextBoxEditingService::setLowercase(TextBox &box, bool enabled) {
+  box.style.lowercase = enabled;
+  if (enabled)
+    box.style.uppercase = false;
 }
 void TextBoxEditingService::setAlignment(TextBox &box, int alignment) {
   box.style.alignment = static_cast<TextAlignment>(std::clamp(alignment, 0, 2));
