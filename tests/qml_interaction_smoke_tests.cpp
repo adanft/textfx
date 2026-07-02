@@ -242,6 +242,10 @@ private slots:
                                       Q_ARG(QVariant, 30.0),
                                       Q_ARG(QVariant, 0.0)));
     QTRY_VERIFY(window->property("resizeW").toDouble() > 120.0);
+    QTRY_VERIFY(editor.boxes().at(0).toMap().value(QStringLiteral("w")).toDouble() >
+                120.0);
+    QVERIFY(editor.boxes().at(0).toMap().value(QStringLiteral("x")).toDouble() >
+            30.0);
     QVERIFY(QMetaObject::invokeMethod(window, "endResizeDrag",
                                       Q_ARG(QVariant, true)));
 
@@ -310,9 +314,9 @@ private slots:
     QTRY_VERIFY(boxItem->x() > originalVisualX + 20.0);
     QTRY_VERIFY(boxItem->y() < originalVisualY - 5.0);
     QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("x")).toDouble(),
-             original.value(QStringLiteral("x")).toDouble());
+             original.value(QStringLiteral("x")).toDouble() + 25.0);
     QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("y")).toDouble(),
-             original.value(QStringLiteral("y")).toDouble());
+             original.value(QStringLiteral("y")).toDouble() - 10.0);
 
     QVERIFY(QMetaObject::invokeMethod(window, "endMoveDrag",
                                       Q_ARG(QVariant, false)));
@@ -397,7 +401,7 @@ private slots:
                  .toMap()
                  .value(QStringLiteral("rotation"))
                  .toDouble(),
-             10.0);
+             100.0);
 
     QVERIFY(QMetaObject::invokeMethod(window, "endRotateDrag",
                                       Q_ARG(QVariant, false)));
@@ -494,7 +498,7 @@ private slots:
                  .toMap()
                  .value(QStringLiteral("rotation"))
                  .toDouble(),
-             10.0);
+             12.0);
     QVERIFY(QMetaObject::invokeMethod(window, "endRotateDrag",
                                       Q_ARG(QVariant, false)));
     QTRY_VERIFY(nearlyEqual(boxItem->rotation(), 10.0));
@@ -507,7 +511,7 @@ private slots:
                  .toMap()
                  .value(QStringLiteral("rotation"))
                  .toDouble(),
-             10.0);
+             8.0);
     QVERIFY(QMetaObject::invokeMethod(window, "endRotateDrag",
                                       Q_ARG(QVariant, true)));
     QTRY_VERIFY(nearlyEqual(editor.boxes()
@@ -722,7 +726,9 @@ private slots:
     QCOMPARE(otherPreview.value(QStringLiteral("x")).toDouble(), 100.0);
     QCOMPARE(otherPreview.value(QStringLiteral("y")).toDouble(), 0.0);
     QCOMPARE(pointValue(editor.boxes().at(0).toMap(), QStringLiteral("ne"), 0),
-             0.0);
+             20.0);
+    QCOMPARE(pointValue(editor.boxes().at(0).toMap(), QStringLiteral("ne"), 1),
+             -10.0);
     QCOMPARE(pointValue(editor.boxes().at(1).toMap(), QStringLiteral("ne"), 0),
              0.0);
 

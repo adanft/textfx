@@ -263,12 +263,13 @@ ApplicationWindow {
             return ;
 
         boxResizeInteraction.update(canvasX, canvasY);
+        const bounds = boxResizeInteraction.bounds();
+        window.editor.setSelectedBounds(bounds.x, bounds.y, bounds.width, bounds.height);
     }
 
     function endResizeDrag(commit) {
-        if (dragMode === editorInteraction.dragModeResize && commit) {
-            const bounds = boxResizeInteraction.bounds();
-            window.editor.setSelectedBounds(bounds.x, bounds.y, bounds.width, bounds.height);
+        if (dragMode === editorInteraction.dragModeResize && !commit) {
+            window.editor.setSelectedBounds(boxResizeInteraction.resizeStartX, boxResizeInteraction.resizeStartY, boxResizeInteraction.resizeStartW, boxResizeInteraction.resizeStartH);
         }
         boxResizeInteraction.reset();
         dragMode = editorInteraction.dragModeIdle;
@@ -284,17 +285,38 @@ ApplicationWindow {
             return ;
 
         perspectiveInteraction.update(canvas, canvasX, canvasY);
+        applyPerspectiveHandles(perspectiveInteraction.commitHandles());
     }
 
-    function commitPerspectiveCorner(name, x, y) {
-        window.editor.setPerspectiveHandle(name, x, y);
+    function applyPerspectiveHandles(handles) {
+        for (let i = 0; i < handles.length; ++i)
+            window.editor.setPerspectiveHandle(handles[i].name, handles[i].x, handles[i].y);
+
+    }
+
+    function restorePerspectiveStartHandles() {
+        applyPerspectiveHandles([{
+            "name": "nw",
+            "x": perspectiveInteraction.perspectiveStartNwX,
+            "y": perspectiveInteraction.perspectiveStartNwY
+        }, {
+            "name": "ne",
+            "x": perspectiveInteraction.perspectiveStartNeX,
+            "y": perspectiveInteraction.perspectiveStartNeY
+        }, {
+            "name": "se",
+            "x": perspectiveInteraction.perspectiveStartSeX,
+            "y": perspectiveInteraction.perspectiveStartSeY
+        }, {
+            "name": "sw",
+            "x": perspectiveInteraction.perspectiveStartSwX,
+            "y": perspectiveInteraction.perspectiveStartSwY
+        }]);
     }
 
     function endPerspectiveDrag(commit) {
-        if (dragMode === editorInteraction.dragModePerspective && commit) {
-            const handles = perspectiveInteraction.commitHandles();
-            for (let i = 0; i < handles.length; ++i) commitPerspectiveCorner(handles[i].name, handles[i].x, handles[i].y)
-        }
+        if (dragMode === editorInteraction.dragModePerspective && !commit)
+            restorePerspectiveStartHandles();
         perspectiveInteraction.reset();
         dragMode = editorInteraction.dragModeIdle;
     }
@@ -309,13 +331,12 @@ ApplicationWindow {
             return ;
 
         boxRotateInteraction.update(viewToDocumentX(canvasX), viewToDocumentY(canvasY));
+        window.editor.setSelectedRotation(boxRotateInteraction.rotateDegrees);
     }
 
     function endRotateDrag(commit) {
-        if (dragMode === editorInteraction.dragModeRotate && commit)
-            window.editor.setSelectedRotation(boxRotateInteraction.rotateDegrees);
-        else if (dragMode === editorInteraction.dragModeRotate)
-            boxRotateInteraction.cancelPreview();
+        if (dragMode === editorInteraction.dragModeRotate && !commit)
+            window.editor.setSelectedRotation(boxRotateInteraction.rotateStartRotation);
         boxRotateInteraction.reset();
         dragMode = editorInteraction.dragModeIdle;
     }
@@ -330,12 +351,12 @@ ApplicationWindow {
             return ;
 
         boxMoveInteraction.update(canvasX, canvasY);
+        window.editor.setSelectedBounds(boxMoveInteraction.moveX, boxMoveInteraction.moveY, activeMoveDelegate.boxModel.w, activeMoveDelegate.boxModel.h);
     }
 
     function endMoveDrag(commit) {
-        if (dragMode === editorInteraction.dragModeMove && commit) {
-            const moveDelta = boxMoveInteraction.delta();
-            window.editor.moveSelected(moveDelta.x, moveDelta.y);
+        if (dragMode === editorInteraction.dragModeMove && !commit) {
+            window.editor.setSelectedBounds(boxMoveInteraction.moveStartX, boxMoveInteraction.moveStartY, activeMoveDelegate.boxModel.w, activeMoveDelegate.boxModel.h);
         }
         boxMoveInteraction.reset();
         dragMode = editorInteraction.dragModeIdle;
@@ -548,7 +569,6 @@ ApplicationWindow {
                     objectName: "leftInspectorPanel"
                     editor: window.editor
                     editorLimits: editorLimits
-                    selectedBox: Editor.selectedBox
                     fontFamilyOptionsProvider: (selected) => {
                         return window.fontFamilyOptions(selected);
                     }
@@ -658,7 +678,7 @@ ApplicationWindow {
                     }
 
                     Repeater {
-                        model: Editor.boxes
+                        model: Editor.boxesModel
 
                         delegate: TextBoxDelegate {
                             canvasItem: canvas
@@ -678,7 +698,6 @@ ApplicationWindow {
                     displayScale: viewportMetrics.viewDocScale()
                     minimumDisplayScale: window.pageBaseScale * viewportMetrics.minimumZoom
                     maximumDisplayScale: window.pageBaseScale * viewportMetrics.maximumZoom
-                    selectedBox: Editor.selectedBox
                     qmlColorProvider: (hex) => {
                         return window.qmlColor(hex);
                     }

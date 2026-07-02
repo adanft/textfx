@@ -5,30 +5,102 @@ import TextFX.Ui 1.0
 Rectangle {
     id: boxDelegate
 
-    required property var modelData
+    required property int boxIndex
+    required property string boxText
+    required property real boxX
+    required property real boxY
+    required property real boxWidth
+    required property real boxHeight
+    required property real boxRotation
+    required property string boxFontFamily
+    required property string boxResolvedFontFamily
+    required property int boxFontSize
+    required property string boxColor
+    required property real boxLineSpacing
+    required property real boxLetterSpacing
+    required property bool boxBold
+    required property bool boxItalic
+    required property bool boxUppercase
+    required property int boxAlignment
+    required property bool boxOutline
+    required property string boxOutlineColor
+    required property int boxOutlineSize
+    required property bool boxBlur
+    required property int boxBlurSize
+    required property bool boxShadow
+    required property string boxShadowColor
+    required property real boxShadowOffsetX
+    required property real boxShadowOffsetY
+    required property int boxShadowBlurSize
+    required property bool boxGradient
+    required property int boxGradientDirection
+    required property string boxGradientColorA
+    required property string boxGradientColorB
+    required property bool boxPerspective
+    required property var boxPerspectiveNw
+    required property var boxPerspectiveNe
+    required property var boxPerspectiveSe
+    required property var boxPerspectiveSw
+    required property bool boxPath
+    required property int boxPathMode
+    required property var boxPathPoints
     required property var canvasItem
     required property var interaction
     readonly property var rootWindow: ApplicationWindow.window
     readonly property var editorRef: rootWindow ? rootWindow.editor : null
-    property bool selected: editorRef && modelData.index === editorRef.selectedIndex
+    property bool selected: editorRef && boxIndex === editorRef.selectedIndex
     property bool editingSelected: selected && editorRef.editingText
-    property var boxModel: modelData
-    readonly property var effectiveBoxModel: editingSelected && editorRef ? editorRef.selectedBox : boxModel
+    readonly property var boxModel: ({
+        index: boxIndex,
+        text: boxText,
+        x: boxX,
+        y: boxY,
+        w: boxWidth,
+        h: boxHeight,
+        rotation: boxRotation,
+        fontFamily: boxFontFamily,
+        resolvedFontFamily: boxResolvedFontFamily,
+        fontSize: boxFontSize,
+        color: boxColor,
+        lineSpacing: boxLineSpacing,
+        letterSpacing: boxLetterSpacing,
+        bold: boxBold,
+        italic: boxItalic,
+        uppercase: boxUppercase,
+        alignment: boxAlignment,
+        outline: boxOutline,
+        outlineColor: boxOutlineColor,
+        outlineSize: boxOutlineSize,
+        blur: boxBlur,
+        blurSize: boxBlurSize,
+        shadow: boxShadow,
+        shadowColor: boxShadowColor,
+        shadowOffsetX: boxShadowOffsetX,
+        shadowOffsetY: boxShadowOffsetY,
+        shadowBlurSize: boxShadowBlurSize,
+        gradient: boxGradient,
+        gradientDirection: boxGradientDirection,
+        gradientColorA: boxGradientColorA,
+        gradientColorB: boxGradientColorB,
+        perspective: boxPerspective,
+        perspectiveNw: boxPerspectiveNw,
+        perspectiveNe: boxPerspectiveNe,
+        perspectiveSe: boxPerspectiveSe,
+        perspectiveSw: boxPerspectiveSw,
+        path: boxPath,
+        pathMode: boxPathMode,
+        pathPoints: boxPathPoints
+    })
     property bool perspectiveActive: boxModel.perspective && !editingSelected
-    property bool moveActive: rootWindow.dragMode === interaction.dragModeMove && rootWindow.activeMoveIndex === modelData.index
-    property bool resizeActive: rootWindow.dragMode === interaction.dragModeResize && rootWindow.activeResizeDelegate === boxDelegate
-    property real visualDocX: moveActive ? rootWindow.moveX : resizeActive ? rootWindow.resizeX : effectiveBoxModel.x
-    property real visualDocY: moveActive ? rootWindow.moveY : resizeActive ? rootWindow.resizeY : effectiveBoxModel.y
-    property real visualDocW: resizeActive ? rootWindow.resizeW : effectiveBoxModel.w
-    property real visualDocH: resizeActive ? rootWindow.resizeH : effectiveBoxModel.h
-    property string livePreviewText: modelPreviewText()
+    property real visualDocX: boxModel.x
+    property real visualDocY: boxModel.y
+    property real visualDocW: boxModel.w
+    property real visualDocH: boxModel.h
     readonly property bool textOverflow: boxOutlinedText.overflow
 
     function modelPreviewText() {
-        return effectiveBoxModel.uppercase ? String(effectiveBoxModel.text).toUpperCase() : effectiveBoxModel.text;
+        return boxModel.uppercase ? String(boxModel.text).toUpperCase() : boxModel.text;
     }
-
-    onEditingSelectedChanged: livePreviewText = modelPreviewText()
 
     objectName: "textBoxDelegate"
     x: rootWindow.documentToViewX(visualDocX)
@@ -38,7 +110,7 @@ Rectangle {
     color: "transparent"
     border.width: perspectiveActive ? 0 : selected ? rootWindow.selectionLineWidth() : Math.max(1, rootWindow.documentToViewLength(1))
     border.color: textOverflow ? Qt.rgba(1, 0, 0, 1) : editingSelected ? Qt.rgba(1, 0.84, 0, 1) : selected ? rootWindow.palette.highlight : rootWindow.palette.mid
-    rotation: modelData.rotation
+    rotation: boxRotation
 
     Canvas {
         id: perspectiveBorder
@@ -117,30 +189,30 @@ Rectangle {
             height: boxRef.visualDocH * rootWindow.livePreviewScale()
             transformOrigin: Item.TopLeft
             scale: rootWindow.viewDocScale() / rootWindow.livePreviewScale()
-            text: boxRef.editingSelected ? boxRef.livePreviewText : boxRef.modelPreviewText()
-            color: rootWindow.qmlColor(boxRef.effectiveBoxModel.color)
-            fontFamily: boxRef.effectiveBoxModel.fontFamily
-            pixelSize: Math.max(1, boxRef.effectiveBoxModel.fontSize)
-            bold: boxRef.effectiveBoxModel.bold
-            italic: boxRef.effectiveBoxModel.italic
-            letterSpacing: boxRef.effectiveBoxModel.letterSpacing
-            lineSpacing: boxRef.effectiveBoxModel.lineSpacing
-            horizontalAlignment: boxRef.effectiveBoxModel.alignment === 1 ? Text.AlignHCenter : boxRef.effectiveBoxModel.alignment === 2 ? Text.AlignRight : Text.AlignLeft
-            outlineColor: rootWindow.qmlColor(boxRef.effectiveBoxModel.outlineColor)
-            outlineSize: boxRef.effectiveBoxModel.outline && boxRef.effectiveBoxModel.outlineSize > 0 ? boxRef.effectiveBoxModel.outlineSize : 0
-            blurSize: boxRef.effectiveBoxModel.blur && boxRef.effectiveBoxModel.blurSize > 0 ? boxRef.effectiveBoxModel.blurSize : 0
-            shadowEnabled: boxRef.effectiveBoxModel.shadow
-            shadowColor: rootWindow.qmlColor(boxRef.effectiveBoxModel.shadowColor)
-            shadowOffsetX: boxRef.effectiveBoxModel.shadowOffsetX
-            shadowOffsetY: boxRef.effectiveBoxModel.shadowOffsetY
-            shadowBlurSize: boxRef.effectiveBoxModel.shadow && boxRef.effectiveBoxModel.shadowBlurSize > 0 ? boxRef.effectiveBoxModel.shadowBlurSize : 0
-            gradientEnabled: boxRef.effectiveBoxModel.gradient
-            gradientDirection: boxRef.effectiveBoxModel.gradientDirection
-            gradientColorA: rootWindow.qmlColor(boxRef.effectiveBoxModel.gradientColorA)
-            gradientColorB: rootWindow.qmlColor(boxRef.effectiveBoxModel.gradientColorB)
-            pathEnabled: boxRef.effectiveBoxModel.path && !boxRef.editingSelected
-            pathMode: boxRef.effectiveBoxModel.pathMode
-            pathPoints: boxRef.effectiveBoxModel.pathPoints
+            text: boxRef.modelPreviewText()
+            color: rootWindow.qmlColor(boxRef.boxModel.color)
+            fontFamily: boxRef.boxModel.fontFamily
+            pixelSize: Math.max(1, boxRef.boxModel.fontSize)
+            bold: boxRef.boxModel.bold
+            italic: boxRef.boxModel.italic
+            letterSpacing: boxRef.boxModel.letterSpacing
+            lineSpacing: boxRef.boxModel.lineSpacing
+            horizontalAlignment: boxRef.boxModel.alignment === 1 ? Text.AlignHCenter : boxRef.boxModel.alignment === 2 ? Text.AlignRight : Text.AlignLeft
+            outlineColor: rootWindow.qmlColor(boxRef.boxModel.outlineColor)
+            outlineSize: boxRef.boxModel.outline && boxRef.boxModel.outlineSize > 0 ? boxRef.boxModel.outlineSize : 0
+            blurSize: boxRef.boxModel.blur && boxRef.boxModel.blurSize > 0 ? boxRef.boxModel.blurSize : 0
+            shadowEnabled: boxRef.boxModel.shadow
+            shadowColor: rootWindow.qmlColor(boxRef.boxModel.shadowColor)
+            shadowOffsetX: boxRef.boxModel.shadowOffsetX
+            shadowOffsetY: boxRef.boxModel.shadowOffsetY
+            shadowBlurSize: boxRef.boxModel.shadow && boxRef.boxModel.shadowBlurSize > 0 ? boxRef.boxModel.shadowBlurSize : 0
+            gradientEnabled: boxRef.boxModel.gradient
+            gradientDirection: boxRef.boxModel.gradientDirection
+            gradientColorA: rootWindow.qmlColor(boxRef.boxModel.gradientColorA)
+            gradientColorB: rootWindow.qmlColor(boxRef.boxModel.gradientColorB)
+            pathEnabled: boxRef.boxModel.path && !boxRef.editingSelected
+            pathMode: boxRef.boxModel.pathMode
+            pathPoints: boxRef.boxModel.pathPoints
             renderScale: rootWindow.livePreviewScale()
         }
 
@@ -241,7 +313,7 @@ Rectangle {
         property var boxRef: parent
         property var rootWindow: boxRef.rootWindow
         property var editorRef: boxRef.editorRef
-        property real editLineSpacing: boxRef.effectiveBoxModel.lineSpacing
+        property real editLineSpacing: boxRef.boxModel.lineSpacing
         readonly property bool editLayoutAligned: boxOutlinedText.editLayoutMetricsValid
         readonly property real editLayoutTopPadding: editLayoutAligned ? boxOutlinedText.editLayoutTopPadding : 0
         readonly property real editLayoutLeftPadding: editLayoutAligned ? boxOutlinedText.editLayoutLeftPadding : 0
@@ -262,7 +334,7 @@ Rectangle {
 
         property bool syncingTextFromModel: false
         property bool userInputSyncPending: false
-        property string livePreviewText: boxRef.livePreviewText
+        property string livePreviewText: boxRef.modelPreviewText()
         property string pendingUserInputText: ""
 
         function modelText() {
@@ -271,7 +343,6 @@ Rectangle {
 
         function setLivePreviewText(nextText) {
             livePreviewText = nextText;
-            boxRef.livePreviewText = nextText;
         }
 
         function syncTextFromModel() {
@@ -319,13 +390,13 @@ Rectangle {
         selectedTextColor: "transparent"
         selectionColor: Qt.alpha(rootWindow.palette.highlight, 0.35)
         placeholderTextColor: "transparent"
-        font.family: boxRef.effectiveBoxModel.resolvedFontFamily
-        font.pixelSize: Math.round(Math.max(1, boxRef.effectiveBoxModel.fontSize))
-        font.bold: boxRef.effectiveBoxModel.bold
-        font.weight: boxRef.effectiveBoxModel.bold ? Font.Bold : Font.Normal
-        font.italic: boxRef.effectiveBoxModel.italic
-        font.letterSpacing: boxRef.effectiveBoxModel.letterSpacing
-        horizontalAlignment: boxRef.effectiveBoxModel.alignment === 1 ? TextEdit.AlignHCenter : boxRef.effectiveBoxModel.alignment === 2 ? TextEdit.AlignRight : TextEdit.AlignLeft
+        font.family: boxRef.boxModel.resolvedFontFamily
+        font.pixelSize: Math.round(Math.max(1, boxRef.boxModel.fontSize))
+        font.bold: boxRef.boxModel.bold
+        font.weight: boxRef.boxModel.bold ? Font.Bold : Font.Normal
+        font.italic: boxRef.boxModel.italic
+        font.letterSpacing: boxRef.boxModel.letterSpacing
+        horizontalAlignment: boxRef.boxModel.alignment === 1 ? TextEdit.AlignHCenter : boxRef.boxModel.alignment === 2 ? TextEdit.AlignRight : TextEdit.AlignLeft
         padding: 0
         topPadding: editLayoutTopPadding
         leftPadding: editLayoutLeftPadding

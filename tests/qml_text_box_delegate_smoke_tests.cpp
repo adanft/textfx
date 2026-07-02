@@ -1154,6 +1154,57 @@ private slots:
         QStringLiteral("model: [{name: \"nw\"}, {name: \"n\"}")));
   }
 
+  void qmlPreviewRepeaterUsesRoleSafeBoxesModelDelegate() {
+    const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
+    const QString delegateSource =
+        readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+
+    QVERIFY(mainSource.contains(QStringLiteral("model: Editor.boxesModel")));
+    QVERIFY(delegateSource.contains(
+        QStringLiteral("required property int boxIndex")));
+    QVERIFY(delegateSource.contains(
+        QStringLiteral("required property real boxX")));
+    QVERIFY(delegateSource.contains(
+        QStringLiteral("required property real boxY")));
+    QVERIFY(delegateSource.contains(
+        QStringLiteral("required property real boxWidth")));
+    QVERIFY(delegateSource.contains(
+        QStringLiteral("required property real boxHeight")));
+    QVERIFY(delegateSource.contains(
+        QStringLiteral("required property real boxRotation")));
+    QVERIFY(delegateSource.contains(
+        QStringLiteral("readonly property var boxModel: ({")));
+    QVERIFY(delegateSource.contains(QStringLiteral("index: boxIndex")));
+    QVERIFY(delegateSource.contains(QStringLiteral("x: boxX")));
+    QVERIFY(delegateSource.contains(QStringLiteral("w: boxWidth")));
+    QVERIFY(!delegateSource.contains(
+        QStringLiteral("required property var modelData")));
+    QVERIFY(!delegateSource.contains(
+        QStringLiteral("readonly property var effectiveBoxModel")));
+    QVERIFY(!delegateSource.contains(
+        QStringLiteral("editorRef ? editorRef.selectedBox : boxModel")));
+  }
+
+  void qmlInspectorsUseSelectedIndexAndModelRolesWithoutSelectedBoxSnapshot() {
+    const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
+    const QString leftSource = readQmlFile(QStringLiteral("LeftInspectorPanel.qml"));
+    const QString rightSource = readQmlFile(QStringLiteral("RightInspectorPanel.qml"));
+
+    QVERIFY(!mainSource.contains(QStringLiteral("selectedBox: Editor.selectedBox")));
+    QVERIFY(!leftSource.contains(QStringLiteral("property var selectedBox:")));
+    QVERIFY(!rightSource.contains(QStringLiteral("property var selectedBox:")));
+    QVERIFY(leftSource.contains(QStringLiteral("selectedBoxData")));
+    QVERIFY(rightSource.contains(QStringLiteral("selectedBoxData")));
+    QVERIFY(leftSource.contains(QStringLiteral("editor.boxRole(editor.selectedIndex")));
+    QVERIFY(rightSource.contains(QStringLiteral("editor.boxRole(editor.selectedIndex")));
+    QVERIFY(leftSource.contains(QStringLiteral("selectedBoxRevision")));
+    QVERIFY(rightSource.contains(QStringLiteral("selectedBoxRevision")));
+    QVERIFY(leftSource.contains(QStringLiteral("leftInspectorPanel.editor.boxesModel")));
+    QVERIFY(rightSource.contains(QStringLiteral("rightInspectorPanel.editor.boxesModel")));
+    QVERIFY(rightSource.contains(QStringLiteral("rightInspectorPanel.editor.boxCount")));
+    QVERIFY(!rightSource.contains(QStringLiteral("rightInspectorPanel.editor.boxes.length")));
+  }
+
   void qmlSelectionGeometryAndRotateHandleUseCurrentVisualBounds() {
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString delegateSource =
@@ -1163,17 +1214,11 @@ private slots:
     const QString viewportSource =
         readQmlFile(QStringLiteral("ViewportMetrics.qml"));
 
-    QVERIFY(delegateSource.contains(
-        QStringLiteral("property bool moveActive: rootWindow.dragMode === "
-                       "interaction.dragModeMove && rootWindow.activeMoveIndex "
-                       "=== modelData.index")));
-    QVERIFY(delegateSource.contains(
-        QStringLiteral("property bool resizeActive: rootWindow.dragMode === "
-                       "interaction.dragModeResize && "
-                       "rootWindow.activeResizeDelegate === boxDelegate")));
-    QVERIFY(delegateSource.contains(
-        QStringLiteral("property real visualDocW: resizeActive ? "
-                       "rootWindow.resizeW : effectiveBoxModel.w")));
+    QVERIFY(delegateSource.contains(QStringLiteral("property real visualDocX: boxModel.x")));
+    QVERIFY(delegateSource.contains(QStringLiteral("property real visualDocY: boxModel.y")));
+    QVERIFY(delegateSource.contains(QStringLiteral("property real visualDocW: boxModel.w")));
+    QVERIFY(!delegateSource.contains(QStringLiteral("property bool moveActive")));
+    QVERIFY(!delegateSource.contains(QStringLiteral("property bool resizeActive")));
     QVERIFY(delegateSource.contains(
         QStringLiteral("width: visualDocW * rootWindow.viewDocScale()")));
     QVERIFY(sourceContainsIgnoringWhitespace(
@@ -1267,7 +1312,7 @@ private slots:
     QVERIFY(rotateStateSource.contains(
         QStringLiteral("function update(documentX, documentY)")));
     QVERIFY(
-        rotateStateSource.contains(QStringLiteral("function cancelPreview()")));
+        !rotateStateSource.contains(QStringLiteral("function cancelPreview()")));
     QVERIFY(rotateStateSource.contains(QStringLiteral("function reset()")));
     QVERIFY(mainSource.contains(
         QStringLiteral("property alias activeRotateDelegate: "
@@ -1283,22 +1328,23 @@ private slots:
     QVERIFY(updateRotate.contains(
         QStringLiteral("boxRotateInteraction.update(viewToDocumentX(canvasX), "
                        "viewToDocumentY(canvasY))")));
-    QVERIFY(endRotate.contains(
+    QVERIFY(updateRotate.contains(
         QStringLiteral("window.editor.setSelectedRotation(boxRotateInteraction."
                        "rotateDegrees)")));
     QVERIFY(endRotate.contains(
-        QStringLiteral("boxRotateInteraction.cancelPreview()")));
+        QStringLiteral("window.editor.setSelectedRotation(boxRotateInteraction."
+                       "rotateStartRotation)")));
     QVERIFY(endRotate.contains(QStringLiteral("boxRotateInteraction.reset()")));
     QVERIFY(!mainSource.contains(
         QStringLiteral("function angleDeltaDegrees(from, to)")));
     QVERIFY(!mainSource.contains(
         QStringLiteral("activeRotateDelegate.rotation = rotateDegrees")));
-    QVERIFY(!updateRotate.contains(QStringLiteral("setSelectedRotation")));
+    QVERIFY(updateRotate.contains(QStringLiteral("setSelectedRotation")));
     QVERIFY(
         !delegateSource.contains(QStringLiteral("Editor.setSelectedRotation")));
   }
 
-  void qmlPerspectiveAndRotateDragsCommitOnlyOnRelease() {
+  void qmlPerspectiveAndRotateDragsUpdateDocumentLiveAndCancelToStart() {
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString rotateStateSource =
         readQmlFile(QStringLiteral("BoxRotateInteractionState.qml"));
@@ -1339,22 +1385,20 @@ private slots:
     QVERIFY(mainSource.contains(
         QStringLiteral("property alias activeRotateDelegate: "
                        "boxRotateInteraction.activeRotateDelegate")));
-    QVERIFY(!perspectiveUpdate.contains(
-        QStringLiteral("Editor.setPerspectiveHandle")));
+    QVERIFY(perspectiveUpdate.contains(
+        QStringLiteral("applyPerspectiveHandles(perspectiveInteraction.commitHandles())")));
     QVERIFY(perspectiveEnd.contains(QStringLiteral(
-        "if (dragMode === editorInteraction.dragModePerspective && commit)")));
-    QVERIFY(perspectiveEnd.contains(
-        QStringLiteral("commitPerspectiveCorner(handles[i].name, handles[i].x, "
-                       "handles[i].y)")));
-    QVERIFY(rotateStateSource.contains(
+        "if (dragMode === editorInteraction.dragModePerspective && !commit)")));
+    QVERIFY(perspectiveEnd.contains(QStringLiteral("restorePerspectiveStartHandles()")));
+    QVERIFY(!rotateStateSource.contains(
         QStringLiteral("activeRotateDelegate.rotation = rotateDegrees")));
     QVERIFY(
-        !rotateUpdate.contains(QStringLiteral("Editor.setSelectedRotation")));
+        rotateUpdate.contains(QStringLiteral("setSelectedRotation")));
     QVERIFY(rotateEnd.contains(QStringLiteral(
-        "if (dragMode === editorInteraction.dragModeRotate && commit)")));
+        "if (dragMode === editorInteraction.dragModeRotate && !commit)")));
     QVERIFY(rotateEnd.contains(
         QStringLiteral("window.editor.setSelectedRotation(boxRotateInteraction."
-                       "rotateDegrees)")));
+                       "rotateStartRotation)")));
   }
 };
 

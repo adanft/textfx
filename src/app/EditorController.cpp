@@ -24,6 +24,8 @@
 
 namespace textfx {
 namespace {
+using Role = BoxesModel::Role;
+
 QString toQString(const std::string &value) {
   return QString::fromStdString(value);
 }
@@ -60,13 +62,62 @@ bool ensureRegularFile(const std::filesystem::path &path, std::string *error) {
 
   return true;
 }
+
+QList<int> allBoxRoles() {
+  return {Role::IndexRole,
+          Role::TextRole,
+          Role::XRole,
+          Role::YRole,
+          Role::WidthRole,
+          Role::HeightRole,
+          Role::RotationRole,
+          Role::FontFamilyRole,
+          Role::ResolvedFontFamilyRole,
+          Role::FontSizeRole,
+          Role::ColorRole,
+          Role::LineSpacingRole,
+          Role::LetterSpacingRole,
+          Role::BoldRole,
+          Role::ItalicRole,
+          Role::UppercaseRole,
+          Role::AlignmentRole,
+          Role::OutlineRole,
+          Role::OutlineColorRole,
+          Role::OutlineSizeRole,
+          Role::BlurRole,
+          Role::BlurSizeRole,
+          Role::ShadowRole,
+          Role::ShadowColorRole,
+          Role::ShadowOffsetXRole,
+          Role::ShadowOffsetYRole,
+          Role::ShadowBlurSizeRole,
+          Role::GradientRole,
+          Role::GradientDirectionRole,
+          Role::GradientColorARole,
+          Role::GradientColorBRole,
+          Role::PerspectiveRole,
+          Role::PerspectiveNwRole,
+          Role::PerspectiveNeRole,
+          Role::PerspectiveSeRole,
+          Role::PerspectiveSwRole,
+          Role::PathRole,
+          Role::PathModeRole,
+          Role::PathPointsRole};
+}
 } // namespace
 
-EditorController::EditorController(QObject *parent) : QObject(parent) {}
+EditorController::EditorController(QObject *parent)
+    : QObject(parent), boxesModel_(document_, this) {}
 
 QVariantList EditorController::boxes() const {
   return EditorViewModels::textBoxList(document_.textBoxes());
 }
+
+int EditorController::boxCount() const {
+  return static_cast<int>(document_.textBoxes().size());
+}
+
+QAbstractListModel *EditorController::boxesModel() { return &boxesModel_; }
 
 QVariant EditorController::selectedBoxViewModel() const {
   const auto *box = selectedBox();
@@ -143,7 +194,9 @@ bool EditorController::openProjectInternal(const QString &folder,
     return false;
   }
   refreshPages();
+  boxesModel_.beginResetBoxes();
   document_.clear();
+  boxesModel_.endResetBoxes();
   selectedIndex_ = -1;
   selectedPresetIndex_ = -1;
   currentPage_.clear();
@@ -225,7 +278,9 @@ void EditorController::newDocument() {
   pages_.clear();
   pageTexts_.clear();
   pageTextPositions_.clear();
+  boxesModel_.beginResetBoxes();
   document_.clear();
+  boxesModel_.endResetBoxes();
   projectPresets_.clear();
   reloadPresets();
   selectedIndex_ = -1;
@@ -344,10 +399,25 @@ void EditorController::createTextBox(double x, double y, double w, double h) {
     return;
   TextBox box;
   box.bounds = {x, y, w, h};
+  const int row = static_cast<int>(document_.textBoxes().size());
+  boxesModel_.beginInsertBox(row);
   document_.addTextBox(std::move(box));
+  boxesModel_.endInsertBox();
   selectedIndex_ = static_cast<int>(document_.textBoxes().size()) - 1;
   markDocumentChanged();
   emit selectionChanged();
+}
+
+QVariant EditorController::boxRole(int row, const QString &roleName) const {
+  if (row < 0 || row >= boxCount())
+    return {};
+  const auto roles = boxesModel_.roleNames();
+  const QByteArray requested = roleName.toUtf8();
+  for (auto it = roles.cbegin(); it != roles.cend(); ++it) {
+    if (it.value() == requested)
+      return boxesModel_.data(boxesModel_.index(row, 0), it.key());
+  }
+  return {};
 }
 
 void EditorController::updateSelectedText(const QString &text) {
@@ -356,211 +426,232 @@ void EditorController::updateSelectedText(const QString &text) {
     if (editingText_) {
       document_.setDirty(true);
       pendingDocumentChanged_ = true;
+      boxesModel_.notifyBoxChanged(selectedIndex_, {Role::TextRole});
       emit selectedBoxChanged();
       emit stateChanged();
       return false;
     }
     return true;
-  });
+  }, {Role::TextRole});
 }
 
 void EditorController::setSelectedFontFamily(const QString &family) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::setFontFamily(box, family); });
+      [&](TextBox &box) { TextBoxEditingService::setFontFamily(box, family); },
+      {Role::FontFamilyRole, Role::ResolvedFontFamilyRole});
 }
 
 void EditorController::setSelectedFontSize(int size) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::setFontSize(box, size); });
+      [&](TextBox &box) { TextBoxEditingService::setFontSize(box, size); },
+      {Role::FontSizeRole, Role::ResolvedFontFamilyRole});
 }
 
 void EditorController::setSelectedTextColor(const QString &color) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::setTextColor(box, color); });
+      [&](TextBox &box) { TextBoxEditingService::setTextColor(box, color); },
+      {Role::ColorRole});
 }
 
 void EditorController::setSelectedBold(bool enabled) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::setBold(box, enabled); });
+      [&](TextBox &box) { TextBoxEditingService::setBold(box, enabled); },
+      {Role::BoldRole, Role::ResolvedFontFamilyRole});
 }
 
 void EditorController::setSelectedItalic(bool enabled) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::setItalic(box, enabled); });
+      [&](TextBox &box) { TextBoxEditingService::setItalic(box, enabled); },
+      {Role::ItalicRole, Role::ResolvedFontFamilyRole});
 }
 
 void EditorController::setSelectedUppercase(bool enabled) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::setUppercase(box, enabled); });
+      [&](TextBox &box) { TextBoxEditingService::setUppercase(box, enabled); },
+      {Role::UppercaseRole});
 }
 
 void EditorController::setSelectedAlignment(int alignment) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setAlignment(box, alignment);
-  });
+  }, {Role::AlignmentRole});
 }
 
 void EditorController::setSelectedLineSpacing(int spacing) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setLineSpacing(box, spacing);
-  });
+  }, {Role::LineSpacingRole});
 }
 
 void EditorController::setSelectedLetterSpacing(int spacing) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setLetterSpacing(box, spacing);
-  });
+  }, {Role::LetterSpacingRole, Role::ResolvedFontFamilyRole});
 }
 
 void EditorController::moveSelected(double dx, double dy) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::move(box, dx, dy); });
+      [&](TextBox &box) { TextBoxEditingService::move(box, dx, dy); },
+      {Role::XRole, Role::YRole});
 }
 
 void EditorController::resizeSelected(double dw, double dh) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::resize(box, dw, dh); });
+      [&](TextBox &box) { TextBoxEditingService::resize(box, dw, dh); },
+      {Role::WidthRole, Role::HeightRole});
 }
 
 void EditorController::setSelectedBounds(double x, double y, double w,
                                          double h) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::setBounds(box, x, y, w, h); });
+      [&](TextBox &box) { TextBoxEditingService::setBounds(box, x, y, w, h); },
+      {Role::XRole, Role::YRole, Role::WidthRole, Role::HeightRole});
 }
 
 void EditorController::rotateSelected(double degrees) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::rotate(box, degrees); });
+      [&](TextBox &box) { TextBoxEditingService::rotate(box, degrees); },
+      {Role::RotationRole});
 }
 
 void EditorController::setSelectedRotation(double degrees) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::setRotation(box, degrees); });
+      [&](TextBox &box) { TextBoxEditingService::setRotation(box, degrees); },
+      {Role::RotationRole});
 }
 
 void EditorController::setSelectedOutlineEnabled(bool enabled) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setOutlineEnabled(box, enabled);
-  });
+  }, {Role::OutlineRole});
 }
 
 void EditorController::setSelectedOutlineColor(const QString &color) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setOutlineColor(box, color);
-  });
+  }, {Role::OutlineColorRole});
 }
 
 void EditorController::setSelectedOutlineSize(int size) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::setOutlineSize(box, size); });
+      [&](TextBox &box) { TextBoxEditingService::setOutlineSize(box, size); },
+      {Role::OutlineSizeRole});
 }
 
 void EditorController::setSelectedBlurEnabled(bool enabled) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setBlurEnabled(box, enabled);
-  });
+  }, {Role::BlurRole});
 }
 
 void EditorController::setSelectedBlurSize(int size) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::setBlurSize(box, size); });
+      [&](TextBox &box) { TextBoxEditingService::setBlurSize(box, size); },
+      {Role::BlurSizeRole});
 }
 
 void EditorController::setSelectedShadowEnabled(bool enabled) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setShadowEnabled(box, enabled);
-  });
+  }, {Role::ShadowRole});
 }
 
 void EditorController::setSelectedShadowColor(const QString &color) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::setShadowColor(box, color); });
+      [&](TextBox &box) { TextBoxEditingService::setShadowColor(box, color); },
+      {Role::ShadowColorRole});
 }
 
 void EditorController::setSelectedShadowOffsetX(int offset) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setShadowOffsetX(box, offset);
-  });
+  }, {Role::ShadowOffsetXRole});
 }
 
 void EditorController::setSelectedShadowOffsetY(int offset) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setShadowOffsetY(box, offset);
-  });
+  }, {Role::ShadowOffsetYRole});
 }
 
 void EditorController::setSelectedShadowBlurSize(int size) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setShadowBlurSize(box, size);
-  });
+  }, {Role::ShadowBlurSizeRole});
 }
 
 void EditorController::setSelectedGradientEnabled(bool enabled) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setGradientEnabled(box, enabled);
-  });
+  }, {Role::GradientRole});
 }
 
 void EditorController::setSelectedGradientDirection(int direction) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setGradientDirection(box, direction);
-  });
+  }, {Role::GradientDirectionRole});
 }
 
 void EditorController::setSelectedGradientColorA(const QString &color) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setGradientColorA(box, color);
-  });
+  }, {Role::GradientColorARole});
 }
 
 void EditorController::setSelectedGradientColorB(const QString &color) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setGradientColorB(box, color);
-  });
+  }, {Role::GradientColorBRole});
 }
 
 void EditorController::setSelectedPerspectiveEnabled(bool enabled) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setPerspectiveEnabled(box, enabled);
-  });
+  }, {Role::PerspectiveRole});
 }
 
 void EditorController::setSelectedPathEnabled(bool enabled) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setPathEnabled(box, enabled);
-  });
+  }, {Role::PathRole, Role::PathPointsRole});
 }
 
 void EditorController::setSelectedPathMode(int mode) {
   editSelectedBox(
-      [&](TextBox &box) { TextBoxEditingService::setPathMode(box, mode); });
+      [&](TextBox &box) { TextBoxEditingService::setPathMode(box, mode); },
+      {Role::PathModeRole});
 }
 
 void EditorController::resetSelectedPerspective() {
   editSelectedBox(
-      [](TextBox &box) { TextBoxEditingService::resetPerspective(box); });
+      [](TextBox &box) { TextBoxEditingService::resetPerspective(box); },
+      {Role::PerspectiveRole, Role::PerspectiveNwRole, Role::PerspectiveNeRole,
+       Role::PerspectiveSeRole, Role::PerspectiveSwRole});
 }
 
 void EditorController::resetSelectedPath() {
-  editSelectedBox([](TextBox &box) { TextBoxEditingService::resetPath(box); });
+  editSelectedBox([](TextBox &box) { TextBoxEditingService::resetPath(box); },
+                  {Role::PathRole, Role::PathModeRole, Role::PathPointsRole});
 }
 
 void EditorController::addSelectedPathPoint() {
   editSelectedBox(
-      [](TextBox &box) { TextBoxEditingService::addPathPoint(box); });
+      [](TextBox &box) { TextBoxEditingService::addPathPoint(box); },
+      {Role::PathPointsRole});
 }
 
 void EditorController::setPerspectiveHandle(const QString &corner, double x,
                                             double y) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setPerspectiveHandle(box, corner, x, y);
-  });
+  }, {Role::PerspectiveRole, Role::PerspectiveNwRole, Role::PerspectiveNeRole,
+      Role::PerspectiveSeRole, Role::PerspectiveSwRole});
 }
 
 void EditorController::setPathHandle(int index, double x, double y) {
   editSelectedBoxIf([&](TextBox &box) {
     return TextBoxEditingService::setPathHandle(box, index, x, y);
-  });
+  }, {Role::PathPointsRole});
 }
 
 bool EditorController::leftMouseButtonDown() const {
@@ -568,26 +659,44 @@ bool EditorController::leftMouseButtonDown() const {
 }
 
 void EditorController::duplicateSelected() {
+  if (!selectedBox())
+    return;
+  const int row = static_cast<int>(document_.textBoxes().size());
+  boxesModel_.beginInsertBox(row);
   if (TextBoxSelectionService::duplicateSelected(document_.textBoxes(),
-                                                 selectedIndex_)) {
+                                                  selectedIndex_)) {
+    boxesModel_.endInsertBox();
     markDocumentChanged();
     emit selectionChanged();
+  } else {
+    boxesModel_.endInsertBox();
   }
 }
 
 void EditorController::deleteSelected() {
+  if (!selectedBox())
+    return;
+  const int row = selectedIndex_;
+  boxesModel_.beginRemoveBox(row);
   if (TextBoxSelectionService::deleteSelected(document_.textBoxes(),
-                                              selectedIndex_)) {
+                                               selectedIndex_)) {
+    boxesModel_.endRemoveBox();
     markDocumentChanged();
     emit selectionChanged();
+  } else {
+    boxesModel_.endRemoveBox();
   }
 }
 
 void EditorController::moveLayer(int to) {
+  boxesModel_.beginResetBoxes();
   if (TextBoxSelectionService::moveLayer(document_.textBoxes(), selectedIndex_,
-                                         to)) {
+                                          to)) {
+    boxesModel_.endResetBoxes();
     markDocumentChanged();
     emit selectionChanged();
+  } else {
+    boxesModel_.endResetBoxes();
   }
 }
 
@@ -606,7 +715,10 @@ void EditorController::pasteBox() {
   }
   const auto clipboardText = QGuiApplication::clipboard()->text();
   auto box = TextBoxClipboardService::deserializeOrPlainText(clipboardText);
+  const int row = static_cast<int>(document_.textBoxes().size());
+  boxesModel_.beginInsertBox(row);
   document_.addTextBox(std::move(box));
+  boxesModel_.endInsertBox();
   selectedIndex_ = static_cast<int>(document_.textBoxes().size()) - 1;
   markDocumentChanged();
   emit selectionChanged();
@@ -619,7 +731,7 @@ bool EditorController::applyPageText(int index) {
                                  pageTexts_, pageTextPositions_, key, index);
   switch (result) {
   case PageTextApplyStatus::Applied:
-    markDocumentChanged();
+    markDocumentChanged({Role::TextRole});
     emit pageTextsChanged();
     return true;
   case PageTextApplyStatus::NoSelectedBox:
@@ -659,7 +771,7 @@ bool EditorController::applySelectedPreset() {
   if (!TextPresetService::applySelectedPreset(
           *selectedBox(), document_.presets(), selectedPresetIndex_))
     return false;
-  markDocumentChanged();
+  markDocumentChanged(allBoxRoles());
   return true;
 }
 
@@ -785,23 +897,38 @@ const TextBox *EditorController::selectedBox() const {
 
 bool EditorController::editSelectedBoxIf(
     const std::function<bool(TextBox &)> &mutation) {
+  return editSelectedBoxIf(mutation, allBoxRoles());
+}
+
+bool EditorController::editSelectedBoxIf(
+    const std::function<bool(TextBox &)> &mutation, const QList<int> &roles) {
   auto *box = selectedBox();
   if (!box || !mutation(*box))
     return false;
-  markDocumentChanged();
+  markDocumentChanged(roles);
   return true;
 }
 
 void EditorController::editSelectedBox(
     const std::function<void(TextBox &)> &mutation) {
+  editSelectedBox(mutation, allBoxRoles());
+}
+
+void EditorController::editSelectedBox(
+    const std::function<void(TextBox &)> &mutation, const QList<int> &roles) {
   editSelectedBoxIf([&](TextBox &box) {
     mutation(box);
     return true;
-  });
+  }, roles);
 }
 
 void EditorController::markDocumentChanged() {
+  markDocumentChanged(allBoxRoles());
+}
+
+void EditorController::markDocumentChanged(const QList<int> &roles) {
   document_.setDirty(true);
+  boxesModel_.notifyBoxChanged(selectedIndex_, roles);
   if (interactionDepth_ > 0) {
     pendingDocumentChanged_ = true;
     emit selectedBoxChanged();
@@ -846,7 +973,9 @@ void EditorController::clearProjectState() {
   pages_.clear();
   pageTexts_.clear();
   pageTextPositions_.clear();
+  boxesModel_.beginResetBoxes();
   document_.clear();
+  boxesModel_.endResetBoxes();
   projectPresets_.clear();
   selectedIndex_ = -1;
   selectedPresetIndex_ = -1;
@@ -866,6 +995,7 @@ bool EditorController::loadPageAt(int index) {
 
   currentPageIndex_ = index;
   currentPage_ = pagePaths_.at(static_cast<std::size_t>(index));
+  boxesModel_.beginResetBoxes();
   document_.clear();
   projectPresets_.clear();
   selectedIndex_ = -1;
@@ -873,9 +1003,11 @@ bool EditorController::loadPageAt(int index) {
   pendingDocumentChanged_ = false;
   std::string error;
   if (!store_->loadPage(currentPage_, document_, &error)) {
+    boxesModel_.endResetBoxes();
     setNotification(toQString(error));
     return false;
   }
+  boxesModel_.endResetBoxes();
   reloadPresets();
   emit selectionChanged();
   emit selectedBoxChanged();

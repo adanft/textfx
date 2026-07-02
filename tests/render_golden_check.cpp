@@ -1,4 +1,6 @@
+#include "app/BoxRenderState.h"
 #include "app/ProjectExportService.h"
+#include "app/EditorViewModels.h"
 #include "core/ProjectStore.h"
 #include "render/RenderGraph.h"
 
@@ -121,6 +123,82 @@ int main(int argc, char **argv) {
     return 1;
   }
   const auto tempPath = std::filesystem::path(tempDir.path().toStdString());
+
+  TextBox mappedBox;
+  mappedBox.text = "Mapped";
+  mappedBox.bounds = {12.0, 34.0, 156.0, 78.0};
+  mappedBox.rotationDegrees = 17.5;
+  mappedBox.style.fontFamily = "TextFX Missing Render State Font";
+  mappedBox.style.fontSize = 29;
+  mappedBox.style.textColor = "abcdef99";
+  mappedBox.style.lineSpacing = 6;
+  mappedBox.style.letterSpacing = 2;
+  mappedBox.style.bold = true;
+  mappedBox.style.italic = true;
+  mappedBox.style.uppercase = true;
+  mappedBox.style.alignment = TextAlignment::Right;
+  mappedBox.effects.outlineEnabled = true;
+  mappedBox.effects.outlineColor = "111111ff";
+  mappedBox.effects.outlineSize = 4;
+  mappedBox.effects.blurEnabled = true;
+  mappedBox.effects.blurSize = 5;
+  mappedBox.effects.shadowEnabled = true;
+  mappedBox.effects.shadowColor = "222222ff";
+  mappedBox.effects.shadowOffsetX = -3;
+  mappedBox.effects.shadowOffsetY = 8;
+  mappedBox.effects.shadowBlurSize = 9;
+  mappedBox.effects.gradientEnabled = true;
+  mappedBox.effects.gradientDirection = 1;
+  mappedBox.effects.gradientColorA = "123456ff";
+  mappedBox.effects.gradientColorB = "654321ff";
+  mappedBox.effects.pathEnabled = true;
+  mappedBox.effects.pathMode = 1;
+  mappedBox.effects.pathPoints = {{0.1, 0.2}, {0.4, 0.5}, {0.8, 0.9}};
+  mappedBox.effects.perspectiveEnabled = true;
+  mappedBox.effects.perspectiveNw = {1.0, 2.0};
+  mappedBox.effects.perspectiveNe = {3.0, 4.0};
+  mappedBox.effects.perspectiveSe = {5.0, 6.0};
+  mappedBox.effects.perspectiveSw = {7.0, 8.0};
+
+  const BoxRenderState renderState = mapBoxRenderState(mappedBox, 4);
+  if (renderState.index != 4 || renderState.text != QStringLiteral("Mapped") ||
+      renderState.x != 12.0 || renderState.y != 34.0 ||
+      renderState.width != 156.0 || renderState.height != 78.0 ||
+      renderState.rotation != 17.5 || renderState.fontSize != 29 ||
+      renderState.color != QStringLiteral("abcdef99") ||
+      renderState.lineSpacing != 6 || renderState.letterSpacing != 2 ||
+      !renderState.bold || !renderState.italic || !renderState.uppercase ||
+      renderState.alignment != 2 || !renderState.outline ||
+      renderState.outlineColor != QStringLiteral("111111ff") ||
+      renderState.outlineSize != 4 || !renderState.blur ||
+      renderState.blurSize != 5 || !renderState.shadow ||
+      renderState.shadowColor != QStringLiteral("222222ff") ||
+      renderState.shadowOffsetX != -3 || renderState.shadowOffsetY != 8 ||
+      renderState.shadowBlurSize != 9 || !renderState.gradient ||
+      renderState.gradientDirection != 1 ||
+      renderState.gradientColorA != QStringLiteral("123456ff") ||
+      renderState.gradientColorB != QStringLiteral("654321ff") ||
+      !renderState.path || renderState.pathMode != 1 ||
+      renderState.pathPoints.size() != 3 || !renderState.perspective ||
+      renderState.perspectiveNe.at(0).toDouble() != 3.0) {
+    std::cerr << "Expected BoxRenderState to preserve styled/path/perspective box semantics\n";
+    return 1;
+  }
+
+  const QVariantMap viewModel = EditorViewModels::textBoxMap(mappedBox, 4);
+  if (viewModel.value(QStringLiteral("text")).toString() != renderState.text ||
+      viewModel.value(QStringLiteral("w")).toDouble() != renderState.width ||
+      viewModel.value(QStringLiteral("fontFamily")).toString() !=
+          renderState.fontFamily ||
+      viewModel.value(QStringLiteral("resolvedFontFamily")).toString() !=
+          renderState.resolvedFontFamily ||
+      viewModel.value(QStringLiteral("pathPoints")).toList() !=
+          renderState.pathPoints ||
+      viewModel.value(QStringLiteral("perspectiveSw")).toList() !=
+          renderState.perspectiveSw) {
+    std::cerr << "Expected legacy box map to use BoxRenderState-equivalent values\n";
+    return 1;
+  }
 
   const auto missingPageResult =
       graph.exportPagePngResult(DocumentModel{}, tempPath / "missing-page.png",

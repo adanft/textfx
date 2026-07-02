@@ -7,7 +7,18 @@ Pane {
 
     property var editor: null
     property var editorLimits
-    property var selectedBox: null
+    property int selectedBoxRevision: 0
+    readonly property var selectedBoxData: ({
+        fontFamily: selectedBoxValue("boxFontFamily", ""),
+        fontSize: selectedBoxValue("boxFontSize", 16),
+        lineSpacing: selectedBoxValue("boxLineSpacing", 0),
+        letterSpacing: selectedBoxValue("boxLetterSpacing", 0),
+        color: selectedBoxValue("boxColor", "#000000"),
+        bold: selectedBoxValue("boxBold", false),
+        italic: selectedBoxValue("boxItalic", false),
+        uppercase: selectedBoxValue("boxUppercase", false),
+        alignment: selectedBoxValue("boxAlignment", 0)
+    })
     property var fontFamilyOptionsProvider: function(selected) {
         return selected ? [selected] : [];
     }
@@ -18,10 +29,27 @@ Pane {
     signal colorDialogRequested(string hex, string setter)
     signal textInputFocusChanged(bool active)
 
+    function selectedBoxValue(roleName, fallback) {
+        selectedBoxRevision;
+        if (!editor || editor.selectedIndex < 0)
+            return fallback;
+
+        const value = editor.boxRole(editor.selectedIndex, roleName);
+        return value === undefined || value === null ? fallback : value;
+    }
+
     z: 1
     SplitView.minimumWidth: 240
     SplitView.preferredWidth: 280
     SplitView.fillHeight: true
+
+    Connections {
+        target: leftInspectorPanel.editor ? leftInspectorPanel.editor.boxesModel : null
+        function onDataChanged() { leftInspectorPanel.selectedBoxRevision += 1; }
+        function onModelReset() { leftInspectorPanel.selectedBoxRevision += 1; }
+        function onRowsInserted() { leftInspectorPanel.selectedBoxRevision += 1; }
+        function onRowsRemoved() { leftInspectorPanel.selectedBoxRevision += 1; }
+    }
 
     ScrollView {
         id: leftPanelScroll
@@ -69,8 +97,8 @@ Pane {
 
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
-                            model: leftInspectorPanel.fontFamilyOptionsProvider(leftInspectorPanel.selectedBox ? leftInspectorPanel.selectedBox.fontFamily : "")
-                            currentIndex: Math.max(0, indexOfValue(leftInspectorPanel.selectedBox ? leftInspectorPanel.selectedBox.fontFamily : ""))
+                            model: leftInspectorPanel.fontFamilyOptionsProvider(leftInspectorPanel.selectedBoxData.fontFamily)
+                            currentIndex: Math.max(0, indexOfValue(leftInspectorPanel.selectedBoxData.fontFamily))
                             onActivated: leftInspectorPanel.editor.setSelectedFontFamily(currentText)
 
                             contentItem: Label {
@@ -102,7 +130,7 @@ Pane {
                                     Layout.minimumWidth: 0
                                     from: leftInspectorPanel.editorLimits.minimumFontSize
                                     to: leftInspectorPanel.editorLimits.maximumFontSize
-                                    value: leftInspectorPanel.selectedBox ? leftInspectorPanel.selectedBox.fontSize : 16
+                                    value: leftInspectorPanel.selectedBoxData.fontSize
                                     onValueModified: leftInspectorPanel.editor.setSelectedFontSize(value)
                                 }
 
@@ -122,7 +150,7 @@ Pane {
                                     Layout.minimumWidth: 0
                                     from: leftInspectorPanel.editorLimits.minimumTextSpacing
                                     to: leftInspectorPanel.editorLimits.maximumTextSpacing
-                                    value: leftInspectorPanel.selectedBox ? leftInspectorPanel.selectedBox.lineSpacing : 0
+                                    value: leftInspectorPanel.selectedBoxData.lineSpacing
                                     onValueModified: leftInspectorPanel.editor.setSelectedLineSpacing(value)
                                 }
 
@@ -139,7 +167,7 @@ Pane {
                             Layout.minimumWidth: 0
                             from: leftInspectorPanel.editorLimits.minimumTextSpacing
                             to: leftInspectorPanel.editorLimits.maximumTextSpacing
-                            value: leftInspectorPanel.selectedBox ? leftInspectorPanel.selectedBox.letterSpacing : 0
+                            value: leftInspectorPanel.selectedBoxData.letterSpacing
                             onValueModified: leftInspectorPanel.editor.setSelectedLetterSpacing(value)
                         }
 
@@ -149,7 +177,7 @@ Pane {
 
                         ColorButton {
                             objectName: "leftInspectorTextColorButton"
-                            swatchText: leftInspectorPanel.selectedBox ? leftInspectorPanel.qmlColorProvider(leftInspectorPanel.selectedBox.color) : "#000000"
+                            swatchText: leftInspectorPanel.qmlColorProvider(leftInspectorPanel.selectedBoxData.color)
                             swatchColor: swatchText
                             onClicked: leftInspectorPanel.colorDialogRequested(swatchText, "text")
                         }
@@ -167,21 +195,21 @@ Pane {
                                 objectName: "leftInspectorBoldButton"
                                 text: String.fromCodePoint(983652)
                                 accessibleLabel: qsTr("Bold")
-                                checked: leftInspectorPanel.selectedBox ? leftInspectorPanel.selectedBox.bold : false
+                                checked: leftInspectorPanel.selectedBoxData.bold
                                 onClicked: leftInspectorPanel.editor.setSelectedBold(checked)
                             }
 
                             TextStyleButton {
                                 text: String.fromCodePoint(983671)
                                 accessibleLabel: qsTr("Italic")
-                                checked: leftInspectorPanel.selectedBox ? leftInspectorPanel.selectedBox.italic : false
+                                checked: leftInspectorPanel.selectedBoxData.italic
                                 onClicked: leftInspectorPanel.editor.setSelectedItalic(checked)
                             }
 
                             TextStyleButton {
                                 text: String.fromCodePoint(985910)
                                 accessibleLabel: qsTr("Uppercase")
-                                checked: leftInspectorPanel.selectedBox ? leftInspectorPanel.selectedBox.uppercase : false
+                                checked: leftInspectorPanel.selectedBoxData.uppercase
                                 onClicked: leftInspectorPanel.editor.setSelectedUppercase(checked)
                             }
 
@@ -199,21 +227,21 @@ Pane {
                             TextStyleButton {
                                 text: String.fromCodePoint(983650)
                                 accessibleLabel: qsTr("Align Left")
-                                checked: leftInspectorPanel.selectedBox ? leftInspectorPanel.selectedBox.alignment === 0 : false
+                                checked: leftInspectorPanel.selectedBoxData.alignment === 0
                                 onClicked: leftInspectorPanel.editor.setSelectedAlignment(0)
                             }
 
                             TextStyleButton {
                                 text: String.fromCodePoint(983648)
                                 accessibleLabel: qsTr("Align Center")
-                                checked: leftInspectorPanel.selectedBox ? leftInspectorPanel.selectedBox.alignment === 1 : false
+                                checked: leftInspectorPanel.selectedBoxData.alignment === 1
                                 onClicked: leftInspectorPanel.editor.setSelectedAlignment(1)
                             }
 
                             TextStyleButton {
                                 text: String.fromCodePoint(983651)
                                 accessibleLabel: qsTr("Align Right")
-                                checked: leftInspectorPanel.selectedBox ? leftInspectorPanel.selectedBox.alignment === 2 : false
+                                checked: leftInspectorPanel.selectedBoxData.alignment === 2
                                 onClicked: leftInspectorPanel.editor.setSelectedAlignment(2)
                             }
 

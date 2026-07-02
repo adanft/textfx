@@ -38,13 +38,6 @@ QtObject {
         const cy = box.y + box.h / 2;
         const angle = angleDegrees(cx, cy, documentX, documentY);
         rotateDegrees = rotateStartRotation + angleDeltaDegrees(rotateStartAngle, angle);
-        activeRotateDelegate.rotation = rotateDegrees;
-    }
-
-    function cancelPreview() {
-        if (activeRotateDelegate)
-            activeRotateDelegate.rotation = rotateStartRotation;
-
     }
 
     function reset() {

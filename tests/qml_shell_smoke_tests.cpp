@@ -168,7 +168,7 @@ private slots:
     QVERIFY(mainSource.contains(
         QStringLiteral("objectName: \"leftInspectorPanel\"")));
     QVERIFY(source.contains(QStringLiteral("id: sidePanel")));
-    QVERIFY(sourceContainsIgnoringWhitespace(
+    QVERIFY(!sourceContainsIgnoringWhitespace(
         mainSource, QStringLiteral("selectedBox: Editor.selectedBox")));
     QVERIFY(!mainSource.contains(QStringLiteral("selectedBoxProvider")));
     QVERIFY(!mainSource.contains(QStringLiteral("function selectedBox()")));
@@ -433,7 +433,7 @@ private slots:
         source.indexOf(QStringLiteral("id: rightPanel"));
     QVERIFY(rightPanelStart >= 0);
     QVERIFY(mainSource.contains(QStringLiteral("RightInspectorPanel {")));
-    QVERIFY(sourceContainsIgnoringWhitespace(
+    QVERIFY(!sourceContainsIgnoringWhitespace(
         mainSource,
         QStringLiteral("selectedBox: Editor.selectedBox")));
     QVERIFY(sourceContainsIgnoringWhitespace(
@@ -860,7 +860,7 @@ private slots:
     QCOMPARE(leftInspector->property("editor").value<QObject *>(), &editor);
     QVERIFY(leftInspector->property("editorLimits").value<QObject *>());
 
-    const QVariant selected = leftInspector->property("selectedBox");
+    const QVariant selected = leftInspector->property("selectedBoxData");
     QCOMPARE(selected.toMap().value(QStringLiteral("fontFamily")).toString(),
              QStringLiteral("TextFX Inspector Test"));
 
@@ -1031,7 +1031,7 @@ private slots:
     QCOMPARE(rightInspector->property("minimumDisplayScale").toDouble(), 0.5);
     QCOMPARE(rightInspector->property("maximumDisplayScale").toDouble(), 6.0);
 
-    const QVariant selected = rightInspector->property("selectedBox");
+    const QVariant selected = rightInspector->property("selectedBoxData");
     QCOMPARE(selected.toMap().value(QStringLiteral("outlineColor")).toString(),
              QStringLiteral("112233ff"));
 

@@ -2,6 +2,7 @@
 #include "fonts/FontResolver.h"
 #include "qt_test_helpers.h"
 
+#include <QAbstractItemModel>
 #include <QClipboard>
 #include <QDir>
 #include <QFile>
@@ -28,6 +29,15 @@ void writeJsonFile(const QString &path, const QJsonObject &object) {
   QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
   QCOMPARE(file.write(QJsonDocument(object).toJson()),
            QJsonDocument(object).toJson().size());
+}
+
+int roleForName(const QAbstractItemModel &model, QByteArrayView name) {
+  const auto roles = model.roleNames();
+  for (auto it = roles.cbegin(); it != roles.cend(); ++it) {
+    if (it.value() == name)
+      return it.key();
+  }
+  return -1;
 }
 } // namespace
 
@@ -73,6 +83,95 @@ private slots:
              13.0);
     QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("h")).toDouble(),
              14.0);
+  }
+
+  void boxesModelExposesDocumentBackedRoles() {
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 120, 60);
+    editor.updateSelectedText(QStringLiteral("Live model"));
+    editor.setSelectedFontFamily(QStringLiteral("TextFX Missing Model Font"));
+    editor.setSelectedFontSize(28);
+    editor.setSelectedOutlineEnabled(true);
+    editor.setSelectedPathEnabled(true);
+    editor.setPerspectiveHandle(QStringLiteral("ne"), 0.3, 0.4);
+
+    auto *model = qobject_cast<QAbstractItemModel *>(editor.boxesModel());
+    QVERIFY(model);
+    QCOMPARE(model->rowCount(), 1);
+
+    const QModelIndex first = model->index(0, 0);
+    QVERIFY(first.isValid());
+    QCOMPARE(model->data(first, roleForName(*model, "boxIndex")).toInt(), 0);
+    QCOMPARE(model->data(first, roleForName(*model, "boxText")).toString(),
+             QStringLiteral("Live model"));
+    QCOMPARE(model->data(first, roleForName(*model, "boxX")).toDouble(), 10.0);
+    QCOMPARE(model->data(first, roleForName(*model, "boxWidth")).toDouble(), 120.0);
+    QCOMPARE(model->data(first, roleForName(*model, "boxFontSize")).toInt(), 28);
+    QCOMPARE(model->data(first, roleForName(*model, "boxFontFamily")).toString(),
+             QStringLiteral("TextFX Missing Model Font"));
+    QVERIFY(!model->data(first, roleForName(*model, "boxResolvedFontFamily"))
+                 .toString()
+                 .isEmpty());
+    QVERIFY(model->data(first, roleForName(*model, "boxOutline")).toBool());
+    QVERIFY(model->data(first, roleForName(*model, "boxPath")).toBool());
+    QCOMPARE(model->data(first, roleForName(*model, "boxPathPoints")).toList().size(),
+             3);
+    QVERIFY(model->data(first, roleForName(*model, "boxPerspective")).toBool());
+    QCOMPARE(model->data(first, roleForName(*model, "boxPerspectiveNe"))
+                 .toList()
+                 .at(0)
+                 .toDouble(),
+             0.3);
+  }
+
+  void boxesModelEmitsPreciseLiveRoleChangesAndStructuralSignals() {
+    EditorController editor;
+    editor.newDocument();
+
+    auto *model = qobject_cast<QAbstractItemModel *>(editor.boxesModel());
+    QVERIFY(model);
+    QSignalSpy rowsInserted(model, &QAbstractItemModel::rowsInserted);
+    QSignalSpy rowsRemoved(model, &QAbstractItemModel::rowsRemoved);
+    QSignalSpy dataChanged(model, &QAbstractItemModel::dataChanged);
+    QSignalSpy modelReset(model, &QAbstractItemModel::modelReset);
+    QSignalSpy documentChanged(&editor, &EditorController::documentChanged);
+
+    editor.createTextBox(1, 2, 80, 40);
+    QCOMPARE(rowsInserted.count(), 1);
+    QCOMPARE(model->rowCount(), 1);
+
+    editor.beginTextEdit();
+    editor.updateSelectedText(QStringLiteral("draft"));
+    QCOMPARE(documentChanged.count(), 1);
+    QVERIFY(dataChanged.count() >= 1);
+    auto changedRoles = dataChanged.takeLast().at(2).value<QList<int>>();
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxText")));
+    QCOMPARE(model->data(model->index(0, 0), roleForName(*model, "boxText")).toString(),
+             QStringLiteral("draft"));
+    editor.endTextEdit();
+
+    editor.beginInteraction();
+    editor.moveSelected(5, 7);
+    changedRoles = dataChanged.takeLast().at(2).value<QList<int>>();
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxX")));
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxY")));
+    QCOMPARE(model->data(model->index(0, 0), roleForName(*model, "boxX")).toDouble(),
+             6.0);
+    editor.endInteraction();
+
+    editor.setSelectedOutlineEnabled(true);
+    changedRoles = dataChanged.takeLast().at(2).value<QList<int>>();
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxOutline")));
+    QVERIFY(!changedRoles.contains(roleForName(*model, "boxX")));
+
+    editor.deleteSelected();
+    QCOMPARE(rowsRemoved.count(), 1);
+    QCOMPARE(editor.selectedIndex(), -1);
+    QCOMPARE(model->rowCount(), 0);
+
+    editor.newDocument();
+    QVERIFY(modelReset.count() >= 1);
   }
 
   void boxesExposeRequestedAndResolvedFontFamilies() {

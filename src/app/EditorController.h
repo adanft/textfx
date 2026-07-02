@@ -1,10 +1,12 @@
 #pragma once
 
+#include "app/BoxesModel.h"
 #include "app/PageTextService.h"
 #include "core/DocumentModel.h"
 #include "core/ProjectStore.h"
 
 #include <QObject>
+#include <QAbstractListModel>
 #include <QString>
 #include <QStringList>
 #include <QUrl>
@@ -39,6 +41,8 @@ class EditorController final : public QObject {
   Q_PROPERTY(bool canGoPrevious READ canGoPrevious NOTIFY stateChanged)
   Q_PROPERTY(bool canGoNext READ canGoNext NOTIFY stateChanged)
   Q_PROPERTY(QVariantList boxes READ boxes NOTIFY documentChanged)
+  Q_PROPERTY(int boxCount READ boxCount NOTIFY documentChanged)
+  Q_PROPERTY(QAbstractListModel *boxesModel READ boxesModel CONSTANT)
   Q_PROPERTY(QVariantList layers READ layers NOTIFY documentChanged)
   Q_PROPERTY(QVariantList presets READ presets NOTIFY documentChanged)
   Q_PROPERTY(
@@ -66,6 +70,8 @@ public:
     return currentPageIndex_ >= 0 && currentPageIndex_ + 1 < pageCount();
   }
   QVariantList boxes() const;
+  int boxCount() const;
+  QAbstractListModel *boxesModel();
   QVariant selectedBoxViewModel() const;
   QVariantList layers() const;
   QVariantList presets() const;
@@ -85,6 +91,7 @@ public:
   Q_INVOKABLE void goToPage(int index);
   Q_INVOKABLE void selectBox(int index);
   Q_INVOKABLE void createTextBox(double x, double y, double w, double h);
+  Q_INVOKABLE QVariant boxRole(int row, const QString &roleName) const;
   Q_INVOKABLE void updateSelectedText(const QString &text);
   Q_INVOKABLE void setSelectedFontFamily(const QString &family);
   Q_INVOKABLE void setSelectedFontSize(int size);
@@ -161,7 +168,12 @@ private:
   const TextBox *selectedBox() const;
   bool editSelectedBoxIf(const std::function<bool(TextBox &)> &mutation);
   void editSelectedBox(const std::function<void(TextBox &)> &mutation);
+  bool editSelectedBoxIf(const std::function<bool(TextBox &)> &mutation,
+                         const QList<int> &roles);
+  void editSelectedBox(const std::function<void(TextBox &)> &mutation,
+                       const QList<int> &roles);
   void markDocumentChanged();
+  void markDocumentChanged(const QList<int> &roles);
   bool flushPendingDocumentChanged();
   void setNotification(QString message);
   void clearProjectState();
@@ -175,6 +187,7 @@ private:
   bool reloadPresets(const std::string &preferredName = {});
 
   DocumentModel document_;
+  BoxesModel boxesModel_;
   std::vector<TextPreset> projectPresets_;
   std::unique_ptr<ProjectStore> store_;
   std::filesystem::path currentPage_;

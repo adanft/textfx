@@ -7,7 +7,27 @@ Pane {
 
     property var editor: null
     property var editorLimits
-    property var selectedBox: null
+    property int selectedBoxRevision: 0
+    readonly property var selectedBoxData: ({
+        rotation: selectedBoxValue("boxRotation", 0),
+        perspective: selectedBoxValue("boxPerspective", false),
+        outline: selectedBoxValue("boxOutline", false),
+        outlineColor: selectedBoxValue("boxOutlineColor", "#ffffff"),
+        outlineSize: selectedBoxValue("boxOutlineSize", 2),
+        blur: selectedBoxValue("boxBlur", false),
+        blurSize: selectedBoxValue("boxBlurSize", 0),
+        shadow: selectedBoxValue("boxShadow", false),
+        shadowColor: selectedBoxValue("boxShadowColor", "#000000"),
+        shadowOffsetX: selectedBoxValue("boxShadowOffsetX", 4),
+        shadowOffsetY: selectedBoxValue("boxShadowOffsetY", 4),
+        shadowBlurSize: selectedBoxValue("boxShadowBlurSize", 0),
+        gradient: selectedBoxValue("boxGradient", false),
+        gradientDirection: selectedBoxValue("boxGradientDirection", 0),
+        gradientColorA: selectedBoxValue("boxGradientColorA", "#ffffff"),
+        gradientColorB: selectedBoxValue("boxGradientColorB", "#000000"),
+        path: selectedBoxValue("boxPath", false),
+        pathMode: selectedBoxValue("boxPathMode", 0)
+    })
     property var qmlColorProvider: function(hex) {
         return hex;
     }
@@ -19,6 +39,15 @@ Pane {
 
     signal colorDialogRequested(string hex, string setter)
     signal zoomRequested(real displayScale)
+
+    function selectedBoxValue(roleName, fallback) {
+        selectedBoxRevision;
+        if (!editor || editor.selectedIndex < 0)
+            return fallback;
+
+        const value = editor.boxRole(editor.selectedIndex, roleName);
+        return value === undefined || value === null ? fallback : value;
+    }
 
     function detentedDisplayScale(displayScale) {
         return Math.abs(displayScale - 1) <= displayScaleSnapThreshold + 1e-9 ? 1 : displayScale;
@@ -32,6 +61,14 @@ Pane {
     SplitView.minimumWidth: 180
     SplitView.preferredWidth: 260
     SplitView.fillHeight: true
+
+    Connections {
+        target: rightInspectorPanel.editor ? rightInspectorPanel.editor.boxesModel : null
+        function onDataChanged() { rightInspectorPanel.selectedBoxRevision += 1; }
+        function onModelReset() { rightInspectorPanel.selectedBoxRevision += 1; }
+        function onRowsInserted() { rightInspectorPanel.selectedBoxRevision += 1; }
+        function onRowsRemoved() { rightInspectorPanel.selectedBoxRevision += 1; }
+    }
 
     ScrollView {
         id: rightPanelScroll
@@ -237,7 +274,7 @@ Pane {
                                     Layout.minimumWidth: 0
                                     from: -360
                                     to: 360
-                                    value: rightInspectorPanel.selectedBox ? Math.round(rightInspectorPanel.selectedBox.rotation) : 0
+                                    value: Math.round(rightInspectorPanel.selectedBoxData.rotation)
                                     onValueModified: rightInspectorPanel.editor.setSelectedRotation(value)
                                 }
 
@@ -250,7 +287,7 @@ Pane {
                                 CheckBox {
                                     objectName: "rightInspectorPerspectiveEnabledCheckBox"
                                     text: qsTr("Perspective Handles")
-                                    checked: rightInspectorPanel.selectedBox ? rightInspectorPanel.selectedBox.perspective : false
+                                    checked: rightInspectorPanel.selectedBoxData.perspective
                                     onClicked: rightInspectorPanel.editor.setSelectedPerspectiveEnabled(checked)
                                 }
 
@@ -337,7 +374,7 @@ Pane {
                                 CheckBox {
                                     objectName: "rightInspectorOutlineEnabledCheckBox"
                                     text: qsTr("Enabled")
-                                    checked: rightInspectorPanel.selectedBox ? rightInspectorPanel.selectedBox.outline : false
+                                    checked: rightInspectorPanel.selectedBoxData.outline
                                     onClicked: rightInspectorPanel.editor.setSelectedOutlineEnabled(checked)
                                 }
 
@@ -347,7 +384,7 @@ Pane {
 
                                 ColorButton {
                                     objectName: "rightInspectorOutlineColorButton"
-                                    swatchText: rightInspectorPanel.selectedBox ? rightInspectorPanel.qmlColorProvider(rightInspectorPanel.selectedBox.outlineColor) : "#ffffff"
+                                    swatchText: rightInspectorPanel.qmlColorProvider(rightInspectorPanel.selectedBoxData.outlineColor)
                                     swatchColor: swatchText
                                     onClicked: rightInspectorPanel.colorDialogRequested(swatchText, "outline")
                                 }
@@ -361,7 +398,7 @@ Pane {
                                     Layout.minimumWidth: 0
                                     from: rightInspectorPanel.editorLimits.minimumEffectSize
                                     to: rightInspectorPanel.editorLimits.maximumEffectSize
-                                    value: rightInspectorPanel.selectedBox ? rightInspectorPanel.selectedBox.outlineSize : 2
+                                    value: rightInspectorPanel.selectedBoxData.outlineSize
                                     onValueModified: rightInspectorPanel.editor.setSelectedOutlineSize(value)
                                 }
 
@@ -373,7 +410,7 @@ Pane {
 
                                 CheckBox {
                                     text: qsTr("Enabled")
-                                    checked: rightInspectorPanel.selectedBox ? rightInspectorPanel.selectedBox.blur : false
+                                    checked: rightInspectorPanel.selectedBoxData.blur
                                     onClicked: rightInspectorPanel.editor.setSelectedBlurEnabled(checked)
                                 }
 
@@ -386,7 +423,7 @@ Pane {
                                     Layout.minimumWidth: 0
                                     from: rightInspectorPanel.editorLimits.minimumEffectSize
                                     to: rightInspectorPanel.editorLimits.maximumEffectSize
-                                    value: rightInspectorPanel.selectedBox ? rightInspectorPanel.selectedBox.blurSize : 0
+                                    value: rightInspectorPanel.selectedBoxData.blurSize
                                     onValueModified: rightInspectorPanel.editor.setSelectedBlurSize(value)
                                 }
 
@@ -398,7 +435,7 @@ Pane {
 
                                 CheckBox {
                                     text: qsTr("Enabled")
-                                    checked: rightInspectorPanel.selectedBox ? rightInspectorPanel.selectedBox.shadow : false
+                                    checked: rightInspectorPanel.selectedBoxData.shadow
                                     onClicked: rightInspectorPanel.editor.setSelectedShadowEnabled(checked)
                                 }
 
@@ -407,7 +444,7 @@ Pane {
                                 }
 
                                 ColorButton {
-                                    swatchText: rightInspectorPanel.selectedBox ? rightInspectorPanel.qmlColorProvider(rightInspectorPanel.selectedBox.shadowColor) : "#000000"
+                                    swatchText: rightInspectorPanel.qmlColorProvider(rightInspectorPanel.selectedBoxData.shadowColor)
                                     swatchColor: swatchText
                                     onClicked: rightInspectorPanel.colorDialogRequested(swatchText, "shadow")
                                 }
@@ -421,7 +458,7 @@ Pane {
                                     Layout.minimumWidth: 0
                                     from: rightInspectorPanel.editorLimits.minimumShadowOffset
                                     to: rightInspectorPanel.editorLimits.maximumShadowOffset
-                                    value: rightInspectorPanel.selectedBox ? rightInspectorPanel.selectedBox.shadowOffsetX : 4
+                                    value: rightInspectorPanel.selectedBoxData.shadowOffsetX
                                     onValueModified: rightInspectorPanel.editor.setSelectedShadowOffsetX(value)
                                 }
 
@@ -434,7 +471,7 @@ Pane {
                                     Layout.minimumWidth: 0
                                     from: rightInspectorPanel.editorLimits.minimumShadowOffset
                                     to: rightInspectorPanel.editorLimits.maximumShadowOffset
-                                    value: rightInspectorPanel.selectedBox ? rightInspectorPanel.selectedBox.shadowOffsetY : 4
+                                    value: rightInspectorPanel.selectedBoxData.shadowOffsetY
                                     onValueModified: rightInspectorPanel.editor.setSelectedShadowOffsetY(value)
                                 }
 
@@ -447,7 +484,7 @@ Pane {
                                     Layout.minimumWidth: 0
                                     from: rightInspectorPanel.editorLimits.minimumEffectSize
                                     to: rightInspectorPanel.editorLimits.maximumEffectSize
-                                    value: rightInspectorPanel.selectedBox ? rightInspectorPanel.selectedBox.shadowBlurSize : 0
+                                    value: rightInspectorPanel.selectedBoxData.shadowBlurSize
                                     onValueModified: rightInspectorPanel.editor.setSelectedShadowBlurSize(value)
                                 }
 
@@ -459,7 +496,7 @@ Pane {
 
                                 CheckBox {
                                     text: qsTr("Enabled")
-                                    checked: rightInspectorPanel.selectedBox ? rightInspectorPanel.selectedBox.gradient : false
+                                    checked: rightInspectorPanel.selectedBoxData.gradient
                                     onClicked: rightInspectorPanel.editor.setSelectedGradientEnabled(checked)
                                 }
 
@@ -471,7 +508,7 @@ Pane {
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
                                     model: [qsTr("Vertical"), qsTr("Horizontal")]
-                                    currentIndex: rightInspectorPanel.selectedBox ? Math.min(rightInspectorPanel.selectedBox.gradientDirection, 1) : 0
+                                    currentIndex: Math.min(rightInspectorPanel.selectedBoxData.gradientDirection, 1)
                                     onActivated: rightInspectorPanel.editor.setSelectedGradientDirection(currentIndex)
                                 }
 
@@ -480,7 +517,7 @@ Pane {
                                 }
 
                                 ColorButton {
-                                    swatchText: rightInspectorPanel.selectedBox ? rightInspectorPanel.qmlColorProvider(rightInspectorPanel.selectedBox.gradientColorA) : "#ffffff"
+                                    swatchText: rightInspectorPanel.qmlColorProvider(rightInspectorPanel.selectedBoxData.gradientColorA)
                                     swatchColor: swatchText
                                     onClicked: rightInspectorPanel.colorDialogRequested(swatchText, "gradientA")
                                 }
@@ -490,7 +527,7 @@ Pane {
                                 }
 
                                 ColorButton {
-                                    swatchText: rightInspectorPanel.selectedBox ? rightInspectorPanel.qmlColorProvider(rightInspectorPanel.selectedBox.gradientColorB) : "#000000"
+                                    swatchText: rightInspectorPanel.qmlColorProvider(rightInspectorPanel.selectedBoxData.gradientColorB)
                                     swatchColor: swatchText
                                     onClicked: rightInspectorPanel.colorDialogRequested(swatchText, "gradientB")
                                 }
@@ -504,7 +541,7 @@ Pane {
                                 CheckBox {
                                     objectName: "rightInspectorPathEnabledCheckBox"
                                     text: qsTr("Path Handles")
-                                    checked: rightInspectorPanel.selectedBox ? rightInspectorPanel.selectedBox.path : false
+                                    checked: rightInspectorPanel.selectedBoxData.path
                                     onClicked: rightInspectorPanel.editor.setSelectedPathEnabled(checked)
                                 }
 
@@ -516,7 +553,7 @@ Pane {
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
                                     model: [qsTr("Straight"), qsTr("Smooth")]
-                                    currentIndex: rightInspectorPanel.selectedBox ? Math.min(rightInspectorPanel.selectedBox.pathMode, 1) : 0
+                                    currentIndex: Math.min(rightInspectorPanel.selectedBoxData.pathMode, 1)
                                     onActivated: rightInspectorPanel.editor.setSelectedPathMode(currentIndex)
                                 }
 
@@ -580,7 +617,7 @@ Pane {
                             Button {
                                 objectName: "rightInspectorLayerUpButton"
                                 text: qsTr("Up")
-                                enabled: rightInspectorPanel.editor.selectedIndex >= 0 && rightInspectorPanel.editor.selectedIndex < rightInspectorPanel.editor.boxes.length - 1
+                                enabled: rightInspectorPanel.editor.selectedIndex >= 0 && rightInspectorPanel.editor.selectedIndex < rightInspectorPanel.editor.boxCount - 1
                                 onClicked: rightInspectorPanel.editor.moveLayer(rightInspectorPanel.editor.selectedIndex + 1)
                             }
 
