@@ -1617,7 +1617,7 @@ private slots:
     const qsizetype renderer =
         source.indexOf(QStringLiteral("id: boxOutlinedText"), wrapper);
     const qsizetype pathGuide =
-        source.indexOf(QStringLiteral("id: pathGuide"), renderer);
+        source.indexOf(QStringLiteral("TextPathGuide {"), renderer);
     const qsizetype editor =
         source.indexOf(QStringLiteral("TextArea {"), pathGuide);
     QVERIFY(wrapper >= 0);
