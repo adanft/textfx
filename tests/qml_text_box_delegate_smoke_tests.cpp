@@ -453,11 +453,11 @@ private slots:
     QVERIFY(textAreaObject->property("topPadding").toReal() > expectedInset);
 
     const QString delegateSource =
-        readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+        readQmlFile(QStringLiteral("TextEditOverlay.qml"));
     QVERIFY(
         delegateSource.contains(QStringLiteral("wrapMode: TextEdit.WordWrap")));
     QVERIFY(delegateSource.contains(
-        QStringLiteral("boxOutlinedText.editLayoutTopPadding")));
+        QStringLiteral("outlinedTextItem.editLayoutTopPadding")));
   }
 
   void qmlTextEditOverlayCursorGeometryMatchesPreviewMetrics() {
@@ -971,25 +971,30 @@ private slots:
 
     const QString delegateSource =
         readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+    const QString editOverlaySource =
+        readQmlFile(QStringLiteral("TextEditOverlay.qml"));
 
     const qsizetype delegateStart = delegateSource.indexOf(
         QStringLiteral("Rectangle {\n    id: boxDelegate"));
     const qsizetype textPerspectiveStart = delegateSource.indexOf(
         QStringLiteral("id: boxTextPerspective"), delegateStart);
-    const qsizetype textAreaStart = delegateSource.indexOf(
-        QStringLiteral("id: boxTextArea"), textPerspectiveStart);
+    const qsizetype textAreaStart = editOverlaySource.indexOf(
+        QStringLiteral("id: boxTextArea"));
     const qsizetype mouseAreaStart =
-        delegateSource.indexOf(QStringLiteral("MouseArea {"), textAreaStart);
+        editOverlaySource.indexOf(QStringLiteral("Connections {"), textAreaStart);
+    const qsizetype textOverlayStart = delegateSource.indexOf(
+        QStringLiteral("TextEditOverlay {"), textPerspectiveStart);
     QVERIFY(delegateStart >= 0);
     QVERIFY(textPerspectiveStart > delegateStart);
-    QVERIFY(textAreaStart > textPerspectiveStart);
+    QVERIFY(textAreaStart >= 0);
     QVERIFY(mouseAreaStart > textAreaStart);
+    QVERIFY(textOverlayStart > textPerspectiveStart);
     const QString delegateHeader =
-        delegateSource.mid(delegateStart, textAreaStart - delegateStart);
+        delegateSource.mid(delegateStart, textPerspectiveStart - delegateStart);
     const QString textPerspectiveSource = delegateSource.mid(
-        textPerspectiveStart, textAreaStart - textPerspectiveStart);
+        textPerspectiveStart, textOverlayStart - textPerspectiveStart);
     const QString textAreaSource =
-        delegateSource.mid(textAreaStart, mouseAreaStart - textAreaStart);
+        editOverlaySource.mid(textAreaStart, mouseAreaStart - textAreaStart);
 
     QVERIFY(delegateHeader.contains(
         QStringLiteral("property bool perspectiveActive: boxModel.perspective "
@@ -1118,35 +1123,38 @@ private slots:
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString delegateSource =
         readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+    const QString resizeHandlesSource =
+        readQmlFile(QStringLiteral("TextResizeHandles.qml"));
+    const QString rotateHandleSource =
+        readQmlFile(QStringLiteral("TextRotateHandle.qml"));
     const QString pathHandlesSource =
         readQmlFile(QStringLiteral("TextPathHandles.qml"));
 
     const qsizetype resizeStart = indexOfIgnoringWhitespace(
-        delegateSource, QStringLiteral("model: [\n            {name: \"nw\"}"));
+        resizeHandlesSource, QStringLiteral("model: [\n            {name: \"nw\"}"));
     const qsizetype pathStart = pathHandlesSource.indexOf(
         QStringLiteral("model: pathHandlePlane.boxRef.boxModel.pathPoints"),
         0);
     const qsizetype pathEnd = pathHandlesSource.size();
     const qsizetype rotateRectStart =
-        delegateSource.indexOf(QStringLiteral("id: rotateHandle"), resizeStart);
-    const qsizetype rotateStart = delegateSource.indexOf(
+        rotateHandleSource.indexOf(QStringLiteral("id: rotateHandle"));
+    const qsizetype rotateStart = rotateHandleSource.indexOf(
         QStringLiteral(
-            "rotateHandle.rootWindow.beginRotateDrag(rotateHandle.boxRef"),
-        resizeStart);
+            "rotateHandle.rootWindow.beginRotateDrag(rotateHandle.boxRef"));
     const qsizetype pathComponentStart =
         delegateSource.indexOf(QStringLiteral("TextPathHandles {"),
-                               rotateRectStart);
+                               0);
     QVERIFY(resizeStart >= 0);
-    QVERIFY(rotateRectStart > resizeStart);
-    QVERIFY(rotateStart > resizeStart);
-    QVERIFY(pathComponentStart > rotateStart);
+    QVERIFY(rotateRectStart >= 0);
+    QVERIFY(rotateStart > rotateRectStart);
+    QVERIFY(pathComponentStart >= 0);
     QVERIFY(pathStart >= 0);
     QVERIFY(pathEnd > pathStart);
 
     const QString resizeSource =
-        delegateSource.mid(resizeStart, rotateStart - resizeStart);
+        resizeHandlesSource.mid(resizeStart);
     const QString rotateSource =
-        delegateSource.mid(rotateRectStart, pathComponentStart - rotateRectStart);
+        rotateHandleSource.mid(rotateRectStart);
     const QString pathSource =
         pathHandlesSource.mid(pathStart, pathEnd - pathStart);
 
@@ -1162,18 +1170,20 @@ private slots:
         QStringLiteral("readonly property var rootWindow: window")));
     QVERIFY(!delegateSource.contains(QStringLiteral("Editor.")));
     QVERIFY(!delegateSource.contains(QStringLiteral("window.")));
+    QVERIFY(delegateSource.contains(QStringLiteral("TextResizeHandles {")));
+    QVERIFY(delegateSource.contains(QStringLiteral("TextRotateHandle {")));
     QVERIFY(delegateSource.contains(QStringLiteral("TextPathHandles {")));
     QVERIFY(delegateSource.contains(QStringLiteral("boxRef: boxDelegate")));
     QVERIFY(delegateSource.contains(
         QStringLiteral("canvasItem: boxDelegate.canvasItem")));
     QVERIFY(
-        resizeSource.contains(QStringLiteral("property var boxRef: parent")));
+        resizeSource.contains(QStringLiteral("property var boxRef: resizeHandles.boxRef")));
     QVERIFY(resizeSource.contains(
         QStringLiteral("property var rootWindow: boxRef.rootWindow")));
     QVERIFY(resizeSource.contains(
         QStringLiteral("property var editorRef: boxRef.editorRef")));
     QVERIFY(
-        rotateSource.contains(QStringLiteral("property var boxRef: parent")));
+        rotateSource.contains(QStringLiteral("property var boxRef")));
     QVERIFY(pathSource.contains(
         QStringLiteral("property var boxRef: pathPlane.boxRef")));
     QVERIFY(pathSource.contains(
@@ -1312,7 +1322,10 @@ private slots:
         geometrySource,
         QStringLiteral(
             "return { x: (nw.x + ne.x) / 2, y: (nw.y + ne.y) / 2 }")));
-    QVERIFY(delegateSource.contains(
+    const QString rotateHandleSource =
+        readQmlFile(QStringLiteral("TextRotateHandle.qml"));
+
+    QVERIFY(rotateHandleSource.contains(
         QStringLiteral("rootWindow.rotateHandlePosition(boxRef.boxModel, "
                        "boxRef.width, boxRef.height)")));
   }
@@ -1321,6 +1334,10 @@ private slots:
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString delegateSource =
         readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+    const QString resizeHandlesSource =
+        readQmlFile(QStringLiteral("TextResizeHandles.qml"));
+    const QString rotateHandleSource =
+        readQmlFile(QStringLiteral("TextRotateHandle.qml"));
     const QString rotateStateSource =
         readQmlFile(QStringLiteral("BoxRotateInteractionState.qml"));
 
@@ -1329,15 +1346,15 @@ private slots:
           QStringLiteral("e"), QStringLiteral("se"), QStringLiteral("s"),
           QStringLiteral("sw"), QStringLiteral("w")}) {
       QVERIFY2(sourceContainsIgnoringWhitespace(
-                   delegateSource,
+                   resizeHandlesSource,
                    QStringLiteral("name: \"") + handle + QStringLiteral("\"")),
-               qPrintable(handle));
+                qPrintable(handle));
     }
     QVERIFY(rotateStateSource.contains(QStringLiteral("Math.atan2")));
     QVERIFY(mainSource.contains(QStringLiteral("BoxRotateInteractionState")));
     QVERIFY(
         mainSource.contains(QStringLiteral("window.editor.setSelectedBounds")));
-    QVERIFY(delegateSource.contains(
+    QVERIFY(rotateHandleSource.contains(
         QStringLiteral("rotateHandle.rootWindow.endRotateDrag(true)")));
     QVERIFY(!delegateSource.contains(
         QStringLiteral("Editor.rotateSelected(degrees)")));

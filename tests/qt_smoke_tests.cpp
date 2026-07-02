@@ -508,7 +508,7 @@ private slots:
     const qsizetype moveStart = delegateSource.indexOf(QStringLiteral(
         "z: boxRef.selected && editorRef.editingText ? -1 : 10"));
     const qsizetype resizeStart = indexOfIgnoringWhitespace(
-        delegateSource, QStringLiteral("model: [\n            {name: \"nw\"}"),
+        delegateSource, QStringLiteral("TextResizeHandles {"),
         moveStart);
     QVERIFY(moveStart >= 0);
     QVERIFY(resizeStart > moveStart);
@@ -1483,7 +1483,7 @@ private slots:
         QStringLiteral("applyTextLineSpacing(textDocument, editLineSpacing)")));
     QVERIFY(editorBlock.contains(
         QStringLiteral("readonly property bool editLayoutAligned: "
-                       "boxOutlinedText.editLayoutMetricsValid")));
+                       "outlinedTextItem.editLayoutMetricsValid")));
     QVERIFY(editorBlock.contains(
         QStringLiteral("topPadding: editLayoutTopPadding")));
     QVERIFY(editorBlock.contains(
@@ -1500,8 +1500,6 @@ private slots:
         QStringLiteral("property bool userInputSyncPending: false")));
     QVERIFY(editorBlock.contains(
         QStringLiteral("property string livePreviewText: boxRef.modelPreviewText()")));
-    QVERIFY(editorBlock.contains(
-        QStringLiteral("property string pendingUserInputText: \"\"")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorBlock,
         QStringLiteral("function setLivePreviewText(nextText) { "
@@ -1511,14 +1509,13 @@ private slots:
         QStringLiteral("function syncTextFromModel() { const nextText = "
                        "modelText(); if (activeFocus && "
                        "userInputSyncPending) { setLivePreviewText(text); "
-                       "userInputSyncPending = false; pendingUserInputText "
-                       "= \"\"; applyLineSpacing(); return")));
+                       "userInputSyncPending = false; applyLineSpacing(); "
+                       "return")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorBlock,
         QStringLiteral("onTextChanged: { setLivePreviewText(text); "
                        "applyLineSpacing(); if (activeFocus && editorRef && "
                        "!syncingTextFromModel) { userInputSyncPending = true; "
-                       "pendingUserInputText = text; "
                        "editorRef.updateSelectedText(text); } }")));
   }
 

@@ -115,8 +115,11 @@ qt_add_qml_module(textfx
         qml/TextPropertiesSection.qml
         qml/TextPresetsSection.qml
         qml/TextBoxDelegate.qml
+        qml/TextEditOverlay.qml
         qml/TextPathGuide.qml
         qml/TextPathHandles.qml
+        qml/TextResizeHandles.qml
+        qml/TextRotateHandle.qml
         qml/TextStyleButton.qml
         qml/ViewportMetrics.qml
     RESOURCES
