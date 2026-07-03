@@ -1,30 +1,106 @@
 # TextFX
 
-TextFX is the C++/Qt successor MVP for TypeX. The app opens image folders, shows the active page image, navigates pages, autosaves `.textfx` project data, and uses the same Qt-rendered PNG path for preview and export.
+TextFX is a desktop editor for placing styled text on top of image pages. It is designed for workflows like manga/comic typesetting, image translation cleanup, captions, posters, thumbnails, and any case where text needs to be positioned, styled, previewed, saved, and exported page by page.
 
-## Dependencies
+The goal is simple: open a folder of images, add text boxes, style them visually, move between pages, and export the final result without losing the live preview/export match.
+
+## What you can do with TextFX
+
+- Open an image folder as a project.
+- Navigate pages with previous/next controls.
+- Add, select, move, resize, rotate, duplicate, delete, copy, and paste text boxes.
+- Edit text directly on the canvas.
+- Autosave project data in a `.textfx` folder.
+- Export rendered pages to PNG.
+- Keep live preview and export rendering aligned.
+
+## Text styling features
+
+TextFX supports common visual text effects used in image editing and typesetting:
+
+- Font family and font size.
+- Text color.
+- Bold and italic.
+- Uppercase and lowercase transforms.
+- Left, center, and right alignment.
+- Line spacing and letter spacing.
+- Multiple outline layers, similar to stacked strokes in image editors.
+- Blur.
+- Shadow with color, offset, and blur size.
+- Gradient fill.
+- Path text with editable path handles.
+- Perspective/box distortion handles.
+- Text presets for reusing styling choices.
+
+## Why TextFX exists
+
+TextFX is the Qt/C++ successor MVP for TypeX. It focuses on a more maintainable desktop architecture while preserving the practical workflow: fast page navigation, direct canvas editing, reusable text styles, and deterministic preview/export output.
+
+It is built for people who need to work visually, not just edit metadata. The canvas is the center of the app: text boxes are manipulated where they appear, and effects update in real time.
+
+## Project data
+
+When a folder is opened, TextFX stores project metadata under a `.textfx` directory inside that project folder. This keeps page text, boxes, presets, and saved state next to the images they belong to.
+
+The original images are not overwritten during normal editing. Exported output is written separately.
+
+## Current status
+
+TextFX is an active MVP. The core workflow is already present: folder opening, page navigation, canvas text editing, effects, presets, autosave, and PNG export.
+
+Some advanced rendering details are still evolving, especially around perfect parity for complex path/perspective cases and final packaging/installers for each target platform.
+
+## Build from source
+
+### Requirements
 
 - CMake 3.25+
 - Ninja
-- C++23 compiler
-- Qt 6.8+ (`Core`, `Gui`, `Qml`, `Quick`, `QuickControls2`, `QuickDialogs2`; `Test` for smoke tests)
-- Optional: Catch2 3 for core/text/render test sources
+- A C++23 compiler
+- Qt 6.8+ with:
+  - Core
+  - Gui
+  - Qml
+  - Quick
+  - QuickControls2
+  - QuickDialogs2
+- Optional for tests: Qt Test and Catch2 3
 
-## Build
+### Daily development
 
-For daily development from this folder:
+From the repository root:
 
 ```bash
-./run.sh        # configure, build, and launch
-./run.sh test   # configure, build verification targets, and run ctest
+./run.sh
 ```
+
+Run tests:
+
+```bash
+./run.sh test
+```
+
+Or use CMake presets directly:
 
 ```bash
 cmake --preset debug
 cmake --build --preset debug
 ```
 
-For release packaging:
+### Verification
+
+```bash
+cmake --preset test
+cmake --build build/test --target check
+```
+
+Expected notes:
+
+- If Catch2 3 is missing, core tests may not be registered.
+- If Qt Test is missing, Qt smoke tests may not be registered.
+- Render checks cover deterministic render seams and all-effects PNG export behavior.
+
+### Release package
 
 ```bash
 cmake --preset release
@@ -32,29 +108,12 @@ cmake --build --preset release
 cmake --build build/release --target package
 ```
 
-CPack currently produces a minimal `.tar.gz`. Qt deployment uses `qt_generate_deploy_qml_app_script()` when the installed Qt CMake package provides it. Platform-specific installers are intentionally not configured until target platforms are confirmed.
-
-Qt runtime deployment is intentionally off by default because target platforms are not confirmed:
+CPack currently produces a minimal `.tar.gz` package. Qt runtime deployment is opt-in while target platforms are finalized:
 
 ```bash
 cmake --preset release -DTEXTFX_ENABLE_QT_DEPLOY=ON
 ```
 
-## Verification
+## License
 
-```bash
-cmake --preset test
-cmake --build build/test --target check
-```
-
-Expected local limits:
-
-- If Catch2 3 is missing, core tests are not registered.
-- If Qt Test is missing, Qt smoke tests are not registered.
-- Render goldens verify the deterministic render seam plus a runtime all-effects PNG export.
-
-## MVP Parity Notes
-
-Implemented seams cover real folder opening, project/page discovery, page image display, previous/next/direct page navigation with dirty JSON autosave, Save/Save All for the active project document, TextFX JSON, document commands, copy/paste, canvas actions, QML shell wiring, text layout fallback, deterministic preview/export render comparison, and a shared preview/export PNG path for the current page image plus text boxes with fill/outline/shadow/shadow blur/blur/gradient handling.
-
-Not complete yet: full text shaping/bidi behavior, production perspective warp, exact TypeX smooth path geometry, and target-platform installer policy. Perspective is currently an affine approximation and path text follows the configured handles as a polyline approximation; both are reported as warnings.
+TextFX is released under the MIT License. See [LICENSE](LICENSE).
