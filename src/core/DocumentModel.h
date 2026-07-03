@@ -32,10 +32,18 @@ struct TextStyle {
   TextAlignment alignment = TextAlignment::Left;
 };
 
+struct OutlineLayer {
+  bool enabled = true;
+  std::string color = "ffffffff";
+  int size = 2;
+};
+
 struct TextEffects {
   bool outlineEnabled = false;
   std::string outlineColor = "ffffffff";
   int outlineSize = 2;
+  std::vector<OutlineLayer> outlineLayers;
+  bool outlineLayersSet = false;
   bool blurEnabled = false;
   int blurSize = 0;
   bool shadowEnabled = false;

@@ -74,35 +74,87 @@ ColumnLayout {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
 
-                    CheckBox {
-                        objectName: "rightInspectorOutlineEnabledCheckBox"
-                        text: qsTr("Enabled")
-                        checked: textEffectsSection.selectedBoxData.outline
-                        onClicked: textEffectsSection.editor.setSelectedOutlineEnabled(checked)
-                    }
-
-                    Label {
-                        text: qsTr("Color")
-                    }
-
-                    ColorButton {
-                        objectName: "rightInspectorOutlineColorButton"
-                        swatchText: textEffectsSection.qmlColorProvider(textEffectsSection.selectedBoxData.outlineColor)
-                        swatchColor: swatchText
-                        onClicked: textEffectsSection.colorDialogRequested(swatchText, "outline")
-                    }
-
-                    Label {
-                        text: qsTr("Size")
-                    }
-
-                    SpinBox {
+                    Button {
+                        objectName: "rightInspectorAddOutlineLayerButton"
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
-                        from: textEffectsSection.editorLimits.minimumEffectSize
-                        to: textEffectsSection.editorLimits.maximumEffectSize
-                        value: textEffectsSection.selectedBoxData.outlineSize
-                        onValueModified: textEffectsSection.editor.setSelectedOutlineSize(value)
+                        text: qsTr("Add outline layer")
+                        onClicked: textEffectsSection.editor.addSelectedOutlineLayer()
+                    }
+
+                    Repeater {
+                        model: {
+                            const layers = textEffectsSection.selectedBoxData.outlineLayers || [];
+                            return layers.length > 0 ? layers : [{
+                                "synthetic": true,
+                                "enabled": textEffectsSection.selectedBoxData.outline,
+                                "color": textEffectsSection.selectedBoxData.outlineColor,
+                                "size": textEffectsSection.selectedBoxData.outlineSize
+                            }];
+                        }
+
+                        delegate: Frame {
+                            required property int index
+                            required property var modelData
+
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                spacing: 4
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+
+                                    CheckBox {
+                                        objectName: index === 0 ? "rightInspectorOutlineEnabledCheckBox" : "rightInspectorOutlineLayerEnabledCheckBox"
+                                        text: qsTr("Layer %1").arg(index + 1)
+                                        checked: modelData.enabled
+                                        onClicked: index === 0 ? textEffectsSection.editor.setSelectedOutlineEnabled(checked) : textEffectsSection.editor.setSelectedOutlineLayerEnabled(index, checked)
+                                    }
+
+                                    Item {
+                                        Layout.fillWidth: true
+                                    }
+
+                                    Button {
+                                        objectName: "rightInspectorRemoveOutlineLayerButton"
+                                        text: qsTr("Remove")
+                                        visible: !modelData.synthetic
+                                        onClicked: textEffectsSection.editor.removeSelectedOutlineLayer(index)
+                                    }
+                                }
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+
+                                    Label {
+                                        text: qsTr("Color")
+                                    }
+
+                                    ColorButton {
+                                        objectName: index === 0 ? "rightInspectorOutlineColorButton" : "rightInspectorOutlineLayerColorButton"
+                                        swatchText: textEffectsSection.qmlColorProvider(modelData.color)
+                                        swatchColor: swatchText
+                                        onClicked: textEffectsSection.colorDialogRequested(swatchText, index === 0 ? "outline" : "outlineLayer:" + index)
+                                    }
+                                }
+
+                                Label {
+                                    text: qsTr("Size")
+                                }
+
+                                SpinBox {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    from: textEffectsSection.editorLimits.minimumEffectSize
+                                    to: textEffectsSection.editorLimits.maximumEffectSize
+                                    value: modelData.size
+                                    onValueModified: index === 0 ? textEffectsSection.editor.setSelectedOutlineSize(value) : textEffectsSection.editor.setSelectedOutlineLayerSize(index, value)
+                                }
+                            }
+                        }
                     }
 
                 }

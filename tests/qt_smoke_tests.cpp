@@ -1393,6 +1393,7 @@ private slots:
     QVERIFY(!source.contains(QStringLiteral("source: boxOutlinedText")));
     QVERIFY(source.contains(QStringLiteral(
         "outlineSize: boxRef.boxModel.outline && "
+        "!boxRef.boxModel.outlineLayersSet && "
         "boxRef.boxModel.outlineSize > 0 ? "
         "boxRef.boxModel.outlineSize : 0")));
     QVERIFY(source.contains(QStringLiteral(
@@ -1443,6 +1444,7 @@ private slots:
         QStringLiteral("renderScale: rootWindow.livePreviewScale()")));
     QVERIFY(rendererBlock.contains(QStringLiteral(
         "outlineSize: boxRef.boxModel.outline && "
+        "!boxRef.boxModel.outlineLayersSet && "
         "boxRef.boxModel.outlineSize > 0 ? "
         "boxRef.boxModel.outlineSize : 0")));
     QVERIFY(rendererBlock.contains(QStringLiteral(

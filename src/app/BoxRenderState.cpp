@@ -20,6 +20,22 @@ QString resolvedFontFamily(const TextStyle &style) {
   font.setLetterSpacing(QFont::AbsoluteSpacing, style.letterSpacing);
   return resolveFont(font).font.family();
 }
+
+std::vector<OutlineLayer> effectiveOutlineLayers(const TextEffects &effects) {
+  if (effects.outlineLayersSet || !effects.outlineLayers.empty())
+    return effects.outlineLayers;
+  return {};
+}
+
+QVariantList outlineLayersValue(const TextEffects &effects) {
+  QVariantList result;
+  for (const auto &layer : effectiveOutlineLayers(effects)) {
+    result.push_back(QVariantMap{{"enabled", layer.enabled},
+                                 {"color", toQString(layer.color)},
+                                 {"size", layer.size}});
+  }
+  return result;
+}
 } // namespace
 
 QVariantList pointValue(const Point &point) { return {point.x, point.y}; }
@@ -33,10 +49,22 @@ QVariantList pointList(const std::vector<Point> &points) {
 
 namespace {
 QVariantMap effectsMap(const TextEffects &effects) {
-  return {{"outline",
-           QVariantMap{{"enabled", effects.outlineEnabled},
-                       {"color", toQString(effects.outlineColor)},
-                       {"size", effects.outlineSize}}},
+  const auto layers = outlineLayersValue(effects);
+  const bool hasExplicitLayers =
+      effects.outlineLayersSet || !effects.outlineLayers.empty();
+  const auto *firstOutline = !effects.outlineLayers.empty()
+                                 ? &effects.outlineLayers.front()
+                                 : nullptr;
+  const QVariantMap outlineMap{
+      {"enabled", firstOutline ? firstOutline->enabled
+                               : !hasExplicitLayers && effects.outlineEnabled},
+      {"color", firstOutline ? toQString(firstOutline->color)
+                              : toQString(effects.outlineColor)},
+      {"size", firstOutline ? firstOutline->size
+                            : hasExplicitLayers ? 0 : effects.outlineSize},
+      {"layers", layers},
+      {"layersSet", hasExplicitLayers}};
+  return {{"outline", outlineMap},
           {"blur",
            QVariantMap{{"enabled", effects.blurEnabled},
                        {"size", effects.blurSize}}},
@@ -65,6 +93,11 @@ QVariantMap effectsMap(const TextEffects &effects) {
 } // namespace
 
 BoxRenderState mapBoxRenderState(const TextBox &box, int index) {
+  const bool hasExplicitLayers =
+      box.effects.outlineLayersSet || !box.effects.outlineLayers.empty();
+  const auto *firstOutline = !box.effects.outlineLayers.empty()
+                                 ? &box.effects.outlineLayers.front()
+                                 : nullptr;
   return BoxRenderState{
       .index = index,
       .text = toQString(box.text),
@@ -84,9 +117,14 @@ BoxRenderState mapBoxRenderState(const TextBox &box, int index) {
       .uppercase = box.style.uppercase,
       .lowercase = box.style.lowercase && !box.style.uppercase,
       .alignment = static_cast<int>(box.style.alignment),
-      .outline = box.effects.outlineEnabled,
-      .outlineColor = toQString(box.effects.outlineColor),
-      .outlineSize = box.effects.outlineSize,
+      .outline = firstOutline ? firstOutline->enabled
+                              : !hasExplicitLayers && box.effects.outlineEnabled,
+      .outlineColor = firstOutline ? toQString(firstOutline->color)
+                                    : toQString(box.effects.outlineColor),
+      .outlineSize = firstOutline ? firstOutline->size
+                                  : hasExplicitLayers ? 0
+                                                      : box.effects.outlineSize,
+      .outlineLayers = outlineLayersValue(box.effects),
       .blur = box.effects.blurEnabled,
       .blurSize = box.effects.blurSize,
       .shadow = box.effects.shadowEnabled,

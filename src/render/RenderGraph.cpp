@@ -68,6 +68,40 @@ QBrush fillBrushFor(const TextBox &box) {
   return QBrush(gradient);
 }
 
+std::vector<OutlineLayer> effectiveOutlineLayers(const TextEffects &effects) {
+  if (effects.outlineLayersSet || !effects.outlineLayers.empty())
+    return effects.outlineLayers;
+  if (!effects.outlineEnabled)
+    return {};
+  return {{effects.outlineEnabled, effects.outlineColor, effects.outlineSize}};
+}
+
+std::vector<OutlineLayer> paintOutlineLayers(const TextEffects &effects) {
+  return effectiveOutlineLayers(effects);
+}
+
+std::vector<qreal>
+stackedOutlineStrokeWidths(const std::vector<OutlineLayer> &layers) {
+  std::vector<qreal> result(layers.size(), 0.0);
+  qreal cumulativeRadius = 0.0;
+  for (std::size_t i = 0; i < layers.size(); ++i) {
+    const auto &layer = layers[i];
+    if (!layer.enabled || layer.size <= 0)
+      continue;
+    cumulativeRadius += layer.size;
+    result[i] = cumulativeRadius * 2.0;
+  }
+  return result;
+}
+
+qreal maxEnabledOutlineStrokeWidth(const std::vector<OutlineLayer> &layers) {
+  const auto strokeWidths = stackedOutlineStrokeWidths(layers);
+  qreal result = 0.0;
+  for (const qreal strokeWidth : strokeWidths)
+    result = std::max(result, strokeWidth);
+  return result;
+}
+
 void fillShadow(QPainter &painter, const QPainterPath &path,
                 const QColor &color, int blurSize) {
   const int radius = cappedBlurKernelRadius(blurSize);
@@ -105,10 +139,17 @@ void drawTextBox(QPainter &painter, const TextBox &box) {
   if (box.text.empty())
     return;
   const auto font = qFontFor(box);
-  const qreal outline =
-      box.effects.outlineEnabled && box.effects.outlineSize > 0
-          ? box.effects.outlineSize
-          : 0;
+  const auto outlineLayers = paintOutlineLayers(box.effects);
+  const bool hasExplicitOutlineLayers =
+      box.effects.outlineLayersSet || !box.effects.outlineLayers.empty();
+  const auto outlineStrokeWidths = !hasExplicitOutlineLayers
+                                        ? std::vector<qreal>{static_cast<qreal>(
+                                              box.effects.outlineSize)}
+                                        : stackedOutlineStrokeWidths(outlineLayers);
+  const qreal outline = !hasExplicitOutlineLayers
+                             ? (box.effects.outlineEnabled ? box.effects.outlineSize
+                                                           : 0)
+                             : maxEnabledOutlineStrokeWidth(outlineLayers);
   const qreal inset = outline > 0 ? outline / 2.0 : 0.0;
   const QVector<QPointF> normalizedPoints =
       normalizedPathPoints(box.effects.pathPoints);
@@ -203,14 +244,18 @@ void drawTextBox(QPainter &painter, const TextBox &box) {
                    box.effects.shadowBlurSize);
       }
     }
-    if (outline <= 0)
-      return;
-    QPainterPathStroker stroker;
-    stroker.setWidth(outline);
-    stroker.setJoinStyle(Qt::RoundJoin);
-    QPainterPath stroke = stroker.createStroke(path);
-    stroke.setFillRule(Qt::WindingFill);
-    target.fillPath(stroke, toQColor(box.effects.outlineColor));
+    for (auto i = outlineLayers.size(); i > 0; --i) {
+      const auto &outlineLayer = outlineLayers[i - 1];
+      const qreal strokeWidth = outlineStrokeWidths[i - 1];
+      if (!outlineLayer.enabled || strokeWidth <= 0)
+        continue;
+      QPainterPathStroker stroker;
+      stroker.setWidth(strokeWidth);
+      stroker.setJoinStyle(Qt::RoundJoin);
+      QPainterPath stroke = stroker.createStroke(path);
+      stroke.setFillRule(Qt::WindingFill);
+      target.fillPath(stroke, toQColor(outlineLayer.color));
+    }
   };
   auto paintFill = [&](QPainter &target) {
     target.fillPath(path, fillBrushFor(box));

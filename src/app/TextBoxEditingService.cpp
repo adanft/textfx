@@ -12,6 +12,7 @@ constexpr int MaxTextSpacing = 300;
 constexpr double MinBoxSize = 12.0;
 constexpr int MinEffectSize = 0;
 constexpr int MaxEffectSize = 128;
+constexpr int DefaultOutlineLayerStep = 2;
 constexpr int MinShadowOffset = -512;
 constexpr int MaxShadowOffset = 512;
 
@@ -61,6 +62,37 @@ void ensureDefaultPath(TextBox &box) {
   if (box.effects.pathPoints.size() < 3) {
     box.effects.pathPoints = {{0.0, 0.5}, {0.5, 0.5}, {1.0, 0.5}};
   }
+}
+
+int clampedEffectSize(int size) {
+  return std::clamp(size, MinEffectSize, MaxEffectSize);
+}
+
+void syncLegacyOutlineFields(TextBox &box) {
+  if (box.effects.outlineLayers.empty()) {
+    box.effects.outlineEnabled = false;
+    return;
+  }
+  const auto &first = box.effects.outlineLayers.front();
+  box.effects.outlineEnabled = first.enabled;
+  box.effects.outlineColor = first.color;
+  box.effects.outlineSize = first.size;
+}
+
+void ensureOutlineLayer(TextBox &box) {
+  box.effects.outlineLayersSet = true;
+  if (!box.effects.outlineLayers.empty())
+    return;
+  box.effects.outlineLayers.push_back({box.effects.outlineEnabled,
+                                       box.effects.outlineColor,
+                                       clampedEffectSize(box.effects.outlineSize)});
+}
+
+int defaultAddedOutlineLayerSize(const TextBox &box) {
+  int maxSize = clampedEffectSize(box.effects.outlineSize);
+  for (const auto &layer : box.effects.outlineLayers)
+    maxSize = std::max(maxSize, clampedEffectSize(layer.size));
+  return clampedEffectSize(maxSize + DefaultOutlineLayerStep);
 }
 } // namespace
 
@@ -128,14 +160,69 @@ void TextBoxEditingService::setRotation(TextBox &box, double degrees) {
 }
 
 void TextBoxEditingService::setOutlineEnabled(TextBox &box, bool enabled) {
-  box.effects.outlineEnabled = enabled;
+  ensureOutlineLayer(box);
+  box.effects.outlineLayers.front().enabled = enabled;
+  syncLegacyOutlineFields(box);
 }
 void TextBoxEditingService::setOutlineColor(TextBox &box,
                                             const QString &color) {
-  box.effects.outlineColor = normalizeHexColor(color, box.effects.outlineColor);
+  ensureOutlineLayer(box);
+  box.effects.outlineLayers.front().color =
+      normalizeHexColor(color, box.effects.outlineLayers.front().color);
+  syncLegacyOutlineFields(box);
 }
 void TextBoxEditingService::setOutlineSize(TextBox &box, int size) {
-  box.effects.outlineSize = std::clamp(size, MinEffectSize, MaxEffectSize);
+  ensureOutlineLayer(box);
+  box.effects.outlineLayers.front().size = clampedEffectSize(size);
+  syncLegacyOutlineFields(box);
+}
+
+void TextBoxEditingService::addOutlineLayer(TextBox &box) {
+  box.effects.outlineLayersSet = true;
+  box.effects.outlineLayers.push_back(
+      {true, box.effects.outlineColor, defaultAddedOutlineLayerSize(box)});
+  syncLegacyOutlineFields(box);
+}
+
+bool TextBoxEditingService::removeOutlineLayer(TextBox &box, int index) {
+  if (index < 0 || index >= static_cast<int>(box.effects.outlineLayers.size()))
+    return false;
+  box.effects.outlineLayersSet = true;
+  box.effects.outlineLayers.erase(box.effects.outlineLayers.begin() + index);
+  syncLegacyOutlineFields(box);
+  return true;
+}
+
+bool TextBoxEditingService::setOutlineLayerEnabled(TextBox &box, int index,
+                                                   bool enabled) {
+  if (index < 0 || index >= static_cast<int>(box.effects.outlineLayers.size()))
+    return false;
+  box.effects.outlineLayersSet = true;
+  box.effects.outlineLayers[static_cast<std::size_t>(index)].enabled = enabled;
+  syncLegacyOutlineFields(box);
+  return true;
+}
+
+bool TextBoxEditingService::setOutlineLayerColor(TextBox &box, int index,
+                                                 const QString &color) {
+  if (index < 0 || index >= static_cast<int>(box.effects.outlineLayers.size()))
+    return false;
+  box.effects.outlineLayersSet = true;
+  auto &layer = box.effects.outlineLayers[static_cast<std::size_t>(index)];
+  layer.color = normalizeHexColor(color, layer.color);
+  syncLegacyOutlineFields(box);
+  return true;
+}
+
+bool TextBoxEditingService::setOutlineLayerSize(TextBox &box, int index,
+                                                int size) {
+  if (index < 0 || index >= static_cast<int>(box.effects.outlineLayers.size()))
+    return false;
+  box.effects.outlineLayersSet = true;
+  box.effects.outlineLayers[static_cast<std::size_t>(index)].size =
+      clampedEffectSize(size);
+  syncLegacyOutlineFields(box);
+  return true;
 }
 void TextBoxEditingService::setBlurEnabled(TextBox &box, bool enabled) {
   box.effects.blurEnabled = enabled;

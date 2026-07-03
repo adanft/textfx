@@ -61,6 +61,8 @@ Item {
             editor.setSelectedTextColor(hex);
         else if (colorDialogSetter === "outline")
             editor.setSelectedOutlineColor(hex);
+        else if (colorDialogSetter.startsWith("outlineLayer:"))
+            editor.setSelectedOutlineLayerColor(Number(colorDialogSetter.split(":")[1]), hex);
         else if (colorDialogSetter === "shadow")
             editor.setSelectedShadowColor(hex);
         else if (colorDialogSetter === "gradientA")

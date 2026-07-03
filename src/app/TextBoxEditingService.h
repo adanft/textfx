@@ -28,6 +28,12 @@ public:
   static void setOutlineEnabled(TextBox &box, bool enabled);
   static void setOutlineColor(TextBox &box, const QString &color);
   static void setOutlineSize(TextBox &box, int size);
+  static void addOutlineLayer(TextBox &box);
+  static bool removeOutlineLayer(TextBox &box, int index);
+  static bool setOutlineLayerEnabled(TextBox &box, int index, bool enabled);
+  static bool setOutlineLayerColor(TextBox &box, int index,
+                                   const QString &color);
+  static bool setOutlineLayerSize(TextBox &box, int index, int size);
   static void setBlurEnabled(TextBox &box, bool enabled);
   static void setBlurSize(TextBox &box, int size);
   static void setShadowEnabled(TextBox &box, bool enabled);

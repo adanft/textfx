@@ -20,6 +20,13 @@
 namespace textfx {
 
 namespace {
+struct PaintOutlineLayer {
+  bool enabled = true;
+  QColor color = Qt::white;
+  qreal size = 0.0;
+  qreal strokeWidth = 0.0;
+};
+
 QVector<QPointF> normalizedPathPoints(const QVariantList &points) {
   QVector<QPointF> result;
   result.reserve(points.size());
@@ -48,6 +55,59 @@ QPointF paintTranslationForBounds(const QRectF &paintedBounds,
       dy = layoutHeight - paintedBounds.bottom();
   }
   return {dx, dy};
+}
+
+QVector<PaintOutlineLayer> outlineLayersFromVariant(
+    const QVariantList &layers, const QColor &fallbackColor,
+    qreal fallbackSize) {
+  QVector<PaintOutlineLayer> result;
+  for (const QVariant &value : layers) {
+    const QVariantMap map = value.toMap();
+    PaintOutlineLayer layer;
+    layer.enabled = map.value(QStringLiteral("enabled"), true).toBool();
+    const QString colorValue =
+        map.value(QStringLiteral("color"), fallbackColor.name(QColor::HexArgb))
+            .toString();
+    layer.color = QColor(colorValue);
+    if (!layer.color.isValid() && colorValue.size() == 8) {
+      bool ok = false;
+      const uint rgba = colorValue.toUInt(&ok, 16);
+      if (ok) {
+        layer.color = QColor(static_cast<int>((rgba >> 24) & 0xff),
+                             static_cast<int>((rgba >> 16) & 0xff),
+                             static_cast<int>((rgba >> 8) & 0xff),
+                             static_cast<int>(rgba & 0xff));
+      }
+    }
+    if (!layer.color.isValid())
+      layer.color = fallbackColor;
+    layer.size = std::max<qreal>(0.0, map.value(QStringLiteral("size"), 0).toReal());
+    result.append(layer);
+  }
+  if (result.isEmpty() && fallbackSize > 0)
+    result.append({true, fallbackColor, fallbackSize / 2.0});
+  return result;
+}
+
+QVector<PaintOutlineLayer>
+withStackedStrokeWidths(QVector<PaintOutlineLayer> layers) {
+  qreal cumulativeRadius = 0.0;
+  for (auto &layer : layers) {
+    if (!layer.enabled || layer.size <= 0.0)
+      continue;
+    cumulativeRadius += layer.size;
+    layer.strokeWidth = cumulativeRadius * 2.0;
+  }
+  return layers;
+}
+
+qreal maxEnabledOutlineStrokeWidth(const QVector<PaintOutlineLayer> &layers) {
+  qreal result = 0.0;
+  for (const auto &layer : layers) {
+    if (layer.enabled)
+      result = std::max(result, layer.strokeWidth);
+  }
+  return result;
 }
 } // namespace
 
@@ -136,6 +196,14 @@ void OutlinedTextItem::setOutlineSize(qreal value) {
   outlineSize_ = value;
   notifyLayoutChanged();
   emit outlineSizeChanged();
+}
+
+void OutlinedTextItem::setOutlineLayers(const QVariantList &value) {
+  if (outlineLayers_ == value)
+    return;
+  outlineLayers_ = value;
+  notifyLayoutChanged();
+  emit outlineLayersChanged();
 }
 
 void OutlinedTextItem::setBlurSize(int value) {
@@ -294,8 +362,8 @@ qreal OutlinedTextItem::editLayoutTopPadding() const {
 }
 
 qreal OutlinedTextItem::editLayoutLeftPadding() const {
-  return editLayoutMetricsValid() && outlineSize_ > 0 ? outlineSize_ / 2.0
-                                                      : 0.0;
+  const qreal maxOutline = effectiveMaxOutlineSize();
+  return editLayoutMetricsValid() && maxOutline > 0 ? maxOutline / 2.0 : 0.0;
 }
 
 qreal OutlinedTextItem::editLayoutRightPadding() const {
@@ -343,7 +411,10 @@ void OutlinedTextItem::paint(QPainter *painter) {
   const qreal layoutWidth = std::max<qreal>(1.0, width() / scale);
   const qreal layoutHeight = std::max<qreal>(1.0, height() / scale);
   const QFont font = layoutFont();
-  const qreal inset = outlineSize_ > 0 ? outlineSize_ / 2.0 : 0.0;
+  const auto outlines = withStackedStrokeWidths(
+      outlineLayersFromVariant(outlineLayers_, outlineColor_, outlineSize_));
+  const qreal maxOutline = effectiveMaxOutlineSize();
+  const qreal inset = maxOutline > 0 ? maxOutline / 2.0 : 0.0;
   painter->setRenderHint(QPainter::Antialiasing, true);
 
   const QVector<QPointF> normalizedPoints = normalizedPathPoints(pathPoints_);
@@ -358,9 +429,9 @@ void OutlinedTextItem::paint(QPainter *painter) {
                                pathMode_ == 1, pixelSize_ + lineSpacing_)
           : textLayoutPath(layoutOptions, font);
   QRectF paintedBounds = path.boundingRect();
-  if (outlineSize_ > 0) {
+  if (maxOutline > 0) {
     QPainterPathStroker stroker;
-    stroker.setWidth(outlineSize_);
+    stroker.setWidth(maxOutline);
     stroker.setJoinStyle(Qt::RoundJoin);
     paintedBounds =
         paintedBounds.united(stroker.createStroke(path).boundingRect());
@@ -419,13 +490,16 @@ void OutlinedTextItem::paint(QPainter *painter) {
   auto paintText = [&](QPainter &target) {
     paintShadow(target);
     target.scale(scale, scale);
-    if (outlineSize_ > 0) {
+    for (auto outline = outlines.crbegin(); outline != outlines.crend();
+         ++outline) {
+      if (!outline->enabled || outline->strokeWidth <= 0)
+        continue;
       QPainterPathStroker stroker;
-      stroker.setWidth(outlineSize_);
+      stroker.setWidth(outline->strokeWidth);
       stroker.setJoinStyle(Qt::RoundJoin);
       QPainterPath stroke = stroker.createStroke(path);
       stroke.setFillRule(Qt::WindingFill);
-      target.fillPath(stroke, outlineColor_);
+      target.fillPath(stroke, outline->color);
     }
     if (gradientEnabled_) {
       QLinearGradient gradient(0, 0, gradientDirection_ == 1 ? layoutWidth : 0,
@@ -485,6 +559,8 @@ QString OutlinedTextItem::blurCacheKey(int radius,
                      QString::number(color_.rgba()),
                      QString::number(outlineColor_.rgba()),
                      QString::number(outlineSize_, 'g', 17),
+                     QString::fromUtf8(QJsonDocument::fromVariant(outlineLayers_)
+                                           .toJson(QJsonDocument::Compact)),
                      QString::number(renderScale_, 'g', 17),
                      QString::number(width(), 'g', 17),
                      QString::number(height(), 'g', 17),
@@ -524,7 +600,8 @@ void OutlinedTextItem::updateOverflow() {
   const qreal scale = std::max<qreal>(0.0001, renderScale_);
   const qreal layoutWidth = std::max<qreal>(1.0, width() / scale);
   const qreal layoutHeight = std::max<qreal>(1.0, height() / scale);
-  const qreal inset = outlineSize_ > 0 ? outlineSize_ / 2.0 : 0.0;
+  const qreal maxOutline = effectiveMaxOutlineSize();
+  const qreal inset = maxOutline > 0 ? maxOutline / 2.0 : 0.0;
   const QVector<QPointF> normalizedPoints = normalizedPathPoints(pathPoints_);
   const TextLayoutOptions layoutOptions{text_,        layoutWidth,
                                         layoutHeight, inset,
@@ -537,9 +614,9 @@ void OutlinedTextItem::updateOverflow() {
                                pathMode_ == 1, pixelSize_ + lineSpacing_)
           : textLayoutPath(layoutOptions, layoutFont());
   QRectF paintedBounds = path.boundingRect();
-  if (outlineSize_ > 0) {
+  if (maxOutline > 0) {
     QPainterPathStroker stroker;
-    stroker.setWidth(outlineSize_);
+    stroker.setWidth(maxOutline);
     stroker.setJoinStyle(Qt::RoundJoin);
     paintedBounds =
         paintedBounds.united(stroker.createStroke(path).boundingRect());
@@ -579,11 +656,18 @@ void OutlinedTextItem::requestPaintRefresh() {
 #endif
 }
 
+qreal OutlinedTextItem::effectiveMaxOutlineSize() const {
+  const auto outlines = withStackedStrokeWidths(
+      outlineLayersFromVariant(outlineLayers_, outlineColor_, outlineSize_));
+  return maxEnabledOutlineStrokeWidth(outlines);
+}
+
 QPointF OutlinedTextItem::paintTranslationForCurrentLayout() const {
   const qreal scale = std::max<qreal>(0.0001, renderScale_);
   const qreal layoutWidth = std::max<qreal>(1.0, width() / scale);
   const qreal layoutHeight = std::max<qreal>(1.0, height() / scale);
-  const qreal inset = outlineSize_ > 0 ? outlineSize_ / 2.0 : 0.0;
+  const qreal maxOutline = effectiveMaxOutlineSize();
+  const qreal inset = maxOutline > 0 ? maxOutline / 2.0 : 0.0;
   const QVector<QPointF> normalizedPoints = normalizedPathPoints(pathPoints_);
   const TextLayoutOptions layoutOptions{text_,        layoutWidth,
                                         layoutHeight, inset,
@@ -596,9 +680,9 @@ QPointF OutlinedTextItem::paintTranslationForCurrentLayout() const {
                                pathMode_ == 1, pixelSize_ + lineSpacing_)
           : textLayoutPath(layoutOptions, layoutFont());
   QRectF paintedBounds = path.boundingRect();
-  if (outlineSize_ > 0) {
+  if (maxOutline > 0) {
     QPainterPathStroker stroker;
-    stroker.setWidth(outlineSize_);
+    stroker.setWidth(maxOutline);
     stroker.setJoinStyle(Qt::RoundJoin);
     paintedBounds =
         paintedBounds.united(stroker.createStroke(path).boundingRect());
@@ -611,7 +695,8 @@ QPointF OutlinedTextItem::paintTranslationForCurrentLayout() const {
 QStringList OutlinedTextItem::wrappedLinesForTesting() const {
   QStringList lines;
   const qreal scale = std::max<qreal>(0.0001, renderScale_);
-  const qreal inset = outlineSize_ > 0 ? outlineSize_ / 2.0 : 0.0;
+  const qreal maxOutline = effectiveMaxOutlineSize();
+  const qreal inset = maxOutline > 0 ? maxOutline / 2.0 : 0.0;
   textLayoutPath({text_, std::max<qreal>(1.0, width() / scale),
                   std::max<qreal>(1.0, height() / scale), inset, lineSpacing_,
                   horizontalAlignment_},

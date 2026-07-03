@@ -141,6 +141,8 @@ int main(int argc, char **argv) {
   mappedBox.effects.outlineEnabled = true;
   mappedBox.effects.outlineColor = "111111ff";
   mappedBox.effects.outlineSize = 4;
+  mappedBox.effects.outlineLayers = {{true, "111111ff", 12},
+                                     {true, "333333ff", 4}};
   mappedBox.effects.blurEnabled = true;
   mappedBox.effects.blurSize = 5;
   mappedBox.effects.shadowEnabled = true;
@@ -178,7 +180,8 @@ int main(int argc, char **argv) {
       !renderState.bold || !renderState.italic || !renderState.uppercase ||
       renderState.lowercase || renderState.alignment != 2 || !renderState.outline ||
       renderState.outlineColor != QStringLiteral("111111ff") ||
-      renderState.outlineSize != 4 || !renderState.blur ||
+      renderState.outlineSize != 12 || renderState.outlineLayers.size() != 2 ||
+      !renderState.blur ||
       renderState.blurSize != 5 || !renderState.shadow ||
       renderState.shadowColor != QStringLiteral("222222ff") ||
       renderState.shadowOffsetX != -3 || renderState.shadowOffsetY != 8 ||
@@ -191,7 +194,8 @@ int main(int argc, char **argv) {
       renderState.perspectiveNe.at(0).toDouble() != 3.0 ||
       !groupedOutline.value(QStringLiteral("enabled")).toBool() ||
       groupedOutline.value(QStringLiteral("color")).toString() != QStringLiteral("111111ff") ||
-      groupedOutline.value(QStringLiteral("size")).toInt() != 4 ||
+      groupedOutline.value(QStringLiteral("size")).toInt() != 12 ||
+      groupedOutline.value(QStringLiteral("layers")).toList().size() != 2 ||
       !groupedBlur.value(QStringLiteral("enabled")).toBool() ||
       groupedBlur.value(QStringLiteral("size")).toInt() != 5 ||
       !groupedShadow.value(QStringLiteral("enabled")).toBool() ||
@@ -503,6 +507,114 @@ int main(int argc, char **argv) {
   if (overlapImage.isNull() || darkOverlapPixels < 100) {
     std::cerr << "Overlapped glyphs cut out instead of filling: darkPixels="
               << darkOverlapPixels << '\n';
+    return 1;
+  }
+
+  DocumentModel equalOutlineLayers;
+  TextBox equalLayerBox;
+  equalLayerBox.text = "Stack";
+  equalLayerBox.bounds = {20.0, 35.0, 200.0, 90.0};
+  equalLayerBox.style.fontSize = 46;
+  equalLayerBox.style.textColor = "000000ff";
+  equalLayerBox.effects.outlineLayers = {{true, "ff0000ff", 7},
+                                         {true, "ff0000ff", 7}};
+  equalLayerBox.effects.outlineLayersSet = true;
+  equalOutlineLayers.addTextBox(equalLayerBox);
+
+  DocumentModel equivalentSingleOutline;
+  TextBox equivalentSingleBox = equalLayerBox;
+  equivalentSingleBox.effects.outlineLayers.clear();
+  equivalentSingleBox.effects.outlineLayersSet = false;
+  equivalentSingleBox.effects.outlineEnabled = true;
+  equivalentSingleBox.effects.outlineColor = "ff0000ff";
+  equivalentSingleBox.effects.outlineSize = 28;
+  equivalentSingleOutline.addTextBox(equivalentSingleBox);
+
+  const auto equalLayerImage = exportedImage(
+      graph, equalOutlineLayers, pagePath, tempPath / "export-equal-outline-layers.png");
+  const auto equivalentSingleImage = exportedImage(
+      graph, equivalentSingleOutline, pagePath,
+      tempPath / "export-equal-outline-single.png");
+  if (equalLayerImage.isNull() || equivalentSingleImage.isNull() ||
+      imagesDiffer(equalLayerImage, equivalentSingleImage)) {
+    std::cerr << "Equal 7px outline layers did not match a legacy 28px "
+                 "centered stroke\n";
+    return 1;
+  }
+
+  DocumentModel legacyEightOutline;
+  TextBox legacyEightBox = equalLayerBox;
+  legacyEightBox.effects.outlineLayers.clear();
+  legacyEightBox.effects.outlineLayersSet = false;
+  legacyEightBox.effects.outlineEnabled = true;
+  legacyEightBox.effects.outlineColor = "ff0000ff";
+  legacyEightBox.effects.outlineSize = 8;
+  legacyEightOutline.addTextBox(legacyEightBox);
+
+  DocumentModel explicitFourOutline;
+  TextBox explicitFourBox = legacyEightBox;
+  explicitFourBox.effects.outlineLayers = {{true, "ff0000ff", 4}};
+  explicitFourBox.effects.outlineLayersSet = true;
+  explicitFourOutline.addTextBox(explicitFourBox);
+
+  DocumentModel explicitEightOutline;
+  TextBox explicitEightBox = legacyEightBox;
+  explicitEightBox.effects.outlineLayers = {{true, "ff0000ff", 8}};
+  explicitEightBox.effects.outlineLayersSet = true;
+  explicitEightOutline.addTextBox(explicitEightBox);
+
+  const auto legacyEightImage = exportedImage(
+      graph, legacyEightOutline, pagePath, tempPath / "export-legacy-outline-8.png");
+  const auto explicitFourImage = exportedImage(
+      graph, explicitFourOutline, pagePath, tempPath / "export-explicit-outline-4.png");
+  const auto explicitEightImage = exportedImage(
+      graph, explicitEightOutline, pagePath, tempPath / "export-explicit-outline-8.png");
+  if (legacyEightImage.isNull() || explicitFourImage.isNull() ||
+      explicitEightImage.isNull() || imagesDiffer(legacyEightImage, explicitFourImage) ||
+      !imagesDiffer(legacyEightImage, explicitEightImage)) {
+    std::cerr << "Legacy outline_size 8 did not keep old 8px stroke semantics "
+                 "distinct from explicit outline layer size 8\n";
+    return 1;
+  }
+
+  DocumentModel legacyOddOutline;
+  TextBox legacyOddBox = legacyEightBox;
+  legacyOddBox.effects.outlineSize = 7;
+  legacyOddOutline.addTextBox(legacyOddBox);
+
+  const auto legacyOddImage = exportedImage(
+      graph, legacyOddOutline, pagePath, tempPath / "export-legacy-outline-7.png");
+  if (legacyOddImage.isNull() || !imagesDiffer(legacyOddImage, legacyEightImage) ||
+      !imagesDiffer(legacyOddImage, explicitFourImage)) {
+    std::cerr << "Legacy outline_size 7 did not keep old 7px centered stroke "
+                  "semantics distinct from rounded explicit layer size 4\n";
+    return 1;
+  }
+
+  DocumentModel stackedOutlines;
+  TextBox stackedOutlineBox;
+  stackedOutlineBox.text = "Stack";
+  stackedOutlineBox.bounds = {20.0, 35.0, 200.0, 90.0};
+  stackedOutlineBox.style.fontSize = 46;
+  stackedOutlineBox.style.textColor = "000000ff";
+  stackedOutlineBox.effects.outlineLayers = {{true, "ffffffff", 11},
+                                             {true, "ff0000ff", 9}};
+  stackedOutlineBox.effects.outlineLayersSet = true;
+  stackedOutlines.addTextBox(stackedOutlineBox);
+  const auto stackedOutlineImage = exportedImage(
+      graph, stackedOutlines, pagePath, tempPath / "export-stacked-outline.png");
+  const int stackedRedPixels =
+      countPixels(stackedOutlineImage, background, [](const QColor &color) {
+        return color.red() > 120 && color.green() < 80 && color.blue() < 80;
+      });
+  const int stackedWhitePixels =
+      countPixels(stackedOutlineImage, background, [](const QColor &color) {
+        return color.red() > 180 && color.green() > 180 && color.blue() > 180;
+      });
+  if (stackedOutlineImage.isNull() || stackedRedPixels < 300 ||
+      stackedWhitePixels == 0) {
+    std::cerr << "Stacked outline export did not preserve reversed-size layer order: red="
+              << stackedRedPixels << " white=" << stackedWhitePixels << '\n';
     return 1;
   }
 

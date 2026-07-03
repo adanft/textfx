@@ -111,6 +111,11 @@ public:
   Q_INVOKABLE void setSelectedOutlineEnabled(bool enabled);
   Q_INVOKABLE void setSelectedOutlineColor(const QString &color);
   Q_INVOKABLE void setSelectedOutlineSize(int size);
+  Q_INVOKABLE void addSelectedOutlineLayer();
+  Q_INVOKABLE void removeSelectedOutlineLayer(int index);
+  Q_INVOKABLE void setSelectedOutlineLayerEnabled(int index, bool enabled);
+  Q_INVOKABLE void setSelectedOutlineLayerColor(int index, const QString &color);
+  Q_INVOKABLE void setSelectedOutlineLayerSize(int index, int size);
   Q_INVOKABLE void setSelectedBlurEnabled(bool enabled);
   Q_INVOKABLE void setSelectedBlurSize(int size);
   Q_INVOKABLE void setSelectedShadowEnabled(bool enabled);

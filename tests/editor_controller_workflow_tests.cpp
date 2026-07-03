@@ -94,6 +94,9 @@ private slots:
     editor.setSelectedFontFamily(QStringLiteral("TextFX Missing Model Font"));
     editor.setSelectedFontSize(28);
     editor.setSelectedOutlineEnabled(true);
+    editor.addSelectedOutlineLayer();
+    editor.setSelectedOutlineLayerSize(1, 9);
+    editor.setSelectedOutlineLayerColor(1, QStringLiteral("#445566"));
     editor.setSelectedPathEnabled(true);
     editor.setPerspectiveHandle(QStringLiteral("ne"), 0.3, 0.4);
 
@@ -129,11 +132,44 @@ private slots:
     QVERIFY(effects.value(QStringLiteral("outline")).toMap()
                 .value(QStringLiteral("enabled"))
                 .toBool());
+    QCOMPARE(effects.value(QStringLiteral("outline"))
+                 .toMap()
+                 .value(QStringLiteral("layers"))
+                 .toList()
+                 .size(),
+             2);
     QCOMPARE(effects.value(QStringLiteral("path")).toMap()
                  .value(QStringLiteral("points"))
                  .toList()
                  .size(),
              3);
+  }
+
+  void addOutlineLayerDefaultsToVisibleLargerSize() {
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 120, 60);
+    editor.setSelectedOutlineEnabled(true);
+    editor.setSelectedOutlineSize(6);
+
+    editor.addSelectedOutlineLayer();
+
+    auto *model = qobject_cast<QAbstractItemModel *>(editor.boxesModel());
+    QVERIFY(model);
+    const auto layers = model->data(model->index(0, 0), roleForName(*model, "boxEffects"))
+                            .toMap()
+                            .value(QStringLiteral("outline"))
+                            .toMap()
+                            .value(QStringLiteral("layers"))
+                            .toList();
+    QCOMPARE(layers.size(), 2);
+    const int firstSize = layers.at(0).toMap().value(QStringLiteral("size")).toInt();
+    const int addedSize = layers.at(1).toMap().value(QStringLiteral("size")).toInt();
+    QCOMPARE(firstSize, 6);
+    QVERIFY(addedSize > firstSize);
+    QCOMPARE(model->data(model->index(0, 0), roleForName(*model, "boxOutlineSize"))
+                 .toInt(),
+             firstSize);
   }
 
   void effectMetadataKeepsLegacyRolesAndGroupedRoleTogether() {
@@ -199,6 +235,24 @@ private slots:
     QVERIFY(changedRoles.contains(roleForName(*model, "boxOutlineSize")));
     QVERIFY(changedRoles.contains(roleForName(*model, "boxEffects")));
     QVERIFY(!changedRoles.contains(roleForName(*model, "boxX")));
+
+    editor.addSelectedOutlineLayer();
+    changedRoles = dataChanged.takeLast().at(2).value<QList<int>>();
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxOutline")));
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxEffects")));
+
+    editor.setSelectedOutlineLayerSize(1, 11);
+    changedRoles = dataChanged.takeLast().at(2).value<QList<int>>();
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxOutlineSize")));
+    QVERIFY(changedRoles.contains(roleForName(*model, "boxEffects")));
+    const auto layeredOutline = model->data(model->index(0, 0), roleForName(*model, "boxEffects"))
+                                    .toMap()
+                                    .value(QStringLiteral("outline"))
+                                    .toMap()
+                                    .value(QStringLiteral("layers"))
+                                    .toList();
+    QCOMPARE(layeredOutline.size(), 2);
+    QCOMPARE(layeredOutline.at(1).toMap().value(QStringLiteral("size")).toInt(), 11);
 
     editor.setSelectedPathEnabled(true);
     changedRoles = dataChanged.takeLast().at(2).value<QList<int>>();
@@ -312,6 +366,12 @@ private slots:
     editor.newDocument();
     editor.createTextBox(10, 20, 100, 50);
     editor.updateSelectedText(QStringLiteral("Copied text"));
+    editor.setSelectedOutlineEnabled(true);
+    editor.setSelectedOutlineColor(QStringLiteral("#112233"));
+    editor.setSelectedOutlineSize(5);
+    editor.addSelectedOutlineLayer();
+    editor.setSelectedOutlineLayerColor(1, QStringLiteral("#445566"));
+    editor.setSelectedOutlineLayerSize(1, 9);
     editor.rotateSelected(12.5);
     editor.setPerspectiveHandle(QStringLiteral("ne"), 0.9, 0.1);
     editor.setSelectedPathMode(1);
@@ -330,6 +390,21 @@ private slots:
     QCOMPARE(pasted.value(QStringLiteral("x")).toDouble(), 26.0);
     QCOMPARE(pasted.value(QStringLiteral("y")).toDouble(), 36.0);
     QCOMPARE(pasted.value(QStringLiteral("rotation")).toDouble(), 12.5);
+    QVERIFY(pasted.value(QStringLiteral("outline")).toBool());
+    QCOMPARE(pasted.value(QStringLiteral("outlineColor")).toString(),
+             QStringLiteral("112233ff"));
+    QCOMPARE(pasted.value(QStringLiteral("outlineSize")).toInt(), 5);
+    const auto pastedOutlineLayers =
+        pasted.value(QStringLiteral("outlineLayers")).toList();
+    QCOMPARE(pastedOutlineLayers.size(), 2);
+    QCOMPARE(pastedOutlineLayers.at(0).toMap().value(QStringLiteral("color")).toString(),
+             QStringLiteral("112233ff"));
+    QCOMPARE(pastedOutlineLayers.at(0).toMap().value(QStringLiteral("size")).toInt(),
+             5);
+    QCOMPARE(pastedOutlineLayers.at(1).toMap().value(QStringLiteral("color")).toString(),
+             QStringLiteral("445566ff"));
+    QCOMPARE(pastedOutlineLayers.at(1).toMap().value(QStringLiteral("size")).toInt(),
+             9);
     QVERIFY(pasted.value(QStringLiteral("perspective")).toBool());
     const auto pastedNe =
         pasted.value(QStringLiteral("perspectiveNe")).toList();
@@ -344,11 +419,38 @@ private slots:
     QCOMPARE(editor.selectedIndex(), 1);
     QVERIFY(editor.dirty());
 
+    QGuiApplication::clipboard()->setText(QString::fromUtf8(
+        QJsonDocument(QJsonObject{{QStringLiteral("text"), QStringLiteral("Legacy outline")},
+                                  {QStringLiteral("x"), 1},
+                                  {QStringLiteral("y"), 2},
+                                  {QStringLiteral("w"), 80},
+                                  {QStringLiteral("h"), 40},
+                                  {QStringLiteral("outline"), true},
+                                  {QStringLiteral("outlineColor"), QStringLiteral("778899ff")},
+                                  {QStringLiteral("outlineSize"), 7}})
+            .toJson(QJsonDocument::Compact)));
+    editor.pasteBox();
+
+    const auto legacyPasted = editor.boxes().at(2).toMap();
+    QVERIFY(legacyPasted.value(QStringLiteral("outline")).toBool());
+    QCOMPARE(legacyPasted.value(QStringLiteral("outlineColor")).toString(),
+             QStringLiteral("778899ff"));
+    QCOMPARE(legacyPasted.value(QStringLiteral("outlineSize")).toInt(), 7);
+    const auto legacyOutlineLayers =
+        legacyPasted.value(QStringLiteral("outlineLayers")).toList();
+    QCOMPARE(legacyOutlineLayers.size(), 0);
+
+    editor.copySelected();
+    const auto legacyCopiedJson = QJsonDocument::fromJson(
+        QGuiApplication::clipboard()->text().toUtf8()).object();
+    QCOMPARE(legacyCopiedJson.value(QStringLiteral("outlineSize")).toInt(), 7);
+    QVERIFY(!legacyCopiedJson.contains(QStringLiteral("outlineLayers")));
+
     QGuiApplication::clipboard()->setText(QStringLiteral("Plain text"));
     editor.pasteBox();
 
     QCOMPARE(
-        editor.boxes().at(2).toMap().value(QStringLiteral("text")).toString(),
+        editor.boxes().at(3).toMap().value(QStringLiteral("text")).toString(),
         QStringLiteral("Plain text"));
   }
   void openProjectLoadsFixtureImagesAndEmptyMissingData() {

@@ -13,6 +13,7 @@ Pane {
         outline: selectedBoxState.effectValue("outline", "enabled", "boxOutline", false),
         outlineColor: selectedBoxState.effectValue("outline", "color", "boxOutlineColor", "#ffffff"),
         outlineSize: selectedBoxState.effectValue("outline", "size", "boxOutlineSize", 2),
+        outlineLayers: selectedBoxState.effectValue("outline", "layers", "boxOutlineLayers", []),
         blur: selectedBoxState.effectValue("blur", "enabled", "boxBlur", false),
         blurSize: selectedBoxState.effectValue("blur", "size", "boxBlurSize", 0),
         shadow: selectedBoxState.effectValue("shadow", "enabled", "boxShadow", false),

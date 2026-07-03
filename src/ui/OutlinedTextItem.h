@@ -29,7 +29,9 @@ class OutlinedTextItem : public QQuickPaintedItem {
   Q_PROPERTY(QColor outlineColor READ outlineColor WRITE setOutlineColor NOTIFY
                  outlineColorChanged)
   Q_PROPERTY(qreal outlineSize READ outlineSize WRITE setOutlineSize NOTIFY
-                 outlineSizeChanged)
+                  outlineSizeChanged)
+  Q_PROPERTY(QVariantList outlineLayers READ outlineLayers WRITE setOutlineLayers
+                 NOTIFY outlineLayersChanged)
   Q_PROPERTY(
       int blurSize READ blurSize WRITE setBlurSize NOTIFY blurSizeChanged)
   Q_PROPERTY(bool shadowEnabled READ shadowEnabled WRITE setShadowEnabled NOTIFY
@@ -101,6 +103,8 @@ public:
   void setOutlineColor(const QColor &value);
   qreal outlineSize() const { return outlineSize_; }
   void setOutlineSize(qreal value);
+  QVariantList outlineLayers() const { return outlineLayers_; }
+  void setOutlineLayers(const QVariantList &value);
   int blurSize() const { return blurSize_; }
   void setBlurSize(int value);
   bool shadowEnabled() const { return shadowEnabled_; }
@@ -143,6 +147,9 @@ public:
 
 #ifdef TEXTFX_TESTING
   int paintRequestRevisionForTesting() const { return paintRequestRevision_; }
+  qreal effectiveMaxOutlineSizeForTesting() const {
+    return effectiveMaxOutlineSize();
+  }
   QStringList wrappedLinesForTesting() const;
   QPointF pathBaselinePointForTesting(qreal distance, qreal layoutWidth,
                                       qreal layoutHeight) const;
@@ -165,6 +172,7 @@ signals:
   void colorChanged();
   void outlineColorChanged();
   void outlineSizeChanged();
+  void outlineLayersChanged();
   void blurSizeChanged();
   void shadowEnabledChanged();
   void shadowColorChanged();
@@ -191,6 +199,7 @@ private:
   void updateOverflow();
   void notifyLayoutChanged();
   void requestPaintRefresh();
+  qreal effectiveMaxOutlineSize() const;
   QPointF paintTranslationForCurrentLayout() const;
   QString blurCacheKey(int radius, const QRect &sourceRect) const;
   QString text_;
@@ -203,6 +212,7 @@ private:
   QColor color_ = Qt::black;
   QColor outlineColor_ = Qt::white;
   qreal outlineSize_ = 0.0;
+  QVariantList outlineLayers_;
   int blurSize_ = 0;
   bool shadowEnabled_ = false;
   QColor shadowColor_ = QColor(0, 0, 0, 160);

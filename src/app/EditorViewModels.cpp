@@ -34,6 +34,7 @@ QVariantMap textBoxMap(const TextBox &box, int index) {
       {"outline", state.outline},
       {"outlineColor", state.outlineColor},
       {"outlineSize", state.outlineSize},
+      {"outlineLayers", state.outlineLayers},
       {"blur", state.blur},
       {"blurSize", state.blurSize},
       {"shadow", state.shadow},

@@ -69,6 +69,47 @@ std::vector<Point> pathPointsFromJson(const QJsonValue &value) {
   return result;
 }
 
+QJsonObject outlineLayerToJson(const OutlineLayer &layer) {
+  return {{"enabled", layer.enabled},
+          {"color", QString::fromStdString(layer.color)},
+          {"size", layer.size}};
+}
+
+QJsonArray outlineLayersToJson(const std::vector<OutlineLayer> &layers) {
+  QJsonArray result;
+  for (const auto &layer : layers)
+    result.append(outlineLayerToJson(layer));
+  return result;
+}
+
+std::vector<OutlineLayer> outlineLayersFromJson(const QJsonValue &value) {
+  std::vector<OutlineLayer> result;
+  for (const auto &item : value.toArray()) {
+    if (!item.isObject())
+      continue;
+    const auto object = item.toObject();
+    OutlineLayer layer;
+    layer.enabled = object.value("enabled").toBool(layer.enabled);
+    layer.color = object.value("color")
+                      .toString(QString::fromStdString(layer.color))
+                      .toStdString();
+    layer.size = object.value("size").toInt(layer.size);
+    result.push_back(std::move(layer));
+  }
+  return result;
+}
+
+void syncLegacyOutlineFields(TextEffects &effects) {
+  if (effects.outlineLayers.empty()) {
+    effects.outlineEnabled = false;
+    return;
+  }
+  const auto &first = effects.outlineLayers.front();
+  effects.outlineEnabled = first.enabled;
+  effects.outlineColor = first.color;
+  effects.outlineSize = first.size;
+}
+
 TextStyle styleFromJson(const QJsonObject &object) {
   TextStyle style;
   style.fontFamily = object.value("font_family")
@@ -123,6 +164,11 @@ TextBox boxFromJson(const QJsonObject &object) {
           .toString(QString::fromStdString(effects.outlineColor))
           .toStdString();
   effects.outlineSize = object.value("outline_size").toInt(effects.outlineSize);
+  const bool hasOutlineLayers = object.contains("outline_layers");
+  effects.outlineLayersSet = hasOutlineLayers;
+  effects.outlineLayers = outlineLayersFromJson(object.value("outline_layers"));
+  if (hasOutlineLayers)
+    syncLegacyOutlineFields(effects);
   effects.blurEnabled =
       object.value("blur_enabled").toBool(effects.blurEnabled);
   effects.blurSize = object.value("blur_size").toInt(effects.blurSize);
@@ -182,6 +228,8 @@ QJsonObject boxToJson(const TextBox &box) {
   object.insert("outline_color",
                 QString::fromStdString(box.effects.outlineColor));
   object.insert("outline_size", box.effects.outlineSize);
+  if (box.effects.outlineLayersSet || !box.effects.outlineLayers.empty())
+    object.insert("outline_layers", outlineLayersToJson(box.effects.outlineLayers));
   object.insert("blur_enabled", box.effects.blurEnabled);
   object.insert("blur_size", box.effects.blurSize);
   object.insert("shadow_enabled", box.effects.shadowEnabled);

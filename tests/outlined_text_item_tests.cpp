@@ -146,6 +146,267 @@ private slots:
     QVERIFY(redPixels(render(8)) > redPixels(render(1)));
   }
 
+  void legacyOddOutlineSizeKeepsCenteredStrokeSemantics() {
+    auto render = [](const QVariantList &layers) {
+      OutlinedTextItem item;
+      item.setWidth(180);
+      item.setHeight(80);
+      item.setText(QStringLiteral("Outline"));
+      item.setPixelSize(42);
+      item.setColor(Qt::black);
+      item.setOutlineColor(Qt::red);
+      item.setOutlineSize(7);
+      item.setOutlineLayers(layers);
+
+      QImage image(180, 80, QImage::Format_ARGB32_Premultiplied);
+      image.fill(Qt::transparent);
+      QPainter painter(&image);
+      item.paint(&painter);
+      return image;
+    };
+
+    auto imagesEqual = [](const QImage &a, const QImage &b) {
+      if (a.size() != b.size() || a.format() != b.format())
+        return false;
+      for (int y = 0; y < a.height(); ++y) {
+        for (int x = 0; x < a.width(); ++x) {
+          if (a.pixelColor(x, y) != b.pixelColor(x, y))
+            return false;
+        }
+      }
+      return true;
+    };
+
+    const auto legacy = render({});
+    const auto roundedFallbackLayer = render({QVariantMap{{QStringLiteral("enabled"), true},
+                                                         {QStringLiteral("color"), QStringLiteral("#ff0000")},
+                                                         {QStringLiteral("size"), 4}}});
+    const auto explicitSeven = render({QVariantMap{{QStringLiteral("enabled"), true},
+                                                  {QStringLiteral("color"), QStringLiteral("#ff0000")},
+                                                  {QStringLiteral("size"), 7}}});
+
+    QVERIFY(!imagesEqual(legacy, roundedFallbackLayer));
+    QVERIFY(!imagesEqual(legacy, explicitSeven));
+
+    OutlinedTextItem legacyItem;
+    legacyItem.setOutlineSize(7);
+    QCOMPARE(legacyItem.effectiveMaxOutlineSizeForTesting(), 7.0);
+
+    OutlinedTextItem explicitItem;
+    explicitItem.setOutlineLayers({QVariantMap{{QStringLiteral("enabled"), true},
+                                                {QStringLiteral("color"), QStringLiteral("#ff0000")},
+                                                {QStringLiteral("size"), 7}}});
+    QCOMPARE(explicitItem.effectiveMaxOutlineSizeForTesting(), 14.0);
+  }
+
+  void paintsMultipleOutlineLayersStackedByUiOrder() {
+    OutlinedTextItem item;
+    item.setWidth(220);
+    item.setHeight(90);
+    item.setText(QStringLiteral("Stack"));
+    item.setPixelSize(46);
+    item.setColor(Qt::black);
+    item.setOutlineLayers({QVariantMap{{QStringLiteral("enabled"), true},
+                                       {QStringLiteral("color"), QStringLiteral("#ffffff")},
+                                       {QStringLiteral("size"), 9}},
+                           QVariantMap{{QStringLiteral("enabled"), true},
+                                       {QStringLiteral("color"), QStringLiteral("#ff0000")},
+                                       {QStringLiteral("size"), 11}}});
+
+    QImage image(220, 90, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    item.paint(&painter);
+
+    int redPixels = 0;
+    int whitePixels = 0;
+    int blackPixels = 0;
+    for (int y = 0; y < image.height(); ++y) {
+      for (int x = 0; x < image.width(); ++x) {
+        const QColor c = image.pixelColor(x, y);
+        if (c.red() > 100 && c.green() < 80 && c.blue() < 80 && c.alpha() > 0)
+          ++redPixels;
+        if (c.red() > 180 && c.green() > 180 && c.blue() > 180 && c.alpha() > 0)
+          ++whitePixels;
+        if (c.red() < 40 && c.green() < 40 && c.blue() < 40 && c.alpha() > 0)
+          ++blackPixels;
+      }
+    }
+    QVERIFY2(redPixels > 300,
+             qPrintable(QStringLiteral("redPixels=%1").arg(redPixels)));
+    QVERIFY2(whitePixels > 0,
+             qPrintable(QStringLiteral("whitePixels=%1").arg(whitePixels)));
+    QVERIFY(blackPixels > 0);
+  }
+
+  void paintsBoxRenderStateRgbaOutlineLayersInLivePreview() {
+    OutlinedTextItem item;
+    item.setWidth(260);
+    item.setHeight(110);
+    item.setText(QStringLiteral("Stack"));
+    item.setPixelSize(64);
+    item.setColor(Qt::black);
+    item.setOutlineColor(Qt::red);
+    item.setOutlineLayers({QVariantMap{{QStringLiteral("enabled"), true},
+                                       {QStringLiteral("color"), QStringLiteral("ff0000ff")},
+                                       {QStringLiteral("size"), 2}},
+                           QVariantMap{{QStringLiteral("enabled"), true},
+                                       {QStringLiteral("color"), QStringLiteral("ffffffff")},
+                                       {QStringLiteral("size"), 2}}});
+
+    QImage image(260, 110, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    item.paint(&painter);
+
+    int redPixels = 0;
+    int whitePixels = 0;
+    int blackPixels = 0;
+    for (int y = 0; y < image.height(); ++y) {
+      for (int x = 0; x < image.width(); ++x) {
+        const QColor c = image.pixelColor(x, y);
+        if (c.red() > 120 && c.green() < 80 && c.blue() < 80 && c.alpha() > 0)
+          ++redPixels;
+        if (c.red() > 180 && c.green() > 180 && c.blue() > 180 && c.alpha() > 0)
+          ++whitePixels;
+        if (c.red() < 40 && c.green() < 40 && c.blue() < 40 && c.alpha() > 0)
+          ++blackPixels;
+      }
+    }
+
+    QVERIFY2(redPixels > 0,
+             qPrintable(QStringLiteral("redPixels=%1 whitePixels=%2")
+                            .arg(redPixels)
+                            .arg(whitePixels)));
+    QVERIFY2(whitePixels > 0,
+             qPrintable(QStringLiteral("redPixels=%1 whitePixels=%2")
+                            .arg(redPixels)
+                            .arg(whitePixels)));
+    QVERIFY(blackPixels > 0);
+  }
+
+  void multiOutlineMetricsUseOutermostCumulativeStrokeWidth() {
+    OutlinedTextItem equalBands;
+    equalBands.setOutlineLayers({QVariantMap{{QStringLiteral("enabled"), true},
+                                             {QStringLiteral("color"), QStringLiteral("#ffffff")},
+                                             {QStringLiteral("size"), 7}},
+                                 QVariantMap{{QStringLiteral("enabled"), true},
+                                             {QStringLiteral("color"), QStringLiteral("#ff0000")},
+                                             {QStringLiteral("size"), 7}}});
+    QCOMPARE(equalBands.effectiveMaxOutlineSizeForTesting(), 28.0);
+
+    auto layers = QVariantList{
+        QVariantMap{{QStringLiteral("enabled"), true},
+                    {QStringLiteral("color"), QStringLiteral("#ffffff")},
+                    {QStringLiteral("size"), 9}},
+        QVariantMap{{QStringLiteral("enabled"), true},
+                    {QStringLiteral("color"), QStringLiteral("#ff0000")},
+                    {QStringLiteral("size"), 11}}};
+
+    OutlinedTextItem metricsItem;
+    metricsItem.setWidth(120);
+    metricsItem.setHeight(70);
+    metricsItem.setText(QStringLiteral("Italic fj"));
+    metricsItem.setPixelSize(42);
+    metricsItem.setItalic(true);
+    metricsItem.setOutlineLayers(layers);
+
+    OutlinedTextItem legacyMetricsItem;
+    legacyMetricsItem.setWidth(120);
+    legacyMetricsItem.setHeight(70);
+    legacyMetricsItem.setText(QStringLiteral("Italic fj"));
+    legacyMetricsItem.setPixelSize(42);
+    legacyMetricsItem.setItalic(true);
+    legacyMetricsItem.setOutlineSize(40);
+
+    QCOMPARE(metricsItem.effectiveMaxOutlineSizeForTesting(), 40.0);
+    QCOMPARE(metricsItem.editLayoutLeftPadding(), 20.0);
+    QCOMPARE(metricsItem.editLayoutRightPadding(), 20.0);
+    QVERIFY2(metricsItem.editLayoutPaintOffsetX() > 0.1 ||
+                 metricsItem.editLayoutPaintOffsetY() > 0.1,
+             qPrintable(QStringLiteral("offset=%1,%2")
+                            .arg(metricsItem.editLayoutPaintOffsetX())
+                            .arg(metricsItem.editLayoutPaintOffsetY())));
+    QCOMPARE(metricsItem.editLayoutPaintOffsetX(),
+             legacyMetricsItem.editLayoutPaintOffsetX());
+    QCOMPARE(metricsItem.editLayoutPaintOffsetY(),
+             legacyMetricsItem.editLayoutPaintOffsetY());
+
+    OutlinedTextItem smallOnly;
+    smallOnly.setWidth(160);
+    smallOnly.setHeight(82);
+    smallOnly.setText(QStringLiteral("Alpha Beta Gamma"));
+    smallOnly.setPixelSize(20);
+    smallOnly.setOutlineLayers({layers.first()});
+
+    OutlinedTextItem largeLater;
+    largeLater.setWidth(160);
+    largeLater.setHeight(82);
+    largeLater.setText(QStringLiteral("Alpha Beta Gamma"));
+    largeLater.setPixelSize(20);
+    largeLater.setOutlineLayers(layers);
+
+    OutlinedTextItem legacyLarge;
+    legacyLarge.setWidth(160);
+    legacyLarge.setHeight(82);
+    legacyLarge.setText(QStringLiteral("Alpha Beta Gamma"));
+    legacyLarge.setPixelSize(20);
+    legacyLarge.setOutlineSize(40);
+
+    QCOMPARE(largeLater.wrappedLinesForTesting(),
+             legacyLarge.wrappedLinesForTesting());
+    QVERIFY2(largeLater.wrappedLinesForTesting().size() >=
+                 smallOnly.wrappedLinesForTesting().size(),
+             qPrintable(QStringLiteral("small=%1 large=%2")
+                            .arg(smallOnly.wrappedLinesForTesting().join('|'))
+                            .arg(largeLater.wrappedLinesForTesting().join('|'))));
+    QVERIFY(largeLater.effectiveMaxOutlineSizeForTesting() >
+            smallOnly.effectiveMaxOutlineSizeForTesting());
+  }
+
+  void paintsReversedSizeLayersByUiOrder() {
+    auto render = [](const QVariantList &layers) {
+      OutlinedTextItem item;
+      item.setWidth(220);
+      item.setHeight(90);
+      item.setText(QStringLiteral("Stack"));
+      item.setPixelSize(46);
+      item.setColor(Qt::black);
+      item.setOutlineLayers(layers);
+
+      QImage image(220, 90, QImage::Format_ARGB32_Premultiplied);
+      image.fill(Qt::transparent);
+      QPainter painter(&image);
+      item.paint(&painter);
+      return image;
+    };
+    auto countRed = [](const QImage &image) {
+      int count = 0;
+      for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+          const QColor c = image.pixelColor(x, y);
+          if (c.red() > 120 && c.green() < 80 && c.blue() < 80 && c.alpha() > 0)
+            ++count;
+        }
+      }
+      return count;
+    };
+
+    const QVariantMap largeRed{{QStringLiteral("enabled"), true},
+                               {QStringLiteral("color"), QStringLiteral("#ff0000")},
+                               {QStringLiteral("size"), 11}};
+    const QVariantMap smallWhite{{QStringLiteral("enabled"), true},
+                                 {QStringLiteral("color"), QStringLiteral("#ffffff")},
+                                 {QStringLiteral("size"), 9}};
+    const int innerLargeRedPixels = countRed(render({largeRed, smallWhite}));
+    const int outerLargeRedPixels = countRed(render({smallWhite, largeRed}));
+
+    QVERIFY2(innerLargeRedPixels > outerLargeRedPixels + 1000,
+             qPrintable(QStringLiteral("inner=%1 outer=%2")
+                            .arg(innerLargeRedPixels)
+                            .arg(outerLargeRedPixels)));
+  }
+
   void centersTextVertically() {
     const QColor background(Qt::transparent);
     OutlinedTextItem item;

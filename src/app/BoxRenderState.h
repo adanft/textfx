@@ -30,6 +30,7 @@ struct BoxRenderState {
   bool outline = false;
   QString outlineColor;
   int outlineSize = 0;
+  QVariantList outlineLayers;
   bool blur = false;
   int blurSize = 0;
   bool shadow = false;

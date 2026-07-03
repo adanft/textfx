@@ -45,6 +45,7 @@ Rectangle {
     required property bool boxPath
     required property int boxPathMode
     required property var boxPathPoints
+    required property var boxEffects
     required property var canvasItem
     required property var interaction
     readonly property var rootWindow: ApplicationWindow.window
@@ -73,6 +74,8 @@ Rectangle {
         outline: boxOutline,
         outlineColor: boxOutlineColor,
         outlineSize: boxOutlineSize,
+        outlineLayers: boxEffects && boxEffects.outline && boxEffects.outline.layers ? boxEffects.outline.layers : [],
+        outlineLayersSet: boxEffects && boxEffects.outline ? boxEffects.outline.layersSet === true : false,
         blur: boxBlur,
         blurSize: boxBlurSize,
         shadow: boxShadow,
@@ -211,7 +214,8 @@ Rectangle {
             lineSpacing: boxRef.boxModel.lineSpacing
             horizontalAlignment: boxRef.textHorizontalAlignment(boxRef.boxModel.alignment)
             outlineColor: rootWindow.qmlColor(boxRef.boxModel.outlineColor)
-            outlineSize: boxRef.boxModel.outline && boxRef.boxModel.outlineSize > 0 ? boxRef.boxModel.outlineSize : 0
+            outlineSize: boxRef.boxModel.outline && !boxRef.boxModel.outlineLayersSet && boxRef.boxModel.outlineSize > 0 ? boxRef.boxModel.outlineSize : 0
+            outlineLayers: boxRef.boxModel.outlineLayers
             blurSize: boxRef.boxModel.blur && boxRef.boxModel.blurSize > 0 ? boxRef.boxModel.blurSize : 0
             shadowEnabled: boxRef.boxModel.shadow
             shadowColor: rootWindow.qmlColor(boxRef.boxModel.shadowColor)

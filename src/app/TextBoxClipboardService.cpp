@@ -47,6 +47,31 @@ std::vector<Point> pointsFromJson(const QJsonValue &value) {
   return points;
 }
 
+std::vector<OutlineLayer> outlineLayersFromJson(const QJsonValue &value) {
+  std::vector<OutlineLayer> layers;
+  for (const auto &item : value.toArray()) {
+    const auto layerObject = item.toObject();
+    OutlineLayer layer;
+    layer.enabled = boolFromJson(layerObject, "enabled", layer.enabled);
+    layer.color = stringFromJson(layerObject, "color", layer.color);
+    layer.size = intFromJson(layerObject, "size", layer.size);
+    layers.push_back(layer);
+  }
+  return layers;
+}
+
+void syncLegacyOutlineFields(TextBox &box) {
+  if (box.effects.outlineLayers.empty()) {
+    box.effects.outlineEnabled = false;
+    return;
+  }
+
+  const auto &first = box.effects.outlineLayers.front();
+  box.effects.outlineEnabled = first.enabled;
+  box.effects.outlineColor = first.color;
+  box.effects.outlineSize = first.size;
+}
+
 bool isTextBoxPayload(const QJsonObject &object) {
   return object.contains("text") && object.contains("x") &&
          object.contains("y");
@@ -83,6 +108,12 @@ TextBox boxFromClipboardJson(const QJsonObject &object) {
   effects.outlineColor =
       stringFromJson(object, "outlineColor", effects.outlineColor);
   effects.outlineSize = intFromJson(object, "outlineSize", effects.outlineSize);
+  const auto outlineLayersValue = object.value(QLatin1String("outlineLayers"));
+  if (outlineLayersValue.isArray()) {
+    effects.outlineLayersSet = true;
+    effects.outlineLayers = outlineLayersFromJson(outlineLayersValue);
+    syncLegacyOutlineFields(box);
+  }
   effects.blurEnabled = boolFromJson(object, "blur", effects.blurEnabled);
   effects.blurSize = intFromJson(object, "blurSize", effects.blurSize);
   effects.shadowEnabled = boolFromJson(object, "shadow", effects.shadowEnabled);
@@ -121,7 +152,9 @@ TextBox boxFromClipboardJson(const QJsonObject &object) {
 } // namespace
 
 QString TextBoxClipboardService::serialize(const TextBox &box, int index) {
-  const auto map = EditorViewModels::textBoxMap(box, index);
+  auto map = EditorViewModels::textBoxMap(box, index);
+  if (!box.effects.outlineLayersSet && box.effects.outlineLayers.empty())
+    map.remove(QStringLiteral("outlineLayers"));
   return QString::fromUtf8(
       QJsonDocument::fromVariant(map).toJson(QJsonDocument::Compact));
 }

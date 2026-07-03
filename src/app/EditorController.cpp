@@ -504,6 +504,36 @@ void EditorController::setSelectedOutlineSize(int size) {
       {Role::OutlineSizeRole, Role::EffectsRole});
 }
 
+void EditorController::addSelectedOutlineLayer() {
+  editSelectedBox([](TextBox &box) { TextBoxEditingService::addOutlineLayer(box); },
+                  effectRoles(EffectId::Outline));
+}
+
+void EditorController::removeSelectedOutlineLayer(int index) {
+  editSelectedBoxIf([&](TextBox &box) {
+    return TextBoxEditingService::removeOutlineLayer(box, index);
+  }, effectRoles(EffectId::Outline));
+}
+
+void EditorController::setSelectedOutlineLayerEnabled(int index, bool enabled) {
+  editSelectedBoxIf([&](TextBox &box) {
+    return TextBoxEditingService::setOutlineLayerEnabled(box, index, enabled);
+  }, effectRoles(EffectId::Outline));
+}
+
+void EditorController::setSelectedOutlineLayerColor(int index,
+                                                    const QString &color) {
+  editSelectedBoxIf([&](TextBox &box) {
+    return TextBoxEditingService::setOutlineLayerColor(box, index, color);
+  }, effectRoles(EffectId::Outline));
+}
+
+void EditorController::setSelectedOutlineLayerSize(int index, int size) {
+  editSelectedBoxIf([&](TextBox &box) {
+    return TextBoxEditingService::setOutlineLayerSize(box, index, size);
+  }, effectRoles(EffectId::Outline));
+}
+
 void EditorController::setSelectedBlurEnabled(bool enabled) {
   editSelectedBox([&](TextBox &box) {
     TextBoxEditingService::setBlurEnabled(box, enabled);

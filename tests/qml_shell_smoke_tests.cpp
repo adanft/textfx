@@ -794,6 +794,13 @@ private slots:
     QVERIFY(textEffectsSource.contains(QStringLiteral(
         "textEffectsSection.editor.setSelectedOutlineEnabled(checked)")));
     QVERIFY(textEffectsSource.contains(QStringLiteral(
+        "textEffectsSection.editor.addSelectedOutlineLayer()")));
+    QVERIFY(textEffectsSource.contains(QStringLiteral("\"synthetic\": true")));
+    QVERIFY(textEffectsSource.contains(
+        QStringLiteral("visible: !modelData.synthetic")));
+    QVERIFY(textEffectsSource.contains(QStringLiteral(
+        "textEffectsSection.editor.setSelectedOutlineLayerSize(index, value)")));
+    QVERIFY(textEffectsSource.contains(QStringLiteral(
         "textEffectsSection.editor.setSelectedBlurEnabled(checked)")));
     QVERIFY(textEffectsSource.contains(QStringLiteral(
         "textEffectsSection.editor.setSelectedShadowEnabled(checked)")));
