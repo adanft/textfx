@@ -29,9 +29,47 @@ QtObject {
         return value(legacyRoleName, fallback);
     }
 
+    function modelIndexRow(modelIndex) {
+        if (!modelIndex)
+            return -1;
+        if (typeof modelIndex.row === "function")
+            return modelIndex.row();
+        if (modelIndex.row !== undefined)
+            return modelIndex.row;
+        return -1;
+    }
+
+    function rolesAffectSelectedBoxState(roles) {
+        if (!roles || roles.length === 0)
+            return true;
+        if (!editor || typeof editor.boxRolesAffectSelectedBoxState !== "function")
+            return true;
+        return editor.boxRolesAffectSelectedBoxState(roles);
+    }
+
+    function invalidateForDataChanged(topLeft, bottomRight, roles) {
+        if (!editor) {
+            revision += 1;
+            return;
+        }
+
+        const selected = editor.selectedIndex;
+        const first = modelIndexRow(topLeft);
+        const last = modelIndexRow(bottomRight);
+        if (first >= 0 && last >= 0 && (selected < first || selected > last))
+            return;
+
+        if (!rolesAffectSelectedBoxState(roles))
+            return;
+
+        revision += 1;
+    }
+
     property Connections boxesModelConnections: Connections {
         target: selectedBoxState.editor ? selectedBoxState.editor.boxesModel : null
-        function onDataChanged() { selectedBoxState.revision += 1; }
+        function onDataChanged(topLeft, bottomRight, roles) {
+            selectedBoxState.invalidateForDataChanged(topLeft, bottomRight, roles);
+        }
         function onModelReset() { selectedBoxState.revision += 1; }
         function onRowsInserted() { selectedBoxState.revision += 1; }
         function onRowsRemoved() { selectedBoxState.revision += 1; }

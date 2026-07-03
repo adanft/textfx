@@ -365,6 +365,36 @@ private slots:
     QVERIFY(allEffectRoles().contains(effectsRole));
   }
 
+  void boxRolesAffectSelectedBoxStateClassifiesProductionRoles() {
+    EditorController editor;
+    auto *model = qobject_cast<QAbstractItemModel *>(editor.boxesModel());
+    QVERIFY(model);
+
+    auto role = [model](QByteArrayView name) {
+      const int value = roleForName(*model, name);
+      if (value < 0)
+        QTest::qFail("Missing box role", __FILE__, __LINE__);
+      return value;
+    };
+
+    QVERIFY(editor.boxRolesAffectSelectedBoxState({}));
+
+    QVERIFY(editor.boxRolesAffectSelectedBoxState(
+        {role("boxEffects"), role("boxPath"), role("boxPerspective"),
+         role("boxText")}));
+    QVERIFY(editor.boxRolesAffectSelectedBoxState({role("boxPathMode")}));
+    QVERIFY(editor.boxRolesAffectSelectedBoxState({role("boxPathPoints")}));
+    QVERIFY(editor.boxRolesAffectSelectedBoxState({role("boxPerspectiveNw")}));
+
+    QVERIFY(!editor.boxRolesAffectSelectedBoxState({role("boxIndex")}));
+    QVERIFY(!editor.boxRolesAffectSelectedBoxState(
+        {role("boxX"), role("boxY"), role("boxWidth"), role("boxHeight")}));
+
+    QVERIFY(editor.boxRolesAffectSelectedBoxState({Qt::UserRole + 10000}));
+    QVERIFY(editor.boxRolesAffectSelectedBoxState(
+        {QVariant(QStringLiteral("not-a-role-id"))}));
+  }
+
   void boxesModelEmitsPreciseLiveRoleChangesAndStructuralSignals() {
     EditorController editor;
     editor.newDocument();

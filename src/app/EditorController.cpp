@@ -380,6 +380,62 @@ QVariant EditorController::boxRole(int row, const QString &roleName) const {
   return {};
 }
 
+bool EditorController::boxRolesAffectSelectedBoxState(
+    const QVariantList &roles) const {
+  if (roles.empty())
+    return true;
+
+  const auto knownRoles = boxesModel_.roleNames();
+  for (const QVariant &roleValue : roles) {
+    bool ok = false;
+    const int role = roleValue.toInt(&ok);
+    if (!ok || !knownRoles.contains(role))
+      return true;
+
+    switch (role) {
+    case Role::TextRole:
+    case Role::RotationRole:
+    case Role::FontFamilyRole:
+    case Role::FontSizeRole:
+    case Role::ColorRole:
+    case Role::LineSpacingRole:
+    case Role::LetterSpacingRole:
+    case Role::BoldRole:
+    case Role::ItalicRole:
+    case Role::UppercaseRole:
+    case Role::LowercaseRole:
+    case Role::AlignmentRole:
+    case Role::OutlineRole:
+    case Role::OutlineColorRole:
+    case Role::OutlineSizeRole:
+    case Role::BlurRole:
+    case Role::BlurSizeRole:
+    case Role::ShadowRole:
+    case Role::ShadowColorRole:
+    case Role::ShadowOffsetXRole:
+    case Role::ShadowOffsetYRole:
+    case Role::ShadowBlurSizeRole:
+    case Role::GradientRole:
+    case Role::GradientDirectionRole:
+    case Role::GradientColorARole:
+    case Role::GradientColorBRole:
+    case Role::PerspectiveRole:
+    case Role::PerspectiveNwRole:
+    case Role::PerspectiveNeRole:
+    case Role::PerspectiveSeRole:
+    case Role::PerspectiveSwRole:
+    case Role::PathRole:
+    case Role::PathModeRole:
+    case Role::PathPointsRole:
+    case Role::EffectsRole:
+      return true;
+    default:
+      break;
+    }
+  }
+  return false;
+}
+
 void EditorController::updateSelectedText(const QString &text) {
   editSelectedBoxIf([&](TextBox &box) {
     box.text = toStdString(text);

@@ -240,7 +240,9 @@ private slots:
         QStringLiteral("target: selectedBoxState.editor ? "
                        "selectedBoxState.editor.boxesModel : null")));
     QVERIFY(selectedBoxStateSource.contains(
-        QStringLiteral("function onDataChanged()")));
+        QStringLiteral("function onDataChanged(topLeft, bottomRight, roles)")));
+    QVERIFY(selectedBoxStateSource.contains(QStringLiteral(
+        "function invalidateForDataChanged(topLeft, bottomRight, roles)")));
     QVERIFY(selectedBoxStateSource.contains(
         QStringLiteral("function onModelReset()")));
     QVERIFY(selectedBoxStateSource.contains(
@@ -1365,6 +1367,130 @@ QtObject {
         Q_ARG(QVariant, QStringLiteral("boxShadowColor")),
         Q_ARG(QVariant, QStringLiteral("fallback-shadow"))));
     QCOMPARE(value.toString(), QStringLiteral("legacy-shadow"));
+  }
+
+  void qmlSelectedBoxStateInvalidatesOnlyForSelectedInspectorData() {
+    QQmlEngine engine;
+    QQmlComponent component(&engine);
+    const QString qmlImportUrl = QUrl::fromLocalFile(
+                                     QStringLiteral(TEXTFX_FIXTURE_DIR
+                                                    "/../../qml"))
+                                     .toString();
+    const QString source = QStringLiteral(R"QML(
+import QtQml
+import "%1"
+
+QtObject {
+    id: root
+    property var rowValues: [{ fontSize: 18 }, { fontSize: 30 }]
+    function setFontSize(row, size) { rowValues[row].fontSize = size; }
+    property QtObject selectedState: SelectedBoxState {
+        editor: root.fakeEditor
+    }
+    property int observedFontSize: selectedState.value("boxFontSize", 16)
+    property QtObject fakeBoxesModel: QtObject {
+        signal dataChanged(var topLeft, var bottomRight, var roles)
+        signal modelReset()
+        signal rowsInserted()
+        signal rowsRemoved()
+    }
+    property QtObject fakeEditor: QtObject {
+        property int selectedIndex: 0
+        property QtObject boxesModel: root.fakeBoxesModel
+        function boxRole(index, roleName) {
+            if (roleName === "boxFontSize")
+                return root.rowValues[index].fontSize;
+            return undefined;
+        }
+        function boxRolesAffectSelectedBoxState(roles) {
+            if (!roles || roles.length === 0)
+                return true;
+            for (const role of roles) {
+                if (role === 1)
+                    return true;
+                if (role !== 2)
+                    return true;
+            }
+            return false;
+        }
+    }
+}
+)QML").arg(qmlImportUrl);
+    component.setData(source.toUtf8(), QUrl::fromLocalFile(
+                                           QStringLiteral(TEXTFX_FIXTURE_DIR
+                                                          "/../../qml/")));
+
+    std::unique_ptr<QObject> root(component.create());
+    QVERIFY2(root, qPrintable(component.errorString()));
+    auto *state = root->property("selectedState").value<QObject *>();
+    auto *model = root->property("fakeBoxesModel").value<QObject *>();
+    auto *editor = root->property("fakeEditor").value<QObject *>();
+    QVERIFY(state);
+    QVERIFY(model);
+    QVERIFY(editor);
+
+    QCOMPARE(root->property("observedFontSize").toInt(), 18);
+    QCOMPARE(state->property("revision").toInt(), 0);
+
+    const QVariant modelRow0 = QVariantMap{{QStringLiteral("row"), 0}};
+    const QVariant modelRow1 = QVariantMap{{QStringLiteral("row"), 1}};
+    const QVariant inspectorRole = QVariantList{1};
+    const QVariant knownIrrelevantRole = QVariantList{2};
+    const QVariant unknownRole = QVariantList{9999};
+    const QVariant emptyRoles = QVariantList{};
+
+    QVERIFY(QMetaObject::invokeMethod(
+        model, "dataChanged", Q_ARG(QVariant, modelRow1),
+        Q_ARG(QVariant, modelRow1), Q_ARG(QVariant, inspectorRole)));
+    QCoreApplication::processEvents();
+    QCOMPARE(state->property("revision").toInt(), 0);
+    QCOMPARE(root->property("observedFontSize").toInt(), 18);
+
+    QVERIFY(QMetaObject::invokeMethod(root.get(), "setFontSize",
+                                      Q_ARG(QVariant, 0), Q_ARG(QVariant, 20)));
+    QVERIFY(QMetaObject::invokeMethod(
+        model, "dataChanged", Q_ARG(QVariant, modelRow0),
+        Q_ARG(QVariant, modelRow0), Q_ARG(QVariant, knownIrrelevantRole)));
+    QCoreApplication::processEvents();
+    QCOMPARE(state->property("revision").toInt(), 0);
+    QCOMPARE(root->property("observedFontSize").toInt(), 18);
+
+    QVERIFY(QMetaObject::invokeMethod(root.get(), "setFontSize",
+                                      Q_ARG(QVariant, 0), Q_ARG(QVariant, 20)));
+    QVERIFY(QMetaObject::invokeMethod(
+        model, "dataChanged", Q_ARG(QVariant, modelRow0),
+        Q_ARG(QVariant, modelRow0), Q_ARG(QVariant, unknownRole)));
+    QCoreApplication::processEvents();
+    QCOMPARE(state->property("revision").toInt(), 1);
+    QCOMPARE(root->property("observedFontSize").toInt(), 20);
+
+    QVERIFY(QMetaObject::invokeMethod(root.get(), "setFontSize",
+                                      Q_ARG(QVariant, 0), Q_ARG(QVariant, 22)));
+    QVERIFY(QMetaObject::invokeMethod(
+        model, "dataChanged", Q_ARG(QVariant, modelRow0),
+        Q_ARG(QVariant, modelRow0), Q_ARG(QVariant, emptyRoles)));
+    QCoreApplication::processEvents();
+    QCOMPARE(state->property("revision").toInt(), 2);
+    QCOMPARE(root->property("observedFontSize").toInt(), 22);
+
+    QVERIFY(QMetaObject::invokeMethod(
+        model, "dataChanged", Q_ARG(QVariant, modelRow0),
+        Q_ARG(QVariant, modelRow0), Q_ARG(QVariant, inspectorRole)));
+    QCoreApplication::processEvents();
+    QCOMPARE(state->property("revision").toInt(), 3);
+    QCOMPARE(root->property("observedFontSize").toInt(), 22);
+
+    QMetaObject::invokeMethod(model, "rowsInserted");
+    QCoreApplication::processEvents();
+    QCOMPARE(state->property("revision").toInt(), 4);
+
+    QVERIFY(editor->setProperty("selectedIndex", 1));
+    QCoreApplication::processEvents();
+    QCOMPARE(root->property("observedFontSize").toInt(), 30);
+
+    QMetaObject::invokeMethod(model, "modelReset");
+    QCoreApplication::processEvents();
+    QCOMPARE(state->property("revision").toInt(), 5);
   }
 
   void qmlRightInspectorNavigationAndEffectsRouteThroughEditor() {

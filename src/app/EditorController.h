@@ -92,6 +92,8 @@ public:
   Q_INVOKABLE void selectBox(int index);
   Q_INVOKABLE void createTextBox(double x, double y, double w, double h);
   Q_INVOKABLE QVariant boxRole(int row, const QString &roleName) const;
+  Q_INVOKABLE bool
+  boxRolesAffectSelectedBoxState(const QVariantList &roles) const;
   Q_INVOKABLE void updateSelectedText(const QString &text);
   Q_INVOKABLE void setSelectedFontFamily(const QString &family);
   Q_INVOKABLE void setSelectedFontSize(int size);
