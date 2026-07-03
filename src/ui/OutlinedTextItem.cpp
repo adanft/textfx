@@ -335,35 +335,29 @@ void OutlinedTextItem::geometryChange(const QRectF &newGeometry,
                                       const QRectF &oldGeometry) {
   QQuickPaintedItem::geometryChange(newGeometry, oldGeometry);
   if (newGeometry.size() != oldGeometry.size()) {
+    invalidateLayoutCache();
     updateOverflow();
     emit editLayoutMetricsChanged();
   }
 }
 
 bool OutlinedTextItem::editLayoutMetricsValid() const {
-  const QVector<QPointF> normalizedPoints = normalizedPathPoints(pathPoints_);
-  return !(pathEnabled_ && normalizedPoints.size() > 1 &&
-           !isNeutralFlatPath(normalizedPoints));
+  return layoutCache().editMetricsValid;
 }
 
 qreal OutlinedTextItem::editLayoutTopPadding() const {
-  if (!editLayoutMetricsValid())
+  const LayoutCache &cache = layoutCache();
+  if (!cache.editMetricsValid)
     return 0.0;
-  const qreal scale = std::max<qreal>(0.0001, renderScale_);
-  const qreal layoutWidth = std::max<qreal>(1.0, width() / scale);
-  const qreal layoutHeight = std::max<qreal>(1.0, height() / scale);
-  const qreal inset = editLayoutLeftPadding();
-  const TextLayoutOptions layoutOptions{text_,        layoutWidth,
-                                        layoutHeight, inset,
-                                        lineSpacing_, horizontalAlignment_};
-  const qreal blockHeight = textLayoutBlockHeight(layoutOptions, layoutFont());
-  return inset +
-         std::max<qreal>(0.0, (layoutHeight - inset * 2.0 - blockHeight) / 2.0);
+  return cache.inset + std::max<qreal>(
+                           0.0, (cache.layoutHeight - cache.inset * 2.0 -
+                                 cache.blockHeight) /
+                                    2.0);
 }
 
 qreal OutlinedTextItem::editLayoutLeftPadding() const {
-  const qreal maxOutline = effectiveMaxOutlineSize();
-  return editLayoutMetricsValid() && maxOutline > 0 ? maxOutline / 2.0 : 0.0;
+  const LayoutCache &cache = layoutCache();
+  return cache.editMetricsValid ? cache.inset : 0.0;
 }
 
 qreal OutlinedTextItem::editLayoutRightPadding() const {
@@ -371,74 +365,49 @@ qreal OutlinedTextItem::editLayoutRightPadding() const {
 }
 
 qreal OutlinedTextItem::editLayoutTabStopDistance() const {
-  return textLayoutTabStopDistance(layoutFont());
+  return layoutCache().tabStopDistance;
 }
 
 QVariantList OutlinedTextItem::editLayoutLineTops() const {
   QVariantList result;
-  if (!editLayoutMetricsValid())
+  const LayoutCache &cache = layoutCache();
+  if (!cache.editMetricsValid)
     return result;
-  const qreal scale = std::max<qreal>(0.0001, renderScale_);
-  const qreal layoutWidth = std::max<qreal>(1.0, width() / scale);
-  const qreal layoutHeight = std::max<qreal>(1.0, height() / scale);
-  const qreal inset = editLayoutLeftPadding();
-  QVector<qreal> lineTops;
-  textLayoutPath({text_, layoutWidth, layoutHeight, inset, lineSpacing_,
-                  horizontalAlignment_},
-                 layoutFont(), nullptr, nullptr, nullptr, &lineTops);
-  for (const qreal lineTop : lineTops)
+  for (const qreal lineTop : cache.lineTops)
     result.append(lineTop);
   return result;
 }
 
 qreal OutlinedTextItem::editLayoutPaintOffsetX() const {
-  if (!editLayoutMetricsValid())
+  const LayoutCache &cache = layoutCache();
+  if (!cache.editMetricsValid)
     return 0.0;
-  return paintTranslationForCurrentLayout().x();
+  return cache.paintTranslation.x();
 }
 
 qreal OutlinedTextItem::editLayoutPaintOffsetY() const {
-  if (!editLayoutMetricsValid())
+  const LayoutCache &cache = layoutCache();
+  if (!cache.editMetricsValid)
     return 0.0;
-  return paintTranslationForCurrentLayout().y();
+  return cache.paintTranslation.y();
 }
 
 void OutlinedTextItem::paint(QPainter *painter) {
   if (!painter || text_.isEmpty())
     return;
 
-  const qreal scale = std::max<qreal>(0.0001, renderScale_);
-  const qreal layoutWidth = std::max<qreal>(1.0, width() / scale);
-  const qreal layoutHeight = std::max<qreal>(1.0, height() / scale);
-  const QFont font = layoutFont();
+  const LayoutCache &cache = layoutCache();
+  const qreal scale = cache.scale;
+  const qreal layoutWidth = cache.layoutWidth;
+  const qreal layoutHeight = cache.layoutHeight;
   const auto outlines = withStackedStrokeWidths(
       outlineLayersFromVariant(outlineLayers_, outlineColor_, outlineSize_));
-  const qreal maxOutline = effectiveMaxOutlineSize();
-  const qreal inset = maxOutline > 0 ? maxOutline / 2.0 : 0.0;
+  const qreal maxOutline = cache.maxOutline;
   painter->setRenderHint(QPainter::Antialiasing, true);
 
-  const QVector<QPointF> normalizedPoints = normalizedPathPoints(pathPoints_);
-  const TextLayoutOptions layoutOptions{text_,        layoutWidth,
-                                        layoutHeight, inset,
-                                        lineSpacing_, horizontalAlignment_};
-  const bool usingPathText = pathEnabled_ && normalizedPoints.size() > 1 &&
-                             !isNeutralFlatPath(normalizedPoints);
-  QPainterPath path =
-      usingPathText
-          ? pathTextLayoutPath(layoutOptions, font, normalizedPoints,
-                               pathMode_ == 1, pixelSize_ + lineSpacing_)
-          : textLayoutPath(layoutOptions, font);
-  QRectF paintedBounds = path.boundingRect();
-  if (maxOutline > 0) {
-    QPainterPathStroker stroker;
-    stroker.setWidth(maxOutline);
-    stroker.setJoinStyle(Qt::RoundJoin);
-    paintedBounds =
-        paintedBounds.united(stroker.createStroke(path).boundingRect());
-  }
-
-  const QPointF paintTranslation = paintTranslationForBounds(
-      paintedBounds, layoutWidth, layoutHeight, usingPathText);
+  QPainterPath path = cache.path;
+  QRectF paintedBounds = cache.paintedBounds;
+  const QPointF paintTranslation = cache.paintTranslation;
   const qreal dx = paintTranslation.x();
   const qreal dy = paintTranslation.y();
   if (!qFuzzyIsNull(dx) || !qFuzzyIsNull(dy)) {
@@ -596,44 +565,83 @@ QFont OutlinedTextItem::layoutFont() const {
   return resolveFont(font).font;
 }
 
-void OutlinedTextItem::updateOverflow() {
-  const qreal scale = std::max<qreal>(0.0001, renderScale_);
-  const qreal layoutWidth = std::max<qreal>(1.0, width() / scale);
-  const qreal layoutHeight = std::max<qreal>(1.0, height() / scale);
-  const qreal maxOutline = effectiveMaxOutlineSize();
-  const qreal inset = maxOutline > 0 ? maxOutline / 2.0 : 0.0;
+const OutlinedTextItem::LayoutCache &OutlinedTextItem::layoutCache() const {
+  if (!layoutCacheDirty_)
+    return layoutCache_;
+
+  LayoutCache cache;
+  cache.scale = std::max<qreal>(0.0001, renderScale_);
+  cache.layoutWidth = std::max<qreal>(1.0, width() / cache.scale);
+  cache.layoutHeight = std::max<qreal>(1.0, height() / cache.scale);
+  cache.maxOutline = effectiveMaxOutlineSize();
+  cache.inset = cache.maxOutline > 0 ? cache.maxOutline / 2.0 : 0.0;
+  cache.font = layoutFont();
+  cache.tabStopDistance = textLayoutTabStopDistance(cache.font);
+
   const QVector<QPointF> normalizedPoints = normalizedPathPoints(pathPoints_);
-  const TextLayoutOptions layoutOptions{text_,        layoutWidth,
-                                        layoutHeight, inset,
-                                        lineSpacing_, horizontalAlignment_};
-  const bool usingPathText = pathEnabled_ && normalizedPoints.size() > 1 &&
-                             !isNeutralFlatPath(normalizedPoints);
-  QPainterPath path =
-      usingPathText
-          ? pathTextLayoutPath(layoutOptions, layoutFont(), normalizedPoints,
-                               pathMode_ == 1, pixelSize_ + lineSpacing_)
-          : textLayoutPath(layoutOptions, layoutFont());
-  QRectF paintedBounds = path.boundingRect();
-  if (maxOutline > 0) {
-    QPainterPathStroker stroker;
-    stroker.setWidth(maxOutline);
-    stroker.setJoinStyle(Qt::RoundJoin);
-    paintedBounds =
-        paintedBounds.united(stroker.createStroke(path).boundingRect());
+  cache.usingPathText = pathEnabled_ && normalizedPoints.size() > 1 &&
+                        !isNeutralFlatPath(normalizedPoints);
+  cache.editMetricsValid = !cache.usingPathText;
+
+  const TextLayoutOptions layoutOptions{text_,
+                                        cache.layoutWidth,
+                                        cache.layoutHeight,
+                                        cache.inset,
+                                        lineSpacing_,
+                                        horizontalAlignment_};
+  if (cache.usingPathText) {
+    cache.path = pathTextLayoutPath(layoutOptions, cache.font, normalizedPoints,
+                                    pathMode_ == 1, pixelSize_ + lineSpacing_);
+#ifdef TEXTFX_TESTING
+    textLayoutPath(layoutOptions, cache.font, &cache.wrappedLines);
+#endif
+  } else {
+    cache.path = textLayoutPath(layoutOptions, cache.font,
+#ifdef TEXTFX_TESTING
+                                &cache.wrappedLines,
+#else
+                                nullptr,
+#endif
+                                nullptr, nullptr, &cache.lineTops);
+    cache.blockHeight = textLayoutBlockHeight(layoutOptions, cache.font);
   }
 
-  paintedBounds.translate(paintTranslationForBounds(
-      paintedBounds, layoutWidth, layoutHeight, usingPathText));
+  cache.paintedBounds = cache.path.boundingRect();
+  if (cache.maxOutline > 0) {
+    QPainterPathStroker stroker;
+    stroker.setWidth(cache.maxOutline);
+    stroker.setJoinStyle(Qt::RoundJoin);
+    cache.paintedBounds = cache.paintedBounds.united(
+        stroker.createStroke(cache.path).boundingRect());
+  }
+  cache.paintTranslation =
+      paintTranslationForBounds(cache.paintedBounds, cache.layoutWidth,
+                                cache.layoutHeight, cache.usingPathText);
+
+  layoutCache_ = cache;
+  layoutCacheDirty_ = false;
+#ifdef TEXTFX_TESTING
+  ++layoutCacheRebuildCount_;
+#endif
+  return layoutCache_;
+}
+
+void OutlinedTextItem::invalidateLayoutCache() { layoutCacheDirty_ = true; }
+
+void OutlinedTextItem::updateOverflow() {
+  const LayoutCache &cache = layoutCache();
+  QRectF paintedBounds = cache.paintedBounds;
+  paintedBounds.translate(cache.paintTranslation);
 
   constexpr qreal kOverflowEpsilon = 0.5;
   const bool hasOverflow =
       !text_.isEmpty() &&
-      (paintedBounds.width() > layoutWidth + kOverflowEpsilon ||
-       paintedBounds.height() > layoutHeight + kOverflowEpsilon ||
+      (paintedBounds.width() > cache.layoutWidth + kOverflowEpsilon ||
+       paintedBounds.height() > cache.layoutHeight + kOverflowEpsilon ||
        paintedBounds.left() < -kOverflowEpsilon ||
        paintedBounds.top() < -kOverflowEpsilon ||
-       paintedBounds.right() > layoutWidth + kOverflowEpsilon ||
-       paintedBounds.bottom() > layoutHeight + kOverflowEpsilon);
+       paintedBounds.right() > cache.layoutWidth + kOverflowEpsilon ||
+       paintedBounds.bottom() > cache.layoutHeight + kOverflowEpsilon);
   if (overflow_ == hasOverflow)
     return;
   overflow_ = hasOverflow;
@@ -641,6 +649,7 @@ void OutlinedTextItem::updateOverflow() {
 }
 
 void OutlinedTextItem::notifyLayoutChanged() {
+  invalidateLayoutCache();
   updateOverflow();
   requestPaintRefresh();
   emit editLayoutMetricsChanged();
@@ -663,45 +672,17 @@ qreal OutlinedTextItem::effectiveMaxOutlineSize() const {
 }
 
 QPointF OutlinedTextItem::paintTranslationForCurrentLayout() const {
-  const qreal scale = std::max<qreal>(0.0001, renderScale_);
-  const qreal layoutWidth = std::max<qreal>(1.0, width() / scale);
-  const qreal layoutHeight = std::max<qreal>(1.0, height() / scale);
-  const qreal maxOutline = effectiveMaxOutlineSize();
-  const qreal inset = maxOutline > 0 ? maxOutline / 2.0 : 0.0;
-  const QVector<QPointF> normalizedPoints = normalizedPathPoints(pathPoints_);
-  const TextLayoutOptions layoutOptions{text_,        layoutWidth,
-                                        layoutHeight, inset,
-                                        lineSpacing_, horizontalAlignment_};
-  const bool usingPathText = pathEnabled_ && normalizedPoints.size() > 1 &&
-                             !isNeutralFlatPath(normalizedPoints);
-  QPainterPath path =
-      usingPathText
-          ? pathTextLayoutPath(layoutOptions, layoutFont(), normalizedPoints,
-                               pathMode_ == 1, pixelSize_ + lineSpacing_)
-          : textLayoutPath(layoutOptions, layoutFont());
-  QRectF paintedBounds = path.boundingRect();
-  if (maxOutline > 0) {
-    QPainterPathStroker stroker;
-    stroker.setWidth(maxOutline);
-    stroker.setJoinStyle(Qt::RoundJoin);
-    paintedBounds =
-        paintedBounds.united(stroker.createStroke(path).boundingRect());
-  }
-  return paintTranslationForBounds(paintedBounds, layoutWidth, layoutHeight,
-                                   usingPathText);
+  return layoutCache().paintTranslation;
 }
 
 #ifdef TEXTFX_TESTING
+int OutlinedTextItem::layoutCacheRebuildCountForTesting() const {
+  layoutCache();
+  return layoutCacheRebuildCount_;
+}
+
 QStringList OutlinedTextItem::wrappedLinesForTesting() const {
-  QStringList lines;
-  const qreal scale = std::max<qreal>(0.0001, renderScale_);
-  const qreal maxOutline = effectiveMaxOutlineSize();
-  const qreal inset = maxOutline > 0 ? maxOutline / 2.0 : 0.0;
-  textLayoutPath({text_, std::max<qreal>(1.0, width() / scale),
-                  std::max<qreal>(1.0, height() / scale), inset, lineSpacing_,
-                  horizontalAlignment_},
-                 layoutFont(), &lines);
-  return lines;
+  return layoutCache().wrappedLines;
 }
 
 QPointF

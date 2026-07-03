@@ -17,6 +17,8 @@
 #include <QVariantList>
 
 #include <cmath>
+#include <functional>
+#include <vector>
 
 using namespace textfx;
 using namespace textfx::test;
@@ -605,6 +607,103 @@ private slots:
     QCOMPARE(item.editLayoutLeftPadding(), 0.0);
   }
 
+  void layoutMetricsCacheReusesAndInvalidatesSafely() {
+    auto assertLayoutInvalidates = [](const char *name,
+                                      const std::function<void(OutlinedTextItem &)> &mutate) {
+      OutlinedTextItem item;
+      item.setWidth(160);
+      item.setHeight(90);
+      item.setText(QStringLiteral("Alpha Beta Gamma"));
+      item.setPixelSize(22);
+      item.setOutlineSize(8);
+
+      const int before = item.layoutCacheRebuildCountForTesting();
+      QVERIFY(before > 0);
+
+      mutate(item);
+      const int after = item.layoutCacheRebuildCountForTesting();
+      QVERIFY2(after > before, name);
+
+      (void)item.editLayoutTopPadding();
+      (void)item.editLayoutPaintOffsetX();
+      (void)item.wrappedLinesForTesting();
+      QCOMPARE(item.layoutCacheRebuildCountForTesting(), after);
+    };
+
+    const std::vector<std::pair<const char *, std::function<void(OutlinedTextItem &)>>> cases{
+        {"fontFamily", [](OutlinedTextItem &item) { item.setFontFamily(QStringLiteral("Serif")); }},
+        {"pixelSize", [](OutlinedTextItem &item) { item.setPixelSize(30); }},
+        {"bold", [](OutlinedTextItem &item) { item.setBold(true); }},
+        {"italic", [](OutlinedTextItem &item) { item.setItalic(true); }},
+        {"letterSpacing", [](OutlinedTextItem &item) { item.setLetterSpacing(3); }},
+        {"lineSpacing", [](OutlinedTextItem &item) { item.setLineSpacing(6); }},
+        {"renderScale", [](OutlinedTextItem &item) { item.setRenderScale(1.5); }},
+        {"horizontalAlignment", [](OutlinedTextItem &item) { item.setHorizontalAlignment(Qt::AlignRight); }},
+        {"outlineSize", [](OutlinedTextItem &item) { item.setOutlineSize(12); }},
+        {"pathMode", [](OutlinedTextItem &item) {
+           item.setPathEnabled(true);
+           item.setPathPoints(QVariantList{QVariantList{0.0, 0.8},
+                                           QVariantList{0.5, 0.2},
+                                           QVariantList{1.0, 0.8}});
+           (void)item.layoutCacheRebuildCountForTesting();
+           item.setPathMode(1);
+         }},
+        {"height", [](OutlinedTextItem &item) { item.setHeight(130); }},
+    };
+
+    for (const auto &testCase : cases)
+      assertLayoutInvalidates(testCase.first, testCase.second);
+
+    OutlinedTextItem item;
+    item.setWidth(160);
+    item.setHeight(90);
+    item.setText(QStringLiteral("Alpha Beta Gamma"));
+    item.setPixelSize(22);
+    item.setOutlineSize(8);
+
+    const int initialRebuilds = item.layoutCacheRebuildCountForTesting();
+    QVERIFY(initialRebuilds > 0);
+    (void)item.editLayoutTopPadding();
+    (void)item.editLayoutLeftPadding();
+    (void)item.editLayoutRightPadding();
+    (void)item.editLayoutPaintOffsetX();
+    (void)item.editLayoutPaintOffsetY();
+    (void)item.wrappedLinesForTesting();
+    QCOMPARE(item.layoutCacheRebuildCountForTesting(), initialRebuilds);
+
+    item.setText(QStringLiteral("Alpha Beta Gamma Delta"));
+    const int afterText = item.layoutCacheRebuildCountForTesting();
+    QVERIFY(afterText > initialRebuilds);
+    (void)item.editLayoutTopPadding();
+    (void)item.wrappedLinesForTesting();
+    QCOMPARE(item.layoutCacheRebuildCountForTesting(), afterText);
+
+    item.setOutlineLayers({QVariantMap{{QStringLiteral("enabled"), true},
+                                       {QStringLiteral("color"), QStringLiteral("#ffffff")},
+                                       {QStringLiteral("size"), 6}},
+                           QVariantMap{{QStringLiteral("enabled"), true},
+                                       {QStringLiteral("color"), QStringLiteral("#ff0000")},
+                                       {QStringLiteral("size"), 4}}});
+    const int afterOutlineLayers = item.layoutCacheRebuildCountForTesting();
+    QVERIFY(afterOutlineLayers > afterText);
+
+    item.setPathEnabled(true);
+    item.setPathPoints(QVariantList{QVariantList{0.0, 0.8},
+                                    QVariantList{0.5, 0.2},
+                                    QVariantList{1.0, 0.8}});
+    const int afterPath = item.layoutCacheRebuildCountForTesting();
+    QVERIFY(afterPath > afterOutlineLayers);
+    QVERIFY(!item.editLayoutMetricsValid());
+    QCOMPARE(item.editLayoutTopPadding(), 0.0);
+    QCOMPARE(item.layoutCacheRebuildCountForTesting(), afterPath);
+
+    item.setWidth(220);
+    const int afterGeometry = item.layoutCacheRebuildCountForTesting();
+    QVERIFY(afterGeometry > afterPath);
+    (void)item.editLayoutPaintOffsetX();
+    QCOMPARE(item.layoutCacheRebuildCountForTesting(), afterGeometry);
+  }
+
   void blurSoftensRenderedText() {
     auto render = [](int blurSize) {
       OutlinedTextItem item;
@@ -999,7 +1098,7 @@ private slots:
     QVERIFY(code.contains(QStringLiteral("blurCacheKey")));
     QVERIFY(code.contains(QStringLiteral("blurSize_")));
     QVERIFY(code.contains(QStringLiteral(
-        "const qreal layoutWidth = std::max<qreal>(1.0, width() / scale);")));
+        "cache.layoutWidth = std::max<qreal>(1.0, width() / cache.scale);")));
     QVERIFY(code.contains(QStringLiteral("target.scale(scale, scale);")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         layoutCode,
@@ -1072,8 +1171,8 @@ private slots:
     const QString code = QString::fromUtf8(source.readAll());
 
     QVERIFY(sourceContainsIgnoringWhitespace(
-        code, QStringLiteral("paintedBounds = "
-                             "paintedBounds.united(stroker.createStroke(path)."
+        code, QStringLiteral("cache.paintedBounds = cache.paintedBounds.united("
+                             "stroker.createStroke(cache.path)."
                              "boundingRect());")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         code,

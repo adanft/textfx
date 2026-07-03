@@ -3,6 +3,7 @@
 #include <QColor>
 #include <QFont>
 #include <QImage>
+#include <QPainterPath>
 #include <QPointF>
 #include <QQuickPaintedItem>
 #include <QRectF>
@@ -147,6 +148,7 @@ public:
 
 #ifdef TEXTFX_TESTING
   int paintRequestRevisionForTesting() const { return paintRequestRevision_; }
+  int layoutCacheRebuildCountForTesting() const;
   qreal effectiveMaxOutlineSizeForTesting() const {
     return effectiveMaxOutlineSize();
   }
@@ -195,7 +197,29 @@ signals:
 #endif
 
 private:
+  struct LayoutCache {
+    QFont font;
+    qreal scale = 1.0;
+    qreal layoutWidth = 1.0;
+    qreal layoutHeight = 1.0;
+    qreal maxOutline = 0.0;
+    qreal inset = 0.0;
+    qreal blockHeight = 0.0;
+    qreal tabStopDistance = 0.0;
+    bool usingPathText = false;
+    bool editMetricsValid = true;
+    QPainterPath path;
+    QRectF paintedBounds;
+    QPointF paintTranslation;
+    QVector<qreal> lineTops;
+#ifdef TEXTFX_TESTING
+    QStringList wrappedLines;
+#endif
+  };
+
   QFont layoutFont() const;
+  const LayoutCache &layoutCache() const;
+  void invalidateLayoutCache();
   void updateOverflow();
   void notifyLayoutChanged();
   void requestPaintRefresh();
@@ -229,6 +253,11 @@ private:
   qreal renderScale_ = 1.0;
   int horizontalAlignment_ = Qt::AlignLeft;
   bool overflow_ = false;
+  mutable bool layoutCacheDirty_ = true;
+  mutable LayoutCache layoutCache_;
+#ifdef TEXTFX_TESTING
+  mutable int layoutCacheRebuildCount_ = 0;
+#endif
   QString blurCacheKey_;
   QImage blurCacheImage_;
 #ifdef TEXTFX_TESTING
