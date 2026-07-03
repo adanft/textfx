@@ -34,6 +34,39 @@ int countVisualChildrenByName(QQuickItem *item, const QString &objectName) {
   return count;
 }
 
+void collectVisualChildrenByName(QQuickItem *item, const QString &objectName,
+                                 QList<QQuickItem *> &results) {
+  if (!item)
+    return;
+  if (item->objectName() == objectName)
+    results.append(item);
+  for (QQuickItem *child : item->childItems())
+    collectVisualChildrenByName(child, objectName, results);
+}
+
+QQuickItem *findVisibleVisualChildByName(QQuickItem *item,
+                                         const QString &objectName) {
+  QList<QQuickItem *> matches;
+  collectVisualChildrenByName(item, objectName, matches);
+  for (QQuickItem *match : matches) {
+    if (match->isVisible())
+      return match;
+  }
+  return nullptr;
+}
+
+int countVisibleVisualChildrenByName(QQuickItem *item,
+                                     const QString &objectName) {
+  QList<QQuickItem *> matches;
+  collectVisualChildrenByName(item, objectName, matches);
+  int count = 0;
+  for (QQuickItem *match : matches) {
+    if (match->isVisible())
+      ++count;
+  }
+  return count;
+}
+
 } // namespace
 
 class QmlTextBoxDelegateSmokeTests final : public QObject {
@@ -751,7 +784,7 @@ private slots:
     QCOMPARE(outlinedObject->property("editLayoutMetricsValid").toBool(), false);
   }
 
-  void qmlSelectedOnlyDecorationsLoadOnlyForActiveDelegate() {
+  void qmlDecorationsLoadAndAlignForActiveDelegate() {
     registerQmlTypes();
 
     EditorController editor;
@@ -780,26 +813,76 @@ private slots:
     QTRY_COMPARE(countVisualChildrenByName(content,
                                            QStringLiteral("boxOutlinedText")),
                  2);
-    QTRY_COMPARE(countVisualChildrenByName(content,
-                                           QStringLiteral("resizeHandle_nw")),
+    QTRY_COMPARE(countVisibleVisualChildrenByName(
+                     content, QStringLiteral("resizeHandle_nw")),
                  1);
-    QTRY_COMPARE(countVisualChildrenByName(content,
-                                            QStringLiteral("resizeHandle_se")),
+    QTRY_COMPARE(countVisibleVisualChildrenByName(
+                     content, QStringLiteral("resizeHandle_se")),
                  1);
     QTRY_COMPARE(countVisualChildrenByName(content,
                                            QStringLiteral("rotateHandle")),
                  1);
-    QTRY_COMPARE(countVisualChildrenByName(content,
-                                           QStringLiteral("perspectiveBorder")),
+    QTRY_COMPARE(countVisibleVisualChildrenByName(
+                     content, QStringLiteral("perspectiveBorder")),
                  1);
     QTRY_COMPARE(countVisualChildrenByName(content, QStringLiteral("pathGuide")),
                  1);
     QVERIFY(countVisualChildrenByName(content, QStringLiteral("pathHandle")) >
             0);
-    QObject *perspectiveBorder = nullptr;
-    QTRY_VERIFY(perspectiveBorder = findVisualChildByName(
+    QQuickItem *perspectiveBorder = nullptr;
+    QTRY_VERIFY(perspectiveBorder = findVisibleVisualChildByName(
                     content, QStringLiteral("perspectiveBorder")));
-    QTRY_VERIFY(perspectiveBorder->property("visible").toBool());
+
+    QQuickItem *selectedDelegate = nullptr;
+    QList<QQuickItem *> delegates;
+    collectVisualChildrenByName(content, QStringLiteral("textBoxDelegate"),
+                                delegates);
+    for (QQuickItem *delegate : delegates) {
+      if (delegate->property("boxModel")
+              .toMap()
+              .value(QStringLiteral("index"))
+              .toInt() == editor.selectedIndex()) {
+        selectedDelegate = delegate;
+        break;
+      }
+    }
+    QVERIFY(selectedDelegate);
+    QCOMPARE(perspectiveBorder->parentItem(), selectedDelegate);
+
+    QVariant marginValue;
+    QVERIFY(QMetaObject::invokeMethod(
+        window, "perspectiveMargin", Q_RETURN_ARG(QVariant, marginValue),
+        Q_ARG(QVariant, selectedDelegate->property("boxModel"))));
+    const qreal margin = marginValue.toReal();
+    QCOMPARE(perspectiveBorder->x(), -margin);
+    QCOMPARE(perspectiveBorder->y(), -margin);
+    QCOMPARE(perspectiveBorder->width(), selectedDelegate->width() + margin * 2);
+    QCOMPARE(perspectiveBorder->height(),
+             selectedDelegate->height() + margin * 2);
+
+    const auto assertHandleCenter = [&](const QString &name) {
+      QQuickItem *handle = findVisibleVisualChildByName(
+          content, QStringLiteral("resizeHandle_") + name);
+      QVERIFY(handle);
+      QVariant expectedValue;
+      QVERIFY(QMetaObject::invokeMethod(
+          window, "visualHandlePosition", Q_RETURN_ARG(QVariant, expectedValue),
+          Q_ARG(QVariant, selectedDelegate->property("boxModel")),
+          Q_ARG(QVariant, name), Q_ARG(QVariant, selectedDelegate->width()),
+          Q_ARG(QVariant, selectedDelegate->height())));
+      const QVariantMap expected = expectedValue.toMap();
+      const QPointF center = handle->mapToItem(
+          selectedDelegate, QPointF(handle->width() / 2, handle->height() / 2));
+      QVERIFY(std::abs(center.x() - expected.value(QStringLiteral("x")).toDouble()) <=
+              0.001);
+      QVERIFY(std::abs(center.y() - expected.value(QStringLiteral("y")).toDouble()) <=
+              0.001);
+    };
+    assertHandleCenter(QStringLiteral("nw"));
+    assertHandleCenter(QStringLiteral("ne"));
+    assertHandleCenter(QStringLiteral("se"));
+    assertHandleCenter(QStringLiteral("sw"));
+
     QQuickItem *rotateHandle = nullptr;
     QTRY_VERIFY(rotateHandle = qobject_cast<QQuickItem *>(findVisualChildByName(
                     content, QStringLiteral("rotateHandle"))));
@@ -810,11 +893,11 @@ private slots:
     QCOMPARE(rotateHandle->height(), rotateHandle->width());
 
     editor.selectBox(0);
-    QTRY_COMPARE(countVisualChildrenByName(content,
-                                           QStringLiteral("resizeHandle_nw")),
+    QTRY_COMPARE(countVisibleVisualChildrenByName(
+                     content, QStringLiteral("resizeHandle_nw")),
                  1);
-    QTRY_COMPARE(countVisualChildrenByName(content,
-                                           QStringLiteral("resizeHandle_se")),
+    QTRY_COMPARE(countVisibleVisualChildrenByName(
+                     content, QStringLiteral("resizeHandle_se")),
                  1);
     QTRY_COMPARE(countVisualChildrenByName(content,
                                            QStringLiteral("rotateHandle")),
@@ -826,8 +909,8 @@ private slots:
     QVERIFY2(rotateHandle->width() <= 64.0,
              "rotate handle must not expand to the selected box width");
     QCOMPARE(rotateHandle->height(), rotateHandle->width());
-    QTRY_COMPARE(countVisualChildrenByName(content,
-                                           QStringLiteral("perspectiveBorder")),
+    QTRY_COMPARE(countVisibleVisualChildrenByName(
+                     content, QStringLiteral("perspectiveBorder")),
                  0);
     QTRY_COMPARE(countVisualChildrenByName(content, QStringLiteral("pathGuide")),
                  0);
