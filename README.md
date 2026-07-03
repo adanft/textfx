@@ -34,7 +34,7 @@ TextFX supports common visual text effects used in image editing and typesetting
 
 ## Why TextFX exists
 
-TextFX is the Qt/C++ successor MVP for TypeX. It focuses on a more maintainable desktop architecture while preserving the practical workflow: fast page navigation, direct canvas editing, reusable text styles, and deterministic preview/export output.
+TextFX is built as a modern Qt/C++ desktop editor focused on fast page navigation, direct canvas editing, reusable text styles, and deterministic preview/export output.
 
 It is built for people who need to work visually, not just edit metadata. The canvas is the center of the app: text boxes are manipulated where they appear, and effects update in real time.
 
