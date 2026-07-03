@@ -1,4 +1,6 @@
 #include "app/EditorController.h"
+#include "app/BoxesModel.h"
+#include "app/BoxRenderState.h"
 #include "app/EffectMetadata.h"
 #include "fonts/FontResolver.h"
 #include "qt_test_helpers.h"
@@ -39,6 +41,90 @@ int roleForName(const QAbstractItemModel &model, QByteArrayView name) {
       return it.key();
   }
   return -1;
+}
+
+void compareBoxModelRolesToRenderState(const BoxesModel &model, int row,
+                                       const BoxRenderState &state) {
+  const QModelIndex index = model.index(row, 0);
+  QVERIFY(index.isValid());
+
+  QCOMPARE(model.data(index, roleForName(model, "boxIndex")).toInt(),
+           state.index);
+  QCOMPARE(model.data(index, roleForName(model, "boxText")).toString(),
+           state.text);
+  QCOMPARE(model.data(index, roleForName(model, "boxX")).toDouble(), state.x);
+  QCOMPARE(model.data(index, roleForName(model, "boxY")).toDouble(), state.y);
+  QCOMPARE(model.data(index, roleForName(model, "boxWidth")).toDouble(),
+           state.width);
+  QCOMPARE(model.data(index, roleForName(model, "boxHeight")).toDouble(),
+           state.height);
+  QCOMPARE(model.data(index, roleForName(model, "boxRotation")).toDouble(),
+           state.rotation);
+  QCOMPARE(model.data(index, roleForName(model, "boxFontFamily")).toString(),
+           state.fontFamily);
+  QCOMPARE(model.data(index, roleForName(model, "boxResolvedFontFamily")).toString(),
+           state.resolvedFontFamily);
+  QCOMPARE(model.data(index, roleForName(model, "boxFontSize")).toInt(),
+           state.fontSize);
+  QCOMPARE(model.data(index, roleForName(model, "boxColor")).toString(),
+           state.color);
+  QCOMPARE(model.data(index, roleForName(model, "boxLineSpacing")).toInt(),
+           state.lineSpacing);
+  QCOMPARE(model.data(index, roleForName(model, "boxLetterSpacing")).toInt(),
+           state.letterSpacing);
+  QCOMPARE(model.data(index, roleForName(model, "boxBold")).toBool(), state.bold);
+  QCOMPARE(model.data(index, roleForName(model, "boxItalic")).toBool(),
+           state.italic);
+  QCOMPARE(model.data(index, roleForName(model, "boxUppercase")).toBool(),
+           state.uppercase);
+  QCOMPARE(model.data(index, roleForName(model, "boxLowercase")).toBool(),
+           state.lowercase);
+  QCOMPARE(model.data(index, roleForName(model, "boxAlignment")).toInt(),
+           state.alignment);
+  QCOMPARE(model.data(index, roleForName(model, "boxOutline")).toBool(),
+           state.outline);
+  QCOMPARE(model.data(index, roleForName(model, "boxOutlineColor")).toString(),
+           state.outlineColor);
+  QCOMPARE(model.data(index, roleForName(model, "boxOutlineSize")).toInt(),
+           state.outlineSize);
+  QCOMPARE(model.data(index, roleForName(model, "boxBlur")).toBool(), state.blur);
+  QCOMPARE(model.data(index, roleForName(model, "boxBlurSize")).toInt(),
+           state.blurSize);
+  QCOMPARE(model.data(index, roleForName(model, "boxShadow")).toBool(),
+           state.shadow);
+  QCOMPARE(model.data(index, roleForName(model, "boxShadowColor")).toString(),
+           state.shadowColor);
+  QCOMPARE(model.data(index, roleForName(model, "boxShadowOffsetX")).toInt(),
+           state.shadowOffsetX);
+  QCOMPARE(model.data(index, roleForName(model, "boxShadowOffsetY")).toInt(),
+           state.shadowOffsetY);
+  QCOMPARE(model.data(index, roleForName(model, "boxShadowBlurSize")).toInt(),
+           state.shadowBlurSize);
+  QCOMPARE(model.data(index, roleForName(model, "boxGradient")).toBool(),
+           state.gradient);
+  QCOMPARE(model.data(index, roleForName(model, "boxGradientDirection")).toInt(),
+           state.gradientDirection);
+  QCOMPARE(model.data(index, roleForName(model, "boxGradientColorA")).toString(),
+           state.gradientColorA);
+  QCOMPARE(model.data(index, roleForName(model, "boxGradientColorB")).toString(),
+           state.gradientColorB);
+  QCOMPARE(model.data(index, roleForName(model, "boxPerspective")).toBool(),
+           state.perspective);
+  QCOMPARE(model.data(index, roleForName(model, "boxPerspectiveNw")).toList(),
+           state.perspectiveNw);
+  QCOMPARE(model.data(index, roleForName(model, "boxPerspectiveNe")).toList(),
+           state.perspectiveNe);
+  QCOMPARE(model.data(index, roleForName(model, "boxPerspectiveSe")).toList(),
+           state.perspectiveSe);
+  QCOMPARE(model.data(index, roleForName(model, "boxPerspectiveSw")).toList(),
+           state.perspectiveSw);
+  QCOMPARE(model.data(index, roleForName(model, "boxPath")).toBool(), state.path);
+  QCOMPARE(model.data(index, roleForName(model, "boxPathMode")).toInt(),
+           state.pathMode);
+  QCOMPARE(model.data(index, roleForName(model, "boxPathPoints")).toList(),
+           state.pathPoints);
+  QCOMPARE(model.data(index, roleForName(model, "boxEffects")).toMap(),
+           state.effects);
 }
 } // namespace
 
@@ -143,6 +229,92 @@ private slots:
                  .toList()
                  .size(),
              3);
+  }
+
+  void boxesModelRoleValuesMatchRenderStateMapping() {
+    DocumentModel document;
+    TextBox box;
+    box.text = "Mapped role values";
+    box.bounds = {12.0, 34.0, 156.0, 78.0};
+    box.rotationDegrees = 17.5;
+    box.style.fontFamily = "TextFX Missing Model Font";
+    box.style.fontSize = 29;
+    box.style.textColor = "abcdef99";
+    box.style.lineSpacing = 6;
+    box.style.letterSpacing = 2;
+    box.style.bold = true;
+    box.style.italic = true;
+    box.style.uppercase = true;
+    box.style.lowercase = true;
+    box.style.alignment = TextAlignment::Right;
+    box.effects.outlineEnabled = true;
+    box.effects.outlineColor = "111111ff";
+    box.effects.outlineSize = 4;
+    box.effects.outlineLayers = {{true, "111111ff", 12},
+                                 {false, "333333ff", 4}};
+    box.effects.blurEnabled = true;
+    box.effects.blurSize = 5;
+    box.effects.shadowEnabled = true;
+    box.effects.shadowColor = "222222ff";
+    box.effects.shadowOffsetX = -3;
+    box.effects.shadowOffsetY = 8;
+    box.effects.shadowBlurSize = 9;
+    box.effects.gradientEnabled = true;
+    box.effects.gradientDirection = 1;
+    box.effects.gradientColorA = "123456ff";
+    box.effects.gradientColorB = "654321ff";
+    box.effects.pathEnabled = true;
+    box.effects.pathMode = 1;
+    box.effects.pathPoints = {{0.1, 0.2}, {0.4, 0.5}, {0.8, 0.9}};
+    box.effects.perspectiveEnabled = true;
+    box.effects.perspectiveNw = {1.0, 2.0};
+    box.effects.perspectiveNe = {3.0, 4.0};
+    box.effects.perspectiveSe = {5.0, 6.0};
+    box.effects.perspectiveSw = {7.0, 8.0};
+    document.addTextBox(box);
+
+    TextBox legacyOutlineBox;
+    legacyOutlineBox.text = "Legacy outline compatibility";
+    legacyOutlineBox.effects.outlineLayersSet = false;
+    legacyOutlineBox.effects.outlineLayers.clear();
+    legacyOutlineBox.effects.outlineEnabled = true;
+    legacyOutlineBox.effects.outlineColor = "aa5500ff";
+    legacyOutlineBox.effects.outlineSize = 7;
+    document.addTextBox(legacyOutlineBox);
+
+    TextBox explicitEmptyOutlineBox;
+    explicitEmptyOutlineBox.text = "Explicit empty outline layers";
+    explicitEmptyOutlineBox.effects.outlineLayersSet = true;
+    explicitEmptyOutlineBox.effects.outlineLayers.clear();
+    explicitEmptyOutlineBox.effects.outlineEnabled = true;
+    explicitEmptyOutlineBox.effects.outlineColor = "00aa55ff";
+    explicitEmptyOutlineBox.effects.outlineSize = 11;
+    document.addTextBox(explicitEmptyOutlineBox);
+
+    BoxesModel model(document);
+    QCOMPARE(model.rowCount(), 3);
+
+    for (int row = 0; row < model.rowCount(); ++row) {
+      compareBoxModelRolesToRenderState(
+          model, row, mapBoxRenderState(document.textBoxes().at(row), row));
+    }
+
+    const QModelIndex legacyIndex = model.index(1, 0);
+    QVERIFY(model.data(legacyIndex, roleForName(model, "boxOutline")).toBool());
+    QCOMPARE(model.data(legacyIndex, roleForName(model, "boxOutlineSize")).toInt(),
+             7);
+
+    const QModelIndex explicitEmptyIndex = model.index(2, 0);
+    QVERIFY(!model.data(explicitEmptyIndex, roleForName(model, "boxOutline")).toBool());
+    QCOMPARE(model.data(explicitEmptyIndex, roleForName(model, "boxOutlineSize")).toInt(),
+             0);
+    const auto explicitEmptyOutline =
+        model.data(explicitEmptyIndex, roleForName(model, "boxEffects"))
+            .toMap()
+            .value(QStringLiteral("outline"))
+            .toMap();
+    QVERIFY(explicitEmptyOutline.value(QStringLiteral("layersSet")).toBool());
+    QVERIFY(explicitEmptyOutline.value(QStringLiteral("layers")).toList().isEmpty());
   }
 
   void addOutlineLayerDefaultsToVisibleLargerSize() {

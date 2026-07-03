@@ -20,49 +20,63 @@ QVariant BoxesModel::data(const QModelIndex &index, int role) const {
     return {};
 
   const auto &box = document_.textBoxes().at(static_cast<std::size_t>(index.row()));
-  const auto state = mapBoxRenderState(box, index.row());
   switch (role) {
-  case IndexRole: return state.index;
-  case TextRole: return state.text;
-  case XRole: return state.x;
-  case YRole: return state.y;
-  case WidthRole: return state.width;
-  case HeightRole: return state.height;
-  case RotationRole: return state.rotation;
-  case FontFamilyRole: return state.fontFamily;
-  case ResolvedFontFamilyRole: return state.resolvedFontFamily;
-  case FontSizeRole: return state.fontSize;
-  case ColorRole: return state.color;
-  case LineSpacingRole: return state.lineSpacing;
-  case LetterSpacingRole: return state.letterSpacing;
-  case BoldRole: return state.bold;
-  case ItalicRole: return state.italic;
-  case UppercaseRole: return state.uppercase;
-  case LowercaseRole: return state.lowercase;
-  case AlignmentRole: return state.alignment;
-  case OutlineRole: return state.outline;
-  case OutlineColorRole: return state.outlineColor;
-  case OutlineSizeRole: return state.outlineSize;
-  case BlurRole: return state.blur;
-  case BlurSizeRole: return state.blurSize;
-  case ShadowRole: return state.shadow;
-  case ShadowColorRole: return state.shadowColor;
-  case ShadowOffsetXRole: return state.shadowOffsetX;
-  case ShadowOffsetYRole: return state.shadowOffsetY;
-  case ShadowBlurSizeRole: return state.shadowBlurSize;
-  case GradientRole: return state.gradient;
-  case GradientDirectionRole: return state.gradientDirection;
-  case GradientColorARole: return state.gradientColorA;
-  case GradientColorBRole: return state.gradientColorB;
-  case PerspectiveRole: return state.perspective;
-  case PerspectiveNwRole: return state.perspectiveNw;
-  case PerspectiveNeRole: return state.perspectiveNe;
-  case PerspectiveSeRole: return state.perspectiveSe;
-  case PerspectiveSwRole: return state.perspectiveSw;
-  case PathRole: return state.path;
-  case PathModeRole: return state.pathMode;
-  case PathPointsRole: return state.pathPoints;
-  case EffectsRole: return state.effects;
+  case IndexRole: return index.row();
+  case TextRole: return QString::fromStdString(box.text);
+  case XRole: return box.bounds.x;
+  case YRole: return box.bounds.y;
+  case WidthRole: return box.bounds.w;
+  case HeightRole: return box.bounds.h;
+  case RotationRole: return box.rotationDegrees;
+  case FontFamilyRole: return QString::fromStdString(box.style.fontFamily);
+  case ResolvedFontFamilyRole: return resolvedFontFamily(box.style);
+  case FontSizeRole: return box.style.fontSize;
+  case ColorRole: return QString::fromStdString(box.style.textColor);
+  case LineSpacingRole: return box.style.lineSpacing;
+  case LetterSpacingRole: return box.style.letterSpacing;
+  case BoldRole: return box.style.bold;
+  case ItalicRole: return box.style.italic;
+  case UppercaseRole: return box.style.uppercase;
+  case LowercaseRole: return box.style.lowercase && !box.style.uppercase;
+  case AlignmentRole: return static_cast<int>(box.style.alignment);
+  case OutlineRole: {
+    const bool hasExplicitLayers =
+        box.effects.outlineLayersSet || !box.effects.outlineLayers.empty();
+    if (!box.effects.outlineLayers.empty())
+      return box.effects.outlineLayers.front().enabled;
+    return !hasExplicitLayers && box.effects.outlineEnabled;
+  }
+  case OutlineColorRole:
+    return QString::fromStdString(box.effects.outlineLayers.empty()
+                                      ? box.effects.outlineColor
+                                      : box.effects.outlineLayers.front().color);
+  case OutlineSizeRole: {
+    const bool hasExplicitLayers =
+        box.effects.outlineLayersSet || !box.effects.outlineLayers.empty();
+    if (!box.effects.outlineLayers.empty())
+      return box.effects.outlineLayers.front().size;
+    return hasExplicitLayers ? 0 : box.effects.outlineSize;
+  }
+  case BlurRole: return box.effects.blurEnabled;
+  case BlurSizeRole: return box.effects.blurSize;
+  case ShadowRole: return box.effects.shadowEnabled;
+  case ShadowColorRole: return QString::fromStdString(box.effects.shadowColor);
+  case ShadowOffsetXRole: return box.effects.shadowOffsetX;
+  case ShadowOffsetYRole: return box.effects.shadowOffsetY;
+  case ShadowBlurSizeRole: return box.effects.shadowBlurSize;
+  case GradientRole: return box.effects.gradientEnabled;
+  case GradientDirectionRole: return box.effects.gradientDirection;
+  case GradientColorARole: return QString::fromStdString(box.effects.gradientColorA);
+  case GradientColorBRole: return QString::fromStdString(box.effects.gradientColorB);
+  case PerspectiveRole: return box.effects.perspectiveEnabled;
+  case PerspectiveNwRole: return pointValue(box.effects.perspectiveNw);
+  case PerspectiveNeRole: return pointValue(box.effects.perspectiveNe);
+  case PerspectiveSeRole: return pointValue(box.effects.perspectiveSe);
+  case PerspectiveSwRole: return pointValue(box.effects.perspectiveSw);
+  case PathRole: return box.effects.pathEnabled;
+  case PathModeRole: return box.effects.pathMode;
+  case PathPointsRole: return pointList(box.effects.pathPoints);
+  case EffectsRole: return effectsValue(box.effects);
   default: return {};
   }
 }

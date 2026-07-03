@@ -12,6 +12,14 @@ QString toQString(const std::string &value) {
   return QString::fromStdString(value);
 }
 
+std::vector<OutlineLayer> effectiveOutlineLayers(const TextEffects &effects) {
+  if (effects.outlineLayersSet || !effects.outlineLayers.empty())
+    return effects.outlineLayers;
+  return {};
+}
+
+} // namespace
+
 QString resolvedFontFamily(const TextStyle &style) {
   QFont font(toQString(style.fontFamily));
   font.setPixelSize(std::max(1, style.fontSize));
@@ -19,12 +27,6 @@ QString resolvedFontFamily(const TextStyle &style) {
   font.setItalic(style.italic);
   font.setLetterSpacing(QFont::AbsoluteSpacing, style.letterSpacing);
   return resolveFont(font).font.family();
-}
-
-std::vector<OutlineLayer> effectiveOutlineLayers(const TextEffects &effects) {
-  if (effects.outlineLayersSet || !effects.outlineLayers.empty())
-    return effects.outlineLayers;
-  return {};
 }
 
 QVariantList outlineLayersValue(const TextEffects &effects) {
@@ -36,7 +38,6 @@ QVariantList outlineLayersValue(const TextEffects &effects) {
   }
   return result;
 }
-} // namespace
 
 QVariantList pointValue(const Point &point) { return {point.x, point.y}; }
 
@@ -47,8 +48,7 @@ QVariantList pointList(const std::vector<Point> &points) {
   return result;
 }
 
-namespace {
-QVariantMap effectsMap(const TextEffects &effects) {
+QVariantMap effectsValue(const TextEffects &effects) {
   const auto layers = outlineLayersValue(effects);
   const bool hasExplicitLayers =
       effects.outlineLayersSet || !effects.outlineLayers.empty();
@@ -88,9 +88,8 @@ QVariantMap effectsMap(const TextEffects &effects) {
                        {"nw", pointValue(effects.perspectiveNw)},
                        {"ne", pointValue(effects.perspectiveNe)},
                        {"se", pointValue(effects.perspectiveSe)},
-                       {"sw", pointValue(effects.perspectiveSw)}}}};
+                        {"sw", pointValue(effects.perspectiveSw)}}}};
 }
-} // namespace
 
 BoxRenderState mapBoxRenderState(const TextBox &box, int index) {
   const bool hasExplicitLayers =
@@ -144,7 +143,7 @@ BoxRenderState mapBoxRenderState(const TextBox &box, int index) {
       .path = box.effects.pathEnabled,
       .pathMode = box.effects.pathMode,
       .pathPoints = pointList(box.effects.pathPoints),
-      .effects = effectsMap(box.effects),
+      .effects = effectsValue(box.effects),
   };
 }
 

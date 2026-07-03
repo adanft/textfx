@@ -54,6 +54,9 @@ struct BoxRenderState {
 };
 
 BoxRenderState mapBoxRenderState(const TextBox &box, int index);
+QString resolvedFontFamily(const TextStyle &style);
+QVariantMap effectsValue(const TextEffects &effects);
+QVariantList outlineLayersValue(const TextEffects &effects);
 QVariantList pointList(const std::vector<Point> &points);
 QVariantList pointValue(const Point &point);
 
