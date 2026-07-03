@@ -23,6 +23,19 @@
 using namespace textfx;
 using namespace textfx::test;
 
+namespace {
+
+int countVisualChildrenByName(QQuickItem *item, const QString &objectName) {
+  if (!item)
+    return 0;
+  int count = item->objectName() == objectName ? 1 : 0;
+  for (QQuickItem *child : item->childItems())
+    count += countVisualChildrenByName(child, objectName);
+  return count;
+}
+
+} // namespace
+
 class QmlTextBoxDelegateSmokeTests final : public QObject {
   Q_OBJECT
 
@@ -736,6 +749,77 @@ private slots:
     QTRY_VERIFY(!textAreaObject->property("visible").toBool());
     QCOMPARE(outlinedObject->property("pathEnabled").toBool(), true);
     QCOMPARE(outlinedObject->property("editLayoutMetricsValid").toBool(), false);
+  }
+
+  void qmlSelectedOnlyDecorationsLoadOnlyForActiveDelegate() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 160, 80);
+    editor.createTextBox(220, 30, 180, 90);
+    editor.setSelectedPathEnabled(true);
+    editor.setPathHandle(1, 0.5, 0.1);
+    editor.setSelectedPerspectiveEnabled(true);
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+
+    auto *content = window->contentItem();
+    QVERIFY(content);
+    QTRY_COMPARE(countVisualChildrenByName(content,
+                                           QStringLiteral("textBoxDelegate")),
+                 2);
+    QTRY_COMPARE(countVisualChildrenByName(content,
+                                           QStringLiteral("boxOutlinedText")),
+                 2);
+    QTRY_COMPARE(countVisualChildrenByName(content,
+                                           QStringLiteral("resizeHandle_nw")),
+                 1);
+    QTRY_COMPARE(countVisualChildrenByName(content,
+                                            QStringLiteral("resizeHandle_se")),
+                 1);
+    QTRY_COMPARE(countVisualChildrenByName(content,
+                                           QStringLiteral("rotateHandle")),
+                 1);
+    QTRY_COMPARE(countVisualChildrenByName(content,
+                                           QStringLiteral("perspectiveBorder")),
+                 1);
+    QTRY_COMPARE(countVisualChildrenByName(content, QStringLiteral("pathGuide")),
+                 1);
+    QVERIFY(countVisualChildrenByName(content, QStringLiteral("pathHandle")) >
+            0);
+    QObject *perspectiveBorder = nullptr;
+    QTRY_VERIFY(perspectiveBorder = findVisualChildByName(
+                    content, QStringLiteral("perspectiveBorder")));
+    QTRY_VERIFY(perspectiveBorder->property("visible").toBool());
+
+    editor.selectBox(0);
+    QTRY_COMPARE(countVisualChildrenByName(content,
+                                           QStringLiteral("resizeHandle_nw")),
+                 1);
+    QTRY_COMPARE(countVisualChildrenByName(content,
+                                           QStringLiteral("resizeHandle_se")),
+                 1);
+    QTRY_COMPARE(countVisualChildrenByName(content,
+                                           QStringLiteral("rotateHandle")),
+                 1);
+    QTRY_COMPARE(countVisualChildrenByName(content,
+                                           QStringLiteral("perspectiveBorder")),
+                 0);
+    QTRY_COMPARE(countVisualChildrenByName(content, QStringLiteral("pathGuide")),
+                 0);
+    QCOMPARE(countVisualChildrenByName(content, QStringLiteral("pathHandle")),
+             0);
+    QCOMPARE(countVisualChildrenByName(content, QStringLiteral("boxOutlinedText")),
+             2);
   }
 
   void qmlTextEditTabStopMatchesOutlinedLayoutMetrics() {

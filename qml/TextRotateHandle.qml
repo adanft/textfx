@@ -10,6 +10,7 @@ Rectangle {
     readonly property int zRotateHandle: 20
     readonly property var visualPosition: rootWindow.rotateHandlePosition(boxRef.boxModel, boxRef.width, boxRef.height)
 
+    objectName: "rotateHandle"
     z: zRotateHandle
     width: rootWindow.handleSize()
     height: width

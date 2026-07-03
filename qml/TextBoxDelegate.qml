@@ -104,6 +104,13 @@ Rectangle {
     readonly property bool textOverflow: boxOutlinedText.overflow
     readonly property int zTextContent: 1
     readonly property int zPerspectiveBorder: 19
+    readonly property int zSelectionControls: 20
+    readonly property bool activePathDragForThisBox: rootWindow && rootWindow.activePathHandlePlane && rootWindow.activePathHandlePlane.boxRef === boxDelegate
+    readonly property bool resizeDecorationsLoaded: selected || (rootWindow && rootWindow.activeResizeDelegate === boxDelegate) || (rootWindow && rootWindow.activePerspectiveDelegate === boxDelegate)
+    readonly property bool rotateDecorationsLoaded: selected || (rootWindow && rootWindow.activeRotateDelegate === boxDelegate)
+    readonly property bool pathDecorationsLoaded: (selected && boxModel.path) || activePathDragForThisBox
+    readonly property bool pathGuideLoaded: selected && boxModel.path && boxModel.pathPoints && boxModel.pathPoints.length > 1
+    readonly property bool perspectiveBorderLoaded: (selected && perspectiveActive) || (rootWindow && rootWindow.activePerspectiveDelegate === boxDelegate)
 
     function modelPreviewText() {
         return boxModel.uppercase ? String(boxModel.text).toUpperCase() : boxModel.lowercase ? String(boxModel.text).toLowerCase() : boxModel.text;
@@ -127,58 +134,74 @@ Rectangle {
     border.color: textOverflow ? Qt.rgba(1, 0, 0, 1) : editingSelected ? Qt.rgba(1, 0.84, 0, 1) : selected ? rootWindow.palette.highlight : rootWindow.palette.mid
     rotation: boxRotation
 
-    Canvas {
-        id: perspectiveBorder
+    Component {
+        id: perspectiveBorderComponent
 
-        property var boxRef: parent
-        property var rootWindow: boxRef.rootWindow
-        property var editorRef: boxRef.editorRef
-        property real margin: rootWindow.perspectiveMargin(boxRef.boxModel)
+        Canvas {
+            id: perspectiveBorder
 
-        x: -margin
-        y: -margin
-        width: parent.width + margin * 2
-        height: parent.height + margin * 2
-        visible: boxRef.selected && boxRef.perspectiveActive
-        z: boxRef.zPerspectiveBorder
-        onPaint: {
-            const ctx = getContext("2d");
-            ctx.clearRect(0, 0, width, height);
-            const nw = rootWindow.perspectiveCorner(boxRef.boxModel, "nw", boxRef.width, boxRef.height);
-            const ne = rootWindow.perspectiveCorner(boxRef.boxModel, "ne", boxRef.width, boxRef.height);
-            const se = rootWindow.perspectiveCorner(boxRef.boxModel, "se", boxRef.width, boxRef.height);
-            const sw = rootWindow.perspectiveCorner(boxRef.boxModel, "sw", boxRef.width, boxRef.height);
-            ctx.beginPath();
-            ctx.moveTo(nw.x + margin, nw.y + margin);
-            ctx.lineTo(ne.x + margin, ne.y + margin);
-            ctx.lineTo(se.x + margin, se.y + margin);
-            ctx.lineTo(sw.x + margin, sw.y + margin);
-            ctx.closePath();
-            ctx.lineWidth = rootWindow.selectionLineWidth();
-            ctx.strokeStyle = rootWindow.palette.highlight;
-            ctx.stroke();
-        }
+            property var boxRef: perspectiveBorderLoader.boxRef
+            property var rootWindow: boxRef.rootWindow
+            property var editorRef: boxRef.editorRef
+            property real margin: rootWindow.perspectiveMargin(boxRef.boxModel)
 
-        Connections {
-            function onZoomChanged() {
-                perspectiveBorder.requestPaint();
+            objectName: "perspectiveBorder"
+            x: -margin
+            y: -margin
+            width: parent.width + margin * 2
+            height: parent.height + margin * 2
+            visible: boxRef.selected && boxRef.perspectiveActive
+            z: boxRef.zPerspectiveBorder
+            onPaint: {
+                const ctx = getContext("2d");
+                ctx.clearRect(0, 0, width, height);
+                const nw = rootWindow.perspectiveCorner(boxRef.boxModel, "nw", boxRef.width, boxRef.height);
+                const ne = rootWindow.perspectiveCorner(boxRef.boxModel, "ne", boxRef.width, boxRef.height);
+                const se = rootWindow.perspectiveCorner(boxRef.boxModel, "se", boxRef.width, boxRef.height);
+                const sw = rootWindow.perspectiveCorner(boxRef.boxModel, "sw", boxRef.width, boxRef.height);
+                ctx.beginPath();
+                ctx.moveTo(nw.x + margin, nw.y + margin);
+                ctx.lineTo(ne.x + margin, ne.y + margin);
+                ctx.lineTo(se.x + margin, se.y + margin);
+                ctx.lineTo(sw.x + margin, sw.y + margin);
+                ctx.closePath();
+                ctx.lineWidth = rootWindow.selectionLineWidth();
+                ctx.strokeStyle = rootWindow.palette.highlight;
+                ctx.stroke();
             }
 
-            function onPerspectiveRevisionChanged() {
-                perspectiveBorder.requestPaint();
+            Connections {
+                function onZoomChanged() {
+                    perspectiveBorder.requestPaint();
+                }
+
+                function onPerspectiveRevisionChanged() {
+                    perspectiveBorder.requestPaint();
+                }
+
+                target: perspectiveBorder.rootWindow
             }
 
-            target: perspectiveBorder.rootWindow
-        }
+            Connections {
+                function onDocumentChanged() {
+                    perspectiveBorder.requestPaint();
+                }
 
-        Connections {
-            function onDocumentChanged() {
-                perspectiveBorder.requestPaint();
+                target: perspectiveBorder.editorRef
             }
 
-            target: perspectiveBorder.editorRef
         }
+    }
 
+    Loader {
+        id: perspectiveBorderLoader
+
+        property var boxRef: boxDelegate
+
+        anchors.fill: parent
+        active: boxDelegate.perspectiveBorderLoaded
+        sourceComponent: perspectiveBorderComponent
+        z: boxDelegate.zPerspectiveBorder
     }
 
     Item {
@@ -238,8 +261,19 @@ Rectangle {
 
     }
 
-    TextPathGuide {
-        boxRef: boxDelegate
+    Loader {
+        id: pathGuideLoader
+
+        property var boxRef: boxDelegate
+
+        anchors.fill: parent
+        active: boxDelegate.pathGuideLoaded
+        sourceComponent: Component {
+            TextPathGuide {
+                boxRef: pathGuideLoader.boxRef
+            }
+        }
+        z: 18
     }
 
     TextEditOverlay {
@@ -255,19 +289,55 @@ Rectangle {
         editOverlay: boxTextOverlay
     }
 
-    TextResizeHandles {
-        boxRef: boxDelegate
-        canvasItem: boxDelegate.canvasItem
+    Loader {
+        id: resizeHandlesLoader
+
+        property var boxRef: boxDelegate
+        property var canvasItem: boxDelegate.canvasItem
+
+        anchors.fill: parent
+        active: boxDelegate.resizeDecorationsLoaded
+        sourceComponent: Component {
+            TextResizeHandles {
+                boxRef: resizeHandlesLoader.boxRef
+                canvasItem: resizeHandlesLoader.canvasItem
+            }
+        }
+        z: boxDelegate.zSelectionControls
     }
 
-    TextRotateHandle {
-        boxRef: boxDelegate
-        canvasItem: boxDelegate.canvasItem
+    Loader {
+        id: rotateHandleLoader
+
+        property var boxRef: boxDelegate
+        property var canvasItem: boxDelegate.canvasItem
+
+        anchors.fill: parent
+        active: boxDelegate.rotateDecorationsLoaded
+        sourceComponent: Component {
+            TextRotateHandle {
+                boxRef: rotateHandleLoader.boxRef
+                canvasItem: rotateHandleLoader.canvasItem
+            }
+        }
+        z: boxDelegate.zSelectionControls
     }
 
-    TextPathHandles {
-        boxRef: boxDelegate
-        canvasItem: boxDelegate.canvasItem
+    Loader {
+        id: pathHandlesLoader
+
+        property var boxRef: boxDelegate
+        property var canvasItem: boxDelegate.canvasItem
+
+        anchors.fill: parent
+        active: boxDelegate.pathDecorationsLoaded
+        sourceComponent: Component {
+            TextPathHandles {
+                boxRef: pathHandlesLoader.boxRef
+                canvasItem: pathHandlesLoader.canvasItem
+            }
+        }
+        z: boxDelegate.zSelectionControls
     }
 
 }
