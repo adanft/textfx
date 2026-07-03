@@ -800,6 +800,14 @@ private slots:
     QTRY_VERIFY(perspectiveBorder = findVisualChildByName(
                     content, QStringLiteral("perspectiveBorder")));
     QTRY_VERIFY(perspectiveBorder->property("visible").toBool());
+    QQuickItem *rotateHandle = nullptr;
+    QTRY_VERIFY(rotateHandle = qobject_cast<QQuickItem *>(findVisualChildByName(
+                    content, QStringLiteral("rotateHandle"))));
+    QVERIFY(rotateHandle->width() > 0.0);
+    QVERIFY(rotateHandle->height() > 0.0);
+    QVERIFY2(rotateHandle->width() <= 64.0,
+             "rotate handle must not expand to the selected box width");
+    QCOMPARE(rotateHandle->height(), rotateHandle->width());
 
     editor.selectBox(0);
     QTRY_COMPARE(countVisualChildrenByName(content,
@@ -811,6 +819,13 @@ private slots:
     QTRY_COMPARE(countVisualChildrenByName(content,
                                            QStringLiteral("rotateHandle")),
                  1);
+    rotateHandle = nullptr;
+    QTRY_VERIFY(rotateHandle = qobject_cast<QQuickItem *>(findVisualChildByName(
+                    content, QStringLiteral("rotateHandle"))));
+    QVERIFY(rotateHandle->width() > 0.0);
+    QVERIFY2(rotateHandle->width() <= 64.0,
+             "rotate handle must not expand to the selected box width");
+    QCOMPARE(rotateHandle->height(), rotateHandle->width());
     QTRY_COMPARE(countVisualChildrenByName(content,
                                            QStringLiteral("perspectiveBorder")),
                  0);

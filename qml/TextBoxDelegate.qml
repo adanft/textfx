@@ -312,7 +312,6 @@ Rectangle {
         property var boxRef: boxDelegate
         property var canvasItem: boxDelegate.canvasItem
 
-        anchors.fill: parent
         active: boxDelegate.rotateDecorationsLoaded
         sourceComponent: Component {
             TextRotateHandle {
