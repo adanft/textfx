@@ -79,7 +79,11 @@ ApplicationWindow {
     property alias pathHandleStartX: pathHandleInteraction.pathHandleStartX
     property alias pathHandleStartY: pathHandleInteraction.pathHandleStartY
     property var activePaintPoints: []
+    property var activePaintPreviewPoints: []
     property string activePaintTarget: ""
+    property int activePaintPageIndex: -1
+    property int paintPreviewPublishRevision: 0
+    readonly property bool pageNavigationEnabled: dragMode !== editorInteraction.dragModePaint
 
     function fitPageScale() {
         return viewportMetrics.fitPageScale();
@@ -410,6 +414,8 @@ ApplicationWindow {
                 endMoveDrag(false);
             else if (dragMode === editorInteraction.dragModePathHandle)
                 endPathHandleDrag();
+            else if (dragMode === editorInteraction.dragModePaint)
+                cancelPaintDrag();
             dragMode = editorInteraction.dragModeIdle;
         } else if (Editor.selectedIndex >= 0) {
             Editor.selectBox(-1);
@@ -421,15 +427,41 @@ ApplicationWindow {
     }
 
     function activePaintStroke(target) {
-        if (window.activePaintTarget !== target || rightPanel.paintEraserMode || activePaintPoints.length === 0)
+        if (window.activePaintTarget !== target || Editor.currentPageIndex !== activePaintPageIndex || rightPanel.paintEraserMode || activePaintPreviewPoints.length === 0)
             return {};
 
         return {
             "color": rightPanel.paintBrushColor,
             "size": rightPanel.paintBrushSize,
             "opacity": rightPanel.paintBrushOpacity,
-            "points": activePaintPoints
+            "points": activePaintPreviewPoints
         };
+    }
+
+    function publishPaintPreview() {
+        paintPreviewPublishTimer.stop();
+        if (dragMode !== editorInteraction.dragModePaint || rightPanel.paintEraserMode || activePaintPoints.length === 0)
+            return ;
+        activePaintPreviewPoints = activePaintPoints.slice();
+        ++paintPreviewPublishRevision;
+    }
+
+    function clearPaintDrag() {
+        paintPreviewPublishTimer.stop();
+        activePaintPoints = [];
+        activePaintPreviewPoints = [];
+        activePaintTarget = "";
+        activePaintPageIndex = -1;
+        dragMode = editorInteraction.dragModeIdle;
+    }
+
+    function paintDragPageMatchesOrigin() {
+        return activePaintPageIndex >= 0 && Editor.currentPageIndex === activePaintPageIndex;
+    }
+
+    function schedulePaintPreviewPublish() {
+        if (!paintPreviewPublishTimer.running)
+            paintPreviewPublishTimer.start();
     }
 
     function beginPaintDrag(x, y) {
@@ -438,11 +470,13 @@ ApplicationWindow {
         Editor.endTextEdit();
         dragMode = editorInteraction.dragModePaint;
         activePaintTarget = rightPanel.paintTarget;
+        activePaintPageIndex = Editor.currentPageIndex;
         const point = paintPoint(x, y);
         if (rightPanel.paintEraserMode) {
             Editor.erasePaintAt(activePaintTarget, point[0], point[1], rightPanel.paintEraserSize);
         } else {
             activePaintPoints = [point];
+            publishPaintPreview();
         }
         return true;
     }
@@ -450,24 +484,34 @@ ApplicationWindow {
     function updatePaintDrag(x, y) {
         if (dragMode !== editorInteraction.dragModePaint)
             return ;
+        if (!paintDragPageMatchesOrigin()) {
+            cancelPaintDrag();
+            return ;
+        }
         const point = paintPoint(x, y);
         if (rightPanel.paintEraserMode) {
             Editor.erasePaintAt(activePaintTarget, point[0], point[1], rightPanel.paintEraserSize);
             return ;
         }
-        const points = activePaintPoints.slice();
-        points.push(point);
-        activePaintPoints = points;
+        activePaintPoints.push(point);
+        schedulePaintPreviewPublish();
     }
 
     function endPaintDrag() {
         if (dragMode !== editorInteraction.dragModePaint)
             return false;
-        if (!rightPanel.paintEraserMode && activePaintPoints.length > 0)
+        if (paintDragPageMatchesOrigin())
+            publishPaintPreview();
+        if (!rightPanel.paintEraserMode && activePaintPoints.length > 0 && paintDragPageMatchesOrigin())
             Editor.addPaintStroke(activePaintTarget, rightPanel.paintBrushColor, rightPanel.paintBrushSize, rightPanel.paintBrushOpacity, activePaintPoints);
-        activePaintPoints = [];
-        activePaintTarget = "";
-        dragMode = editorInteraction.dragModeIdle;
+        clearPaintDrag();
+        return true;
+    }
+
+    function cancelPaintDrag() {
+        if (dragMode !== editorInteraction.dragModePaint)
+            return false;
+        clearPaintDrag();
         return true;
     }
 
@@ -489,6 +533,14 @@ ApplicationWindow {
         readonly property int dragModeMove: 7
         readonly property int dragModePathHandle: 8
         readonly property int dragModePaint: 9
+    }
+
+    Timer {
+        id: paintPreviewPublishTimer
+
+        interval: 16
+        repeat: false
+        onTriggered: window.publishPaintPreview()
     }
 
     QtObject {
@@ -596,6 +648,7 @@ ApplicationWindow {
         hostHeight: window.height
         zoomCenterX: canvas.width / 2
         zoomCenterY: canvas.height / 2
+        pageNavigationEnabled: window.pageNavigationEnabled
         paintBrushColorTarget: rightPanel
         sidePanelTextInputFocused: window.sidePanelFocusedTextInputs > 0
         onZoomAtRequested: (x, y, factor) => {
@@ -843,7 +896,7 @@ ApplicationWindow {
                             window.endPaintDrag();
                             mouse.accepted = true;
                         }
-                        onCanceled: window.endPaintDrag()
+                        onCanceled: window.cancelPaintDrag()
                     }
 
                 }
@@ -857,6 +910,7 @@ ApplicationWindow {
                     displayScale: viewportMetrics.viewDocScale()
                     minimumDisplayScale: window.pageBaseScale * viewportMetrics.minimumZoom
                     maximumDisplayScale: window.pageBaseScale * viewportMetrics.maximumZoom
+                    pageNavigationEnabled: window.pageNavigationEnabled
                     qmlColorProvider: (hex) => {
                         return window.qmlColor(hex);
                     }

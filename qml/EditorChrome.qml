@@ -11,6 +11,7 @@ Item {
     property real hostHeight: 0
     property real zoomCenterX: 0
     property real zoomCenterY: 0
+    property bool pageNavigationEnabled: true
     property bool sidePanelTextInputFocused: false
     property alias menuBar: chromeMenuBar
     property string colorDialogSetter: ""
@@ -132,7 +133,7 @@ Item {
 
         text: qsTr("Previous")
         shortcut: "PgUp"
-        enabled: editorChrome.editor && editorChrome.editor.canGoPrevious
+        enabled: editorChrome.pageNavigationEnabled && editorChrome.editor && editorChrome.editor.canGoPrevious
         onTriggered: editorChrome.editor.previousPage()
     }
 
@@ -141,7 +142,7 @@ Item {
 
         text: qsTr("Next")
         shortcut: "PgDown"
-        enabled: editorChrome.editor && editorChrome.editor.canGoNext
+        enabled: editorChrome.pageNavigationEnabled && editorChrome.editor && editorChrome.editor.canGoNext
         onTriggered: editorChrome.editor.nextPage()
     }
 

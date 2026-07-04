@@ -11,6 +11,7 @@ ColumnLayout {
     property real displayScale: 1
     property real minimumDisplayScale: 0.5
     property real maximumDisplayScale: 6
+    property bool pageNavigationEnabled: true
     readonly property bool sectionReady: editor && editor.pageCount > 0
     readonly property real displayScaleSnapThreshold: 0.1
     readonly property string maximumDisplayScaleLabel: displayScaleLabel(maximumDisplayScale)
@@ -93,7 +94,7 @@ ColumnLayout {
 
                 Button {
                     text: qsTr("Previous")
-                    enabled: navigationSection.editor && navigationSection.editor.canGoPrevious
+                    enabled: navigationSection.pageNavigationEnabled && navigationSection.editor && navigationSection.editor.canGoPrevious
                     display: AbstractButton.IconOnly
                     icon.source: "qrc:/qt/qml/TextFX/assets/icons/flat/arrow-left.svg"
                     icon.width: 20
@@ -105,7 +106,7 @@ ColumnLayout {
                 Button {
                     objectName: "rightInspectorNextPageButton"
                     text: qsTr("Next")
-                    enabled: navigationSection.editor && navigationSection.editor.canGoNext
+                    enabled: navigationSection.pageNavigationEnabled && navigationSection.editor && navigationSection.editor.canGoNext
                     display: AbstractButton.IconOnly
                     icon.source: "qrc:/qt/qml/TextFX/assets/icons/flat/arrow-right.svg"
                     icon.width: 20
@@ -124,7 +125,7 @@ ColumnLayout {
                 Layout.minimumWidth: 0
                 model: navigationSection.editor ? navigationSection.editor.pageLabels : []
                 currentIndex: navigationSection.editor ? navigationSection.editor.currentPageIndex : -1
-                enabled: navigationSection.editor && navigationSection.editor.pageCount > 0
+                enabled: navigationSection.pageNavigationEnabled && navigationSection.editor && navigationSection.editor.pageCount > 0
                 onActivated: (index) => {
                     return navigationSection.editor.goToPage(index);
                 }

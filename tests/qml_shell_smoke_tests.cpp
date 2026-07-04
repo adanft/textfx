@@ -620,6 +620,8 @@ private slots:
     QVERIFY(rightPanelSource.contains(
         QStringLiteral("property real maximumDisplayScale: 6")));
     QVERIFY(rightPanelSource.contains(
+        QStringLiteral("property bool pageNavigationEnabled: true")));
+    QVERIFY(rightPanelSource.contains(
         QStringLiteral("signal zoomRequested(real displayScale)")));
     QVERIFY(rightPanelSource.contains(QStringLiteral("NavigationSection {")));
     QVERIFY(sourceContainsIgnoringWhitespace(
@@ -630,6 +632,8 @@ private slots:
                        "rightInspectorPanel.minimumDisplayScale; "
                        "maximumDisplayScale: "
                        "rightInspectorPanel.maximumDisplayScale; "
+                       "pageNavigationEnabled: "
+                       "rightInspectorPanel.pageNavigationEnabled; "
                        "onZoomRequested: (displayScale) => { "
                        "rightInspectorPanel.zoomRequested(displayScale) }; "
                        "Layout.fillWidth: true; Layout.minimumWidth: 0 }")));
@@ -647,6 +651,8 @@ private slots:
         QStringLiteral("property real minimumDisplayScale: 0.5")));
     QVERIFY(navigationSectionSource.contains(
         QStringLiteral("property real maximumDisplayScale: 6")));
+    QVERIFY(navigationSectionSource.contains(
+        QStringLiteral("property bool pageNavigationEnabled: true")));
     QVERIFY(navigationSectionSource.contains(
         QStringLiteral("readonly property real displayScaleSnapThreshold: "
                        "0.1")));
@@ -707,7 +713,9 @@ private slots:
                                    "minimumDisplayScale: window.pageBaseScale * "
                                    "viewportMetrics.minimumZoom; maximumDisplayScale: "
                                    "window.pageBaseScale * "
-                                   "viewportMetrics.maximumZoom")));
+                                   "viewportMetrics.maximumZoom; "
+                                   "pageNavigationEnabled: "
+                                   "window.pageNavigationEnabled")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         mainSource, QStringLiteral("onZoomRequested: (displayScale) => { return "
                                    "window.setDisplayScaleAtCenter(displayScale) "

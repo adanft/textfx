@@ -34,6 +34,7 @@ Pane {
     property real displayScale: 1
     property real minimumDisplayScale: 0.5
     property real maximumDisplayScale: 6
+    property bool pageNavigationEnabled: true
     property alias paintMode: pageEffectsSection.paintMode
     property alias paintEraserMode: pageEffectsSection.paintEraserMode
     property alias paintTarget: pageEffectsSection.paintTarget
@@ -75,6 +76,7 @@ Pane {
                 displayScale: rightInspectorPanel.displayScale
                 minimumDisplayScale: rightInspectorPanel.minimumDisplayScale
                 maximumDisplayScale: rightInspectorPanel.maximumDisplayScale
+                pageNavigationEnabled: rightInspectorPanel.pageNavigationEnabled
                 onZoomRequested: (displayScale) => {
                     rightInspectorPanel.zoomRequested(displayScale);
                 }

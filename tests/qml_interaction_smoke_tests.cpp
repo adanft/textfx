@@ -60,8 +60,14 @@ private slots:
   void qmlCentralCanvasShellForwardsViewportInteractions() {
     registerQmlTypes();
 
+    QTemporaryDir projectDir;
+    QVERIFY(projectDir.isValid());
+    QImage page(320, 240, QImage::Format_RGB32);
+    page.fill(Qt::white);
+    QVERIFY(page.save(projectDir.filePath(QStringLiteral("page.png"))));
+
     EditorController editor;
-    editor.newDocument();
+    editor.openProject(projectDir.path());
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
@@ -429,6 +435,400 @@ private slots:
     const QVariantMap stroke = editor.paintBehindText().constFirst().toMap();
     QCOMPARE(stroke.value(QStringLiteral("color")).toString(),
              QStringLiteral("00ff88ff"));
+  }
+
+  void rapidPaintDragThrottlesPreviewAndPersistsEveryPoint() {
+    registerQmlTypes();
+
+    QTemporaryDir projectDir;
+    QVERIFY(projectDir.isValid());
+    QImage page(320, 240, QImage::Format_RGB32);
+    page.fill(Qt::white);
+    QVERIFY(page.save(projectDir.filePath(QStringLiteral("page.png"))));
+
+    EditorController editor;
+    editor.openProject(projectDir.path());
+    editor.selectBox(-1);
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    window->resize(1400, 1200);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+
+    QObject *rightPanelObject = nullptr;
+    QTRY_VERIFY(rightPanelObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("rightInspectorPanel")));
+    QVERIFY(rightPanelObject->setProperty("paintMode", true));
+
+    QObject *paintInputObject = nullptr;
+    QTRY_VERIFY(paintInputObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintInputArea")));
+    auto *paintInput = qobject_cast<QQuickItem *>(paintInputObject);
+    QVERIFY(paintInput);
+    QTRY_VERIFY(paintInput->isVisible());
+
+    QObject *paintLayerObject = nullptr;
+    QTRY_VERIFY(paintLayerObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintBehindTextLayer")));
+    auto *paintLayer = qobject_cast<QQuickItem *>(paintLayerObject);
+    QVERIFY(paintLayer);
+    QCOMPARE(paintLayer->isVisible(), false);
+    QCOMPARE(paintLayer->property("hasPaintContent").toBool(), false);
+    QCOMPARE(paintLayer->property("liveStrokeCount").toInt(), 0);
+
+    QObject *canvasObject = nullptr;
+    QTRY_VERIFY(canvasObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("centralCanvas")));
+    auto *canvas = qobject_cast<QQuickItem *>(canvasObject);
+    QVERIFY(canvas);
+
+    const QPointF start = paintInput->mapToItem(canvas, QPointF(32, 32));
+    QVariant beginResult;
+    QVERIFY(QMetaObject::invokeMethod(window, "beginPaintDrag",
+                                      Q_RETURN_ARG(QVariant, beginResult),
+                                      Q_ARG(QVariant, start.x()),
+                                      Q_ARG(QVariant, start.y())));
+    QVERIFY(beginResult.toBool());
+
+    const int publishRevisionAfterBegin =
+        window->property("paintPreviewPublishRevision").toInt();
+    QVERIFY(publishRevisionAfterBegin > 0);
+    QCOMPARE(editor.paintBehindText().size(), 0);
+    QTRY_VERIFY(paintLayer->isVisible());
+    QTRY_COMPARE(paintLayer->property("hasPaintContent").toBool(), true);
+    QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
+
+    constexpr int firstMoveCount = 20;
+    for (int i = 1; i <= firstMoveCount; ++i) {
+      QVERIFY(QMetaObject::invokeMethod(window, "updatePaintDrag",
+                                        Q_ARG(QVariant, start.x() + i),
+                                        Q_ARG(QVariant, start.y())));
+    }
+    QCOMPARE(window->property("paintPreviewPublishRevision").toInt(),
+             publishRevisionAfterBegin);
+    QCOMPARE(editor.paintBehindText().size(), 0);
+    QCOMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
+
+    QTRY_VERIFY(window->property("paintPreviewPublishRevision").toInt() >
+                publishRevisionAfterBegin);
+    const int publishRevisionAfterTimer =
+        window->property("paintPreviewPublishRevision").toInt();
+    QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
+
+    constexpr int secondMoveCount = 15;
+    for (int i = 1; i <= secondMoveCount; ++i) {
+      QVERIFY(QMetaObject::invokeMethod(
+          window, "updatePaintDrag",
+          Q_ARG(QVariant, start.x() + firstMoveCount + i),
+          Q_ARG(QVariant, start.y())));
+    }
+    QCOMPARE(window->property("paintPreviewPublishRevision").toInt(),
+             publishRevisionAfterTimer);
+
+    QVariant endResult;
+    QVERIFY(QMetaObject::invokeMethod(window, "endPaintDrag",
+                                      Q_RETURN_ARG(QVariant, endResult)));
+    QVERIFY(endResult.toBool());
+    QCOMPARE(window->property("paintPreviewPublishRevision").toInt(),
+             publishRevisionAfterTimer + 1);
+
+    QTRY_COMPARE(editor.paintBehindText().size(), 1);
+    QTRY_VERIFY(paintLayer->isVisible());
+    QTRY_COMPARE(paintLayer->property("hasPaintContent").toBool(), true);
+    QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
+    const QVariantMap stroke = editor.paintBehindText().constFirst().toMap();
+    const QVariantList points = stroke.value(QStringLiteral("points")).toList();
+    QCOMPARE(points.size(), 1 + firstMoveCount + secondMoveCount);
+  }
+
+  void paintDragDoesNotCommitToPageReachedDuringDrag() {
+    registerQmlTypes();
+
+    QTemporaryDir projectDir;
+    QVERIFY(projectDir.isValid());
+    QImage page(320, 240, QImage::Format_RGB32);
+    page.fill(Qt::white);
+    QVERIFY(page.save(projectDir.filePath(QStringLiteral("page1.png"))));
+    QVERIFY(page.save(projectDir.filePath(QStringLiteral("page2.png"))));
+
+    EditorController editor;
+    editor.openProject(projectDir.path());
+    editor.selectBox(-1);
+    QCOMPARE(editor.pageCount(), 2);
+    QCOMPARE(editor.currentPageIndex(), 0);
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    window->resize(1400, 1200);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+
+    QObject *rightPanelObject = nullptr;
+    QTRY_VERIFY(rightPanelObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("rightInspectorPanel")));
+    QVERIFY(rightPanelObject->setProperty("paintMode", true));
+
+    QObject *paintInputObject = nullptr;
+    QTRY_VERIFY(paintInputObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintInputArea")));
+    auto *paintInput = qobject_cast<QQuickItem *>(paintInputObject);
+    QVERIFY(paintInput);
+    QTRY_VERIFY(paintInput->isVisible());
+
+    QObject *canvasObject = nullptr;
+    QTRY_VERIFY(canvasObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("centralCanvas")));
+    auto *canvas = qobject_cast<QQuickItem *>(canvasObject);
+    QVERIFY(canvas);
+
+    QObject *nextPageButtonObject = nullptr;
+    QTRY_VERIFY(nextPageButtonObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("rightInspectorNextPageButton")));
+    QCOMPARE(nextPageButtonObject->property("enabled").toBool(), true);
+
+    const QPointF start = paintInput->mapToItem(canvas, QPointF(32, 32));
+    QVariant beginResult;
+    QVERIFY(QMetaObject::invokeMethod(window, "beginPaintDrag",
+                                      Q_RETURN_ARG(QVariant, beginResult),
+                                      Q_ARG(QVariant, start.x()),
+                                      Q_ARG(QVariant, start.y())));
+    QVERIFY(beginResult.toBool());
+    QTRY_COMPARE(nextPageButtonObject->property("enabled").toBool(), false);
+
+    QVERIFY(QMetaObject::invokeMethod(window, "updatePaintDrag",
+                                      Q_ARG(QVariant, start.x() + 40),
+                                      Q_ARG(QVariant, start.y())));
+
+    editor.nextPage();
+    QCOMPARE(editor.currentPageIndex(), 1);
+
+    QVariant endResult;
+    QVERIFY(QMetaObject::invokeMethod(window, "endPaintDrag",
+                                      Q_RETURN_ARG(QVariant, endResult)));
+    QVERIFY(endResult.toBool());
+
+    QCOMPARE(editor.paintBehindText().size(), 0);
+    editor.previousPage();
+    QCOMPARE(editor.currentPageIndex(), 0);
+    QCOMPARE(editor.paintBehindText().size(), 0);
+    QTRY_COMPARE(nextPageButtonObject->property("enabled").toBool(), true);
+  }
+
+  void eraserDragDoesNotErasePageReachedDuringDrag() {
+    registerQmlTypes();
+
+    QTemporaryDir projectDir;
+    QVERIFY(projectDir.isValid());
+    QImage page(320, 240, QImage::Format_RGB32);
+    page.fill(Qt::white);
+    QVERIFY(page.save(projectDir.filePath(QStringLiteral("page1.png"))));
+    QVERIFY(page.save(projectDir.filePath(QStringLiteral("page2.png"))));
+
+    EditorController editor;
+    editor.openProject(projectDir.path());
+    editor.selectBox(-1);
+    QCOMPARE(editor.pageCount(), 2);
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    window->resize(1400, 1200);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+
+    QObject *rightPanelObject = nullptr;
+    QTRY_VERIFY(rightPanelObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("rightInspectorPanel")));
+    QVERIFY(rightPanelObject->setProperty("paintMode", true));
+    QVERIFY(rightPanelObject->setProperty("paintEraserMode", true));
+
+    QObject *paintInputObject = nullptr;
+    QTRY_VERIFY(paintInputObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintInputArea")));
+    auto *paintInput = qobject_cast<QQuickItem *>(paintInputObject);
+    QVERIFY(paintInput);
+    QTRY_VERIFY(paintInput->isVisible());
+
+    QObject *canvasObject = nullptr;
+    QTRY_VERIFY(canvasObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("centralCanvas")));
+    auto *canvas = qobject_cast<QQuickItem *>(canvasObject);
+    QVERIFY(canvas);
+
+    const QPointF start = paintInput->mapToItem(canvas, QPointF(32, 32));
+    const QPointF eraseAt(start.x() + 40, start.y());
+    auto documentCoordinate = [&](const char *method, qreal value) {
+      QVariant result;
+      const bool invoked = QMetaObject::invokeMethod(
+          window, method, Q_RETURN_ARG(QVariant, result), Q_ARG(QVariant, value));
+      return invoked ? result.toDouble()
+                     : std::numeric_limits<double>::quiet_NaN();
+    };
+    const double strokeX = documentCoordinate("viewToDocumentX", eraseAt.x());
+    const double strokeY = documentCoordinate("viewToDocumentY", eraseAt.y());
+    QVERIFY(std::isfinite(strokeX));
+    QVERIFY(std::isfinite(strokeY));
+    QVariantList point;
+    point << strokeX << strokeY;
+    QVariantList strokePoints;
+    strokePoints << QVariant::fromValue(point);
+
+    editor.nextPage();
+    QCOMPARE(editor.currentPageIndex(), 1);
+    editor.addPaintStroke(QStringLiteral("behind_text"), QStringLiteral("ff0000ff"),
+                          12.0, 1.0, strokePoints);
+    QCOMPARE(editor.paintBehindText().size(), 1);
+    editor.previousPage();
+    QCOMPARE(editor.currentPageIndex(), 0);
+
+    QVariant beginResult;
+    QVERIFY(QMetaObject::invokeMethod(window, "beginPaintDrag",
+                                      Q_RETURN_ARG(QVariant, beginResult),
+                                      Q_ARG(QVariant, start.x()),
+                                      Q_ARG(QVariant, start.y())));
+    QVERIFY(beginResult.toBool());
+
+    editor.nextPage();
+    QCOMPARE(editor.currentPageIndex(), 1);
+    QVERIFY(QMetaObject::invokeMethod(window, "updatePaintDrag",
+                                      Q_ARG(QVariant, eraseAt.x()),
+                                      Q_ARG(QVariant, eraseAt.y())));
+
+    QCOMPARE(editor.paintBehindText().size(), 1);
+    QCOMPARE(window->property("activePaintPageIndex").toInt(), -1);
+    QCOMPARE(window->property("activePaintTarget").toString(), QString());
+  }
+
+  void cancelPaintDragDoesNotCommitAndClearsPreview() {
+    registerQmlTypes();
+
+    QTemporaryDir projectDir;
+    QVERIFY(projectDir.isValid());
+    QImage page(320, 240, QImage::Format_RGB32);
+    page.fill(Qt::white);
+    QVERIFY(page.save(projectDir.filePath(QStringLiteral("page.png"))));
+
+    EditorController editor;
+    editor.openProject(projectDir.path());
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    window->resize(1400, 1200);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+
+    QObject *rightPanelObject = nullptr;
+    QTRY_VERIFY(rightPanelObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("rightInspectorPanel")));
+    QVERIFY(rightPanelObject->setProperty("paintMode", true));
+
+    QObject *paintLayerObject = nullptr;
+    QTRY_VERIFY(paintLayerObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintBehindTextLayer")));
+    auto *paintLayer = qobject_cast<QQuickItem *>(paintLayerObject);
+    QVERIFY(paintLayer);
+
+    QVariant beginResult;
+    QVERIFY(QMetaObject::invokeMethod(window, "beginPaintDrag",
+                                      Q_RETURN_ARG(QVariant, beginResult),
+                                      Q_ARG(QVariant, 32.0),
+                                      Q_ARG(QVariant, 32.0)));
+    QVERIFY(beginResult.toBool());
+    QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
+
+    QVERIFY(QMetaObject::invokeMethod(window, "updatePaintDrag",
+                                      Q_ARG(QVariant, 48.0),
+                                      Q_ARG(QVariant, 32.0)));
+    const int revisionBeforeCancel =
+        window->property("paintPreviewPublishRevision").toInt();
+    QVariant cancelResult;
+    QVERIFY(QMetaObject::invokeMethod(window, "cancelPaintDrag",
+                                      Q_RETURN_ARG(QVariant, cancelResult)));
+    QVERIFY(cancelResult.toBool());
+    QTest::qWait(30);
+
+    QCOMPARE(editor.paintBehindText().size(), 0);
+    QCOMPARE(window->property("paintPreviewPublishRevision").toInt(),
+             revisionBeforeCancel);
+    QCOMPARE(window->property("activePaintPoints").toList().size(), 0);
+    QCOMPARE(window->property("activePaintPreviewPoints").toList().size(), 0);
+    QCOMPARE(window->property("activePaintTarget").toString(), QString());
+    QCOMPARE(window->property("activePaintPageIndex").toInt(), -1);
+    QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 0);
+    QTRY_COMPARE(paintLayer->property("hasPaintContent").toBool(), false);
+  }
+
+  void escapeCancelsPaintDragWithoutCommit() {
+    registerQmlTypes();
+
+    QTemporaryDir projectDir;
+    QVERIFY(projectDir.isValid());
+    QImage page(320, 240, QImage::Format_RGB32);
+    page.fill(Qt::white);
+    QVERIFY(page.save(projectDir.filePath(QStringLiteral("page.png"))));
+
+    EditorController editor;
+    editor.openProject(projectDir.path());
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    window->resize(1400, 1200);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+
+    QObject *rightPanelObject = nullptr;
+    QTRY_VERIFY(rightPanelObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("rightInspectorPanel")));
+    QVERIFY(rightPanelObject->setProperty("paintMode", true));
+
+    QVariant beginResult;
+    QVERIFY(QMetaObject::invokeMethod(window, "beginPaintDrag",
+                                      Q_RETURN_ARG(QVariant, beginResult),
+                                      Q_ARG(QVariant, 32.0),
+                                      Q_ARG(QVariant, 32.0)));
+    QVERIFY(beginResult.toBool());
+    QVERIFY(QMetaObject::invokeMethod(window, "updatePaintDrag",
+                                      Q_ARG(QVariant, 48.0),
+                                      Q_ARG(QVariant, 32.0)));
+
+    QVERIFY(QMetaObject::invokeMethod(window, "handleEscape"));
+    QTest::qWait(30);
+
+    QCOMPARE(editor.paintBehindText().size(), 0);
+    QCOMPARE(window->property("activePaintPoints").toList().size(), 0);
+    QCOMPARE(window->property("activePaintPreviewPoints").toList().size(), 0);
+    QCOMPARE(window->property("activePaintTarget").toString(), QString());
+    QCOMPARE(window->property("activePaintPageIndex").toInt(), -1);
   }
 
   void paintToolDefaultsLoadWithTwelvePixelBrushAndEraser() {
