@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
-import "../menus"
+import "../features/menus"
 
 Item {
     id: editorChrome

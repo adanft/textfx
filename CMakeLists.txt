@@ -94,42 +94,42 @@ qt_add_qml_module(textfx
     URI TextFX
     VERSION 1.0
     QML_FILES
-        qml/Main.qml
-        qml/panels/right/BoxEffectsSection.qml
-        qml/canvas/interactions/BoxMoveInteractionState.qml
-        qml/canvas/interactions/BoxRotateInteractionState.qml
-        qml/canvas/interactions/BoxResizeInteractionState.qml
-        qml/canvas/CanvasInteractionState.qml
+        qml/app/Main.qml
+        qml/features/rightPanel/BoxEffectsSection.qml
+        qml/features/canvas/interactions/BoxMoveInteractionState.qml
+        qml/features/canvas/interactions/BoxRotateInteractionState.qml
+        qml/features/canvas/interactions/BoxResizeInteractionState.qml
+        qml/features/canvas/CanvasInteractionState.qml
         qml/shared/ColorButton.qml
-        qml/canvas/CentralCanvasShell.qml
-        qml/shell/EditorChrome.qml
-        qml/panels/right/LayersSection.qml
-        qml/panels/left/LeftInspectorPanel.qml
-        qml/panels/right/NavigationSection.qml
-        qml/panels/right/PageEffectsSection.qml
-        qml/panels/left/PageTextsSection.qml
-        qml/canvas/PaintLayer.qml
-        qml/panels/right/PaintSection.qml
-        qml/canvas/interactions/PathHandleInteractionState.qml
-        qml/canvas/geometry/PerspectiveGeometry.qml
-        qml/canvas/interactions/PerspectiveInteractionState.qml
-        qml/panels/right/RightInspectorPanel.qml
-        qml/menus/FileMenu.qml
-        qml/menus/EditMenu.qml
-        qml/menus/ViewMenu.qml
+        qml/features/canvas/CentralCanvasShell.qml
+        qml/app/EditorChrome.qml
+        qml/features/rightPanel/LayersSection.qml
+        qml/features/leftPanel/LeftInspectorPanel.qml
+        qml/features/rightPanel/NavigationSection.qml
+        qml/features/rightPanel/PageEffectsSection.qml
+        qml/features/leftPanel/PageTextsSection.qml
+        qml/features/canvas/PaintLayer.qml
+        qml/features/rightPanel/PaintSection.qml
+        qml/features/canvas/interactions/PathHandleInteractionState.qml
+        qml/features/canvas/geometry/PerspectiveGeometry.qml
+        qml/features/canvas/interactions/PerspectiveInteractionState.qml
+        qml/features/rightPanel/RightInspectorPanel.qml
+        qml/features/menus/FileMenu.qml
+        qml/features/menus/EditMenu.qml
+        qml/features/menus/ViewMenu.qml
         qml/shared/SelectedBoxState.qml
-        qml/panels/right/TextEffectsSection.qml
-        qml/panels/left/TextPropertiesSection.qml
-        qml/panels/left/TextPresetsSection.qml
-        qml/canvas/text/TextBoxDelegate.qml
-        qml/canvas/text/TextBoxMoveArea.qml
-        qml/canvas/text/TextEditOverlay.qml
-        qml/canvas/text/TextPathGuide.qml
-        qml/canvas/text/TextPathHandles.qml
-        qml/canvas/text/TextResizeHandles.qml
-        qml/canvas/text/TextRotateHandle.qml
+        qml/features/rightPanel/TextEffectsSection.qml
+        qml/features/leftPanel/TextPropertiesSection.qml
+        qml/features/leftPanel/TextPresetsSection.qml
+        qml/features/canvas/text/TextBoxDelegate.qml
+        qml/features/canvas/text/TextBoxMoveArea.qml
+        qml/features/canvas/text/TextEditOverlay.qml
+        qml/features/canvas/text/TextPathGuide.qml
+        qml/features/canvas/text/TextPathHandles.qml
+        qml/features/canvas/text/TextResizeHandles.qml
+        qml/features/canvas/text/TextRotateHandle.qml
         qml/shared/TextStyleButton.qml
-        qml/canvas/ViewportMetrics.qml
+        qml/features/canvas/ViewportMetrics.qml
     RESOURCES
         ${TEXTFX_ICON_RESOURCES}
 )

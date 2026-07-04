@@ -64,7 +64,7 @@ class QmlShellSmokeTests final : public QObject {
 
 private slots:
   void qmlCtrlSpaceIgnoresFocusedSidePanelTextInputs() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -82,7 +82,7 @@ private slots:
   }
 
   void qmlEscapeCancelsCurrentContextInOrder() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -124,7 +124,7 @@ private slots:
   }
 
   void qmlColorControlsUseNativeColorDialog() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString colorButtonSource =
@@ -186,7 +186,7 @@ private slots:
   }
 
   void qmlChromeUsesPaletteAndResponsivePanels() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString canvasShellSource =
@@ -495,7 +495,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -521,7 +521,7 @@ private slots:
   }
 
   void qmlPageScaleIsNotBoundToCanvasViewport() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -570,7 +570,7 @@ private slots:
   }
 
   void qmlRightPanelUsesSectionTabsAndNoHorizontalOverflow() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString source = qmlSource();
@@ -924,7 +924,7 @@ private slots:
   }
 
   void qmlMenusOwnPrimaryControlsAndToolbarIsRemoved() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString editorChromeSource =
@@ -1080,7 +1080,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1120,7 +1120,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1174,7 +1174,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1211,7 +1211,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1257,7 +1257,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1296,7 +1296,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1341,7 +1341,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1656,7 +1656,7 @@ QtObject {
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1712,7 +1712,7 @@ QtObject {
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1751,7 +1751,7 @@ QtObject {
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1828,7 +1828,7 @@ QtObject {
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1885,7 +1885,7 @@ QtObject {
   }
 
   void qmlHasPageSelectorAndTextFXEffectControls() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 

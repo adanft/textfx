@@ -81,7 +81,7 @@ private slots:
     editor.setSelectedGradientEnabled(true);
     editor.setSelectedPathEnabled(true);
 
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
     QVERIFY(source.contains(
@@ -151,7 +151,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -231,7 +231,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -338,7 +338,7 @@ private slots:
     editor.setSelectedBlurEnabled(true);
     editor.setSelectedBlurSize(6);
 
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
     QVERIFY(!source.contains(QStringLiteral("import QtQuick.Effects")));
@@ -362,7 +362,7 @@ private slots:
     editor.setSelectedShadowEnabled(true);
     editor.setSelectedShadowBlurSize(6);
 
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
     QVERIFY(source.contains(
@@ -413,7 +413,7 @@ private slots:
   }
 
   void qmlNormalResizeUsesPressSnapshotSeparateFromPerspective() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -457,7 +457,7 @@ private slots:
   }
 
   void qmlResizeHandleKeepsStableDragStateOutsideHandle() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -510,7 +510,7 @@ private slots:
     QVERIFY(!moveStateSource.isEmpty());
     QVERIFY(!delegateSource.isEmpty());
     QVERIFY(!moveAreaSource.isEmpty());
-    QVERIFY(cmakeSource.contains(QStringLiteral("qml/canvas/text/TextBoxMoveArea.qml")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("qml/features/canvas/text/TextBoxMoveArea.qml")));
 
     const qsizetype moveStart = moveAreaSource.indexOf(QStringLiteral(
         "z: boxRef.selected && editorRef.editingText ? zBehindEditOverlay : "
@@ -617,7 +617,7 @@ private slots:
   }
 
   void qmlPerspectiveMoveHitAreaFollowsVisualPolygonBelowHandles() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -674,7 +674,7 @@ private slots:
   }
 
   void qmlPerspectiveMidpointsAreDerivedAndAxisConstrained() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -709,7 +709,7 @@ private slots:
   }
 
   void qmlPerspectiveMidpointDragMovesAdjacentCornersFromSnapshots() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -720,7 +720,7 @@ private slots:
   }
 
   void qmlPerspectiveAndRotateHandlesAcceptStableMouseCapture() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -813,7 +813,7 @@ private slots:
   }
 
   void qmlTextStyleControlsUseSvgIconButtons() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
     const QString buttonSource =
@@ -1068,7 +1068,7 @@ private slots:
     const QString cmakeSource = QString::fromUtf8(cmake.readAll());
 
     QVERIFY(!textPropertiesSectionSource.isEmpty());
-    QVERIFY(cmakeSource.contains(QStringLiteral("qml/panels/left/TextPropertiesSection.qml")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("qml/features/leftPanel/TextPropertiesSection.qml")));
     QVERIFY(textPropertiesSectionSource.contains(
         QStringLiteral("id: textPropertiesSection")));
     QVERIFY(textPropertiesSectionSource.contains(
@@ -1107,7 +1107,7 @@ private slots:
   }
 
   void qmlTextPresetsUseComboBoxSelector() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
     const QString leftPanelSource =
@@ -1271,9 +1271,9 @@ private slots:
     QFile cmake(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../CMakeLists.txt"));
     QVERIFY(cmake.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString cmakeSource = QString::fromUtf8(cmake.readAll());
-    QVERIFY(cmakeSource.contains(QStringLiteral("qml/panels/left/TextPresetsSection.qml")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("qml/features/leftPanel/TextPresetsSection.qml")));
     QVERIFY(!pageTextsSource.isEmpty());
-    QVERIFY(cmakeSource.contains(QStringLiteral("qml/panels/left/PageTextsSection.qml")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("qml/features/leftPanel/PageTextsSection.qml")));
     QVERIFY(source.contains(QStringLiteral("id: pageTextsSection")));
     QVERIFY(pageTextsSource.contains(QStringLiteral("id: pageTextsSection")));
     QVERIFY(pageTextsSource.contains(QStringLiteral("property var editor: null")));
@@ -1358,7 +1358,7 @@ private slots:
   }
 
   void qmlUsesOneOutlinedTextItemDisplayRenderer() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -1425,7 +1425,7 @@ private slots:
   }
 
   void qmlEditingKeepsOutlinedRendererVisible() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -1523,7 +1523,7 @@ private slots:
   }
 
   void qmlPerspectiveWarpsLiveOutlinedRenderer() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -1633,7 +1633,7 @@ private slots:
   }
 
   void qmlPerspectiveResizeDragStartsFromVisualHandle() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -1672,7 +1672,7 @@ private slots:
   }
 
   void qmlPerspectiveDragDoesNotApplyVisualOffsetToGeometryDelta() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -1687,7 +1687,7 @@ private slots:
   }
 
   void qmlNormalResizePathRemainsSeparateFromPerspectiveDrag() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -1724,7 +1724,7 @@ private slots:
   }
 
   void qmlPerspectiveHandlesStayOnGeometry() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -1775,7 +1775,7 @@ private slots:
   }
 
   void qmlZoomUsesSingleDocumentToViewScaleContract() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 
@@ -1873,7 +1873,7 @@ private slots:
   }
 
   void qmlHasEightPerspectiveHandlesAndQPainterUsesFontResolver() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString qmlSource = ::qmlSource();
 
@@ -1904,7 +1904,7 @@ private slots:
   }
 
   void qmlUsesRawOverlayAndTopLayerFirstList() {
-    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml"));
+    QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString source = qmlSource();
 

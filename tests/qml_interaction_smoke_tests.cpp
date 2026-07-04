@@ -72,7 +72,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -227,7 +227,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -382,7 +382,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -472,7 +472,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -598,7 +598,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -676,7 +676,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -763,7 +763,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -836,7 +836,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -884,7 +884,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -925,7 +925,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -972,7 +972,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1028,7 +1028,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1092,7 +1092,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1155,7 +1155,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1225,7 +1225,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1313,7 +1313,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1402,7 +1402,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1513,7 +1513,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1648,7 +1648,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =
@@ -1746,7 +1746,7 @@ private slots:
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
     engine.load(QUrl::fromLocalFile(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
     QCOMPARE(engine.rootObjects().size(), 1);
 
     auto *window =

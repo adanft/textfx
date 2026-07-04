@@ -2,13 +2,12 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import TextFX.Ui 1.0
-import "shell"
-import "panels/left"
-import "panels/right"
-import "canvas"
-import "canvas/text"
-import "canvas/interactions"
-import "canvas/geometry"
+import "../features/leftPanel"
+import "../features/rightPanel"
+import "../features/canvas"
+import "../features/canvas/text"
+import "../features/canvas/interactions"
+import "../features/canvas/geometry"
 
 ApplicationWindow {
     id: window
