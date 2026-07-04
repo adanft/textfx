@@ -774,7 +774,21 @@ ApplicationWindow {
                         scale: window.viewDocScale()
                         transformOrigin: Item.TopLeft
                         strokes: Editor.paintBehindText
+                        drawPreviewStroke: false
+                        visible: pageImage.visible && hasPaintContent
+                    }
+
+                    PaintLayer {
+                        id: paintBehindTextPreviewLayer
+                        objectName: "paintBehindTextPreviewLayer"
+                        x: pageImage.x
+                        y: pageImage.y
+                        width: pageImage.sourceSize.width
+                        height: pageImage.sourceSize.height
+                        scale: window.viewDocScale()
+                        transformOrigin: Item.TopLeft
                         previewStroke: window.activePaintStroke("behind_text")
+                        drawPersistedStrokes: false
                         visible: pageImage.visible && hasPaintContent
                     }
 
@@ -840,7 +854,22 @@ ApplicationWindow {
                         scale: window.viewDocScale()
                         transformOrigin: Item.TopLeft
                         strokes: Editor.paintAboveText
+                        drawPreviewStroke: false
+                        visible: pageImage.visible && hasPaintContent
+                    }
+
+                    PaintLayer {
+                        id: paintAboveTextPreviewLayer
+                        objectName: "paintAboveTextPreviewLayer"
+                        z: 30
+                        x: pageImage.x
+                        y: pageImage.y
+                        width: pageImage.sourceSize.width
+                        height: pageImage.sourceSize.height
+                        scale: window.viewDocScale()
+                        transformOrigin: Item.TopLeft
                         previewStroke: window.activePaintStroke("above_text")
+                        drawPersistedStrokes: false
                         visible: pageImage.visible && hasPaintContent
                     }
 

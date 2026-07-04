@@ -5,8 +5,10 @@ Canvas {
 
     property var strokes: []
     property var previewStroke: ({})
-    readonly property bool hasPaintContent: strokes.length > 0 || hasDrawableStroke(previewStroke)
-    readonly property int liveStrokeCount: strokes.length + (hasDrawableStroke(previewStroke) ? 1 : 0)
+    property bool drawPersistedStrokes: true
+    property bool drawPreviewStroke: true
+    readonly property bool hasPaintContent: (drawPersistedStrokes && strokes.length > 0) || (drawPreviewStroke && hasDrawableStroke(previewStroke))
+    readonly property int liveStrokeCount: (drawPersistedStrokes ? strokes.length : 0) + (drawPreviewStroke && hasDrawableStroke(previewStroke) ? 1 : 0)
     property int lastPaintedStrokeCount: 0
     property int paintRevision: 0
 
@@ -45,8 +47,16 @@ Canvas {
         requestPaint();
     }
 
-    onStrokesChanged: schedulePaint()
-    onPreviewStrokeChanged: schedulePaint()
+    onStrokesChanged: {
+        if (drawPersistedStrokes)
+            schedulePaint();
+    }
+    onPreviewStrokeChanged: {
+        if (drawPreviewStroke)
+            schedulePaint();
+    }
+    onDrawPersistedStrokesChanged: schedulePaint()
+    onDrawPreviewStrokeChanged: schedulePaint()
     onWidthChanged: schedulePaint()
     onHeightChanged: schedulePaint()
     onPaint: {
@@ -55,12 +65,14 @@ Canvas {
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         let paintedCount = 0;
-        for (let i = 0; i < strokes.length; ++i) {
-            const stroke = strokes[i];
-            if (drawStroke(ctx, stroke))
-                ++paintedCount;
+        if (drawPersistedStrokes) {
+            for (let i = 0; i < strokes.length; ++i) {
+                const stroke = strokes[i];
+                if (drawStroke(ctx, stroke))
+                    ++paintedCount;
+            }
         }
-        if (drawStroke(ctx, previewStroke))
+        if (drawPreviewStroke && drawStroke(ctx, previewStroke))
             ++paintedCount;
         lastPaintedStrokeCount = paintedCount;
         ++paintRevision;

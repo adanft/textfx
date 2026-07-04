@@ -273,6 +273,13 @@ private slots:
     auto *paintLayer = qobject_cast<QQuickItem *>(paintLayerObject);
     QVERIFY(paintLayer);
 
+    QObject *paintPreviewLayerObject = nullptr;
+    QTRY_VERIFY(paintPreviewLayerObject = findVisualChildByName(
+                    window->contentItem(),
+                    QStringLiteral("paintBehindTextPreviewLayer")));
+    auto *paintPreviewLayer = qobject_cast<QQuickItem *>(paintPreviewLayerObject);
+    QVERIFY(paintPreviewLayer);
+
     QObject *pageImageObject = nullptr;
     QTRY_VERIFY(pageImageObject = findVisualChildByName(
                     window->contentItem(), QStringLiteral("pageImage")));
@@ -282,6 +289,9 @@ private slots:
     QCOMPARE(paintLayer->isVisible(), false);
     QCOMPARE(paintLayer->width(), 320.0);
     QCOMPARE(paintLayer->height(), 240.0);
+    QCOMPARE(paintPreviewLayer->isVisible(), false);
+    QCOMPARE(paintPreviewLayer->width(), 320.0);
+    QCOMPARE(paintPreviewLayer->height(), 240.0);
     QVERIFY(paintInput->width() > paintLayer->width());
     QCOMPARE(paintLayer->scale(),
              window->property("pageBaseScale").toReal() *
@@ -307,23 +317,32 @@ private slots:
 
     QCOMPARE(editor.paintBehindText().size(), 0);
     QCOMPARE(paintLayer->property("liveStrokeCount").toInt(), 0);
+    QCOMPARE(paintPreviewLayer->property("liveStrokeCount").toInt(), 0);
     QCOMPARE(editor.boxes().size(), initialBoxCount);
 
     const QPoint start = paintInput->mapToScene(QPointF(32, 32)).toPoint();
     const QPoint end = start + QPoint(40, 0);
     const QPointF canvasStart(paintInput->x() + 32, paintInput->y() + 32);
-    const int paintRevisionBefore = paintLayer->property("paintRevision").toInt();
+    const int persistedPaintRevisionBeforePreview =
+        paintLayer->property("paintRevision").toInt();
+    const int previewPaintRevisionBefore =
+        paintPreviewLayer->property("paintRevision").toInt();
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, start);
     QTest::mouseMove(window, end);
 
-    QTRY_VERIFY(paintLayer->isVisible());
-    QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
-    QTRY_VERIFY(paintLayer->property("paintRevision").toInt() >
-                paintRevisionBefore);
+    QTRY_VERIFY(paintPreviewLayer->isVisible());
+    QTRY_COMPARE(paintPreviewLayer->property("liveStrokeCount").toInt(), 1);
+    QTRY_VERIFY(paintPreviewLayer->property("paintRevision").toInt() >
+                previewPaintRevisionBefore);
+    QCOMPARE(paintLayer->property("paintRevision").toInt(),
+             persistedPaintRevisionBeforePreview);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, end);
 
     QTRY_COMPARE(editor.paintBehindText().size(), 1);
     QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
+    QTRY_COMPARE(paintPreviewLayer->property("liveStrokeCount").toInt(), 0);
+    QTRY_VERIFY(paintLayer->property("paintRevision").toInt() >
+                persistedPaintRevisionBeforePreview);
     const QVariantMap stroke = editor.paintBehindText().constFirst().toMap();
     const QVariantList points = stroke.value(QStringLiteral("points")).toList();
     QVERIFY(points.size() >= 2);
@@ -483,6 +502,16 @@ private slots:
     QCOMPARE(paintLayer->property("hasPaintContent").toBool(), false);
     QCOMPARE(paintLayer->property("liveStrokeCount").toInt(), 0);
 
+    QObject *paintPreviewLayerObject = nullptr;
+    QTRY_VERIFY(paintPreviewLayerObject = findVisualChildByName(
+                    window->contentItem(),
+                    QStringLiteral("paintBehindTextPreviewLayer")));
+    auto *paintPreviewLayer = qobject_cast<QQuickItem *>(paintPreviewLayerObject);
+    QVERIFY(paintPreviewLayer);
+    QCOMPARE(paintPreviewLayer->isVisible(), false);
+    QCOMPARE(paintPreviewLayer->property("hasPaintContent").toBool(), false);
+    QCOMPARE(paintPreviewLayer->property("liveStrokeCount").toInt(), 0);
+
     QObject *canvasObject = nullptr;
     QTRY_VERIFY(canvasObject = findVisualChildByName(
                     window->contentItem(), QStringLiteral("centralCanvas")));
@@ -501,9 +530,9 @@ private slots:
         window->property("paintPreviewPublishRevision").toInt();
     QVERIFY(publishRevisionAfterBegin > 0);
     QCOMPARE(editor.paintBehindText().size(), 0);
-    QTRY_VERIFY(paintLayer->isVisible());
-    QTRY_COMPARE(paintLayer->property("hasPaintContent").toBool(), true);
-    QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
+    QTRY_VERIFY(paintPreviewLayer->isVisible());
+    QTRY_COMPARE(paintPreviewLayer->property("hasPaintContent").toBool(), true);
+    QTRY_COMPARE(paintPreviewLayer->property("liveStrokeCount").toInt(), 1);
 
     constexpr int firstMoveCount = 20;
     for (int i = 1; i <= firstMoveCount; ++i) {
@@ -514,13 +543,14 @@ private slots:
     QCOMPARE(window->property("paintPreviewPublishRevision").toInt(),
              publishRevisionAfterBegin);
     QCOMPARE(editor.paintBehindText().size(), 0);
-    QCOMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
+    QCOMPARE(paintLayer->property("liveStrokeCount").toInt(), 0);
+    QCOMPARE(paintPreviewLayer->property("liveStrokeCount").toInt(), 1);
 
     QTRY_VERIFY(window->property("paintPreviewPublishRevision").toInt() >
                 publishRevisionAfterBegin);
     const int publishRevisionAfterTimer =
         window->property("paintPreviewPublishRevision").toInt();
-    QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
+    QTRY_COMPARE(paintPreviewLayer->property("liveStrokeCount").toInt(), 1);
 
     constexpr int secondMoveCount = 15;
     for (int i = 1; i <= secondMoveCount; ++i) {
@@ -543,6 +573,7 @@ private slots:
     QTRY_VERIFY(paintLayer->isVisible());
     QTRY_COMPARE(paintLayer->property("hasPaintContent").toBool(), true);
     QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
+    QTRY_COMPARE(paintPreviewLayer->property("liveStrokeCount").toInt(), 0);
     const QVariantMap stroke = editor.paintBehindText().constFirst().toMap();
     const QVariantList points = stroke.value(QStringLiteral("points")).toList();
     QCOMPARE(points.size(), 1 + firstMoveCount + secondMoveCount);
@@ -752,13 +783,20 @@ private slots:
     auto *paintLayer = qobject_cast<QQuickItem *>(paintLayerObject);
     QVERIFY(paintLayer);
 
+    QObject *paintPreviewLayerObject = nullptr;
+    QTRY_VERIFY(paintPreviewLayerObject = findVisualChildByName(
+                    window->contentItem(),
+                    QStringLiteral("paintBehindTextPreviewLayer")));
+    auto *paintPreviewLayer = qobject_cast<QQuickItem *>(paintPreviewLayerObject);
+    QVERIFY(paintPreviewLayer);
+
     QVariant beginResult;
     QVERIFY(QMetaObject::invokeMethod(window, "beginPaintDrag",
                                       Q_RETURN_ARG(QVariant, beginResult),
                                       Q_ARG(QVariant, 32.0),
                                       Q_ARG(QVariant, 32.0)));
     QVERIFY(beginResult.toBool());
-    QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
+    QTRY_COMPARE(paintPreviewLayer->property("liveStrokeCount").toInt(), 1);
 
     QVERIFY(QMetaObject::invokeMethod(window, "updatePaintDrag",
                                       Q_ARG(QVariant, 48.0),
@@ -780,6 +818,8 @@ private slots:
     QCOMPARE(window->property("activePaintPageIndex").toInt(), -1);
     QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 0);
     QTRY_COMPARE(paintLayer->property("hasPaintContent").toBool(), false);
+    QTRY_COMPARE(paintPreviewLayer->property("liveStrokeCount").toInt(), 0);
+    QTRY_COMPARE(paintPreviewLayer->property("hasPaintContent").toBool(), false);
   }
 
   void escapeCancelsPaintDragWithoutCommit() {
@@ -948,6 +988,13 @@ private slots:
     auto *paintLayer = qobject_cast<QQuickItem *>(paintObject);
     QVERIFY(paintLayer);
 
+    QObject *paintPreviewObject = nullptr;
+    QTRY_VERIFY(paintPreviewObject = findVisualChildByName(
+                    window->contentItem(),
+                    QStringLiteral("paintAboveTextPreviewLayer")));
+    auto *paintPreviewLayer = qobject_cast<QQuickItem *>(paintPreviewObject);
+    QVERIFY(paintPreviewLayer);
+
     QObject *contentDelegateObject = nullptr;
     QTRY_VERIFY(contentDelegateObject = findVisualChildByName(
                     window->contentItem(), QStringLiteral("textBoxContentDelegate")));
@@ -967,7 +1014,10 @@ private slots:
     QVERIFY(resizeHandle);
 
     QVERIFY(paintLayer->z() > contentDelegate->z());
+    QVERIFY(paintPreviewLayer->z() >= paintLayer->z());
+    QVERIFY(paintPreviewLayer->z() > contentDelegate->z());
     QVERIFY(uiDelegate->z() > paintLayer->z());
+    QVERIFY(uiDelegate->z() > paintPreviewLayer->z());
     QVERIFY(resizeHandle->isVisible());
   }
 
