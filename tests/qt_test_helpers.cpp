@@ -150,48 +150,62 @@ bool hasPngMagic(const QString &path) {
 }
 
 QString readQmlFile(const QString &name) {
-  QFile file(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/") + name);
-  if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-    return {};
-  return QString::fromUtf8(file.readAll());
+  const QString base = QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/");
+  const QStringList candidates{
+      name,
+      QStringLiteral("panels/left/") + name,
+      QStringLiteral("panels/right/") + name,
+      QStringLiteral("shell/") + name,
+      QStringLiteral("canvas/") + name,
+      QStringLiteral("canvas/text/") + name,
+      QStringLiteral("canvas/interactions/") + name,
+      QStringLiteral("canvas/geometry/") + name,
+      QStringLiteral("shared/") + name,
+  };
+  for (const QString &candidate : candidates) {
+    QFile file(base + candidate);
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text))
+      return QString::fromUtf8(file.readAll());
+  }
+  return {};
 }
 
 QStringList qmlSourceFiles() {
   return {
       QStringLiteral("Main.qml"),
-      QStringLiteral("BoxEffectsSection.qml"),
-      QStringLiteral("BoxMoveInteractionState.qml"),
-      QStringLiteral("BoxRotateInteractionState.qml"),
-      QStringLiteral("BoxResizeInteractionState.qml"),
-      QStringLiteral("CanvasInteractionState.qml"),
-      QStringLiteral("ColorButton.qml"),
-      QStringLiteral("CentralCanvasShell.qml"),
-      QStringLiteral("EditorChrome.qml"),
-      QStringLiteral("LeftInspectorPanel.qml"),
-      QStringLiteral("TextPropertiesSection.qml"),
-      QStringLiteral("TextPresetsSection.qml"),
-      QStringLiteral("LayersSection.qml"),
-      QStringLiteral("NavigationSection.qml"),
-      QStringLiteral("PageEffectsSection.qml"),
-      QStringLiteral("PageTextsSection.qml"),
-      QStringLiteral("PaintLayer.qml"),
-      QStringLiteral("PaintSection.qml"),
-      QStringLiteral("PathHandleInteractionState.qml"),
-      QStringLiteral("PerspectiveGeometry.qml"),
-      QStringLiteral("PerspectiveInteractionState.qml"),
-      QStringLiteral("RightInspectorPanel.qml"),
-      QStringLiteral("ShortcutMenuItem.qml"),
-      QStringLiteral("SelectedBoxState.qml"),
-      QStringLiteral("TextEffectsSection.qml"),
-      QStringLiteral("TextBoxDelegate.qml"),
-      QStringLiteral("TextBoxMoveArea.qml"),
-      QStringLiteral("TextEditOverlay.qml"),
-      QStringLiteral("TextPathGuide.qml"),
-      QStringLiteral("TextResizeHandles.qml"),
-      QStringLiteral("TextRotateHandle.qml"),
-      QStringLiteral("TextPathHandles.qml"),
-      QStringLiteral("TextStyleButton.qml"),
-      QStringLiteral("ViewportMetrics.qml"),
+      QStringLiteral("panels/right/BoxEffectsSection.qml"),
+      QStringLiteral("canvas/interactions/BoxMoveInteractionState.qml"),
+      QStringLiteral("canvas/interactions/BoxRotateInteractionState.qml"),
+      QStringLiteral("canvas/interactions/BoxResizeInteractionState.qml"),
+      QStringLiteral("canvas/CanvasInteractionState.qml"),
+      QStringLiteral("shared/ColorButton.qml"),
+      QStringLiteral("canvas/CentralCanvasShell.qml"),
+      QStringLiteral("shell/EditorChrome.qml"),
+      QStringLiteral("panels/left/LeftInspectorPanel.qml"),
+      QStringLiteral("panels/left/TextPropertiesSection.qml"),
+      QStringLiteral("panels/left/TextPresetsSection.qml"),
+      QStringLiteral("panels/right/LayersSection.qml"),
+      QStringLiteral("panels/right/NavigationSection.qml"),
+      QStringLiteral("panels/right/PageEffectsSection.qml"),
+      QStringLiteral("panels/left/PageTextsSection.qml"),
+      QStringLiteral("canvas/PaintLayer.qml"),
+      QStringLiteral("panels/right/PaintSection.qml"),
+      QStringLiteral("canvas/interactions/PathHandleInteractionState.qml"),
+      QStringLiteral("canvas/geometry/PerspectiveGeometry.qml"),
+      QStringLiteral("canvas/interactions/PerspectiveInteractionState.qml"),
+      QStringLiteral("panels/right/RightInspectorPanel.qml"),
+      QStringLiteral("shell/ShortcutMenuItem.qml"),
+      QStringLiteral("shared/SelectedBoxState.qml"),
+      QStringLiteral("panels/right/TextEffectsSection.qml"),
+      QStringLiteral("canvas/text/TextBoxDelegate.qml"),
+      QStringLiteral("canvas/text/TextBoxMoveArea.qml"),
+      QStringLiteral("canvas/text/TextEditOverlay.qml"),
+      QStringLiteral("canvas/text/TextPathGuide.qml"),
+      QStringLiteral("canvas/text/TextResizeHandles.qml"),
+      QStringLiteral("canvas/text/TextRotateHandle.qml"),
+      QStringLiteral("canvas/text/TextPathHandles.qml"),
+      QStringLiteral("shared/TextStyleButton.qml"),
+      QStringLiteral("canvas/ViewportMetrics.qml"),
   };
 }
 

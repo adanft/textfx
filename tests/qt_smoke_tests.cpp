@@ -510,7 +510,7 @@ private slots:
     QVERIFY(!moveStateSource.isEmpty());
     QVERIFY(!delegateSource.isEmpty());
     QVERIFY(!moveAreaSource.isEmpty());
-    QVERIFY(cmakeSource.contains(QStringLiteral("qml/TextBoxMoveArea.qml")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("qml/canvas/text/TextBoxMoveArea.qml")));
 
     const qsizetype moveStart = moveAreaSource.indexOf(QStringLiteral(
         "z: boxRef.selected && editorRef.editingText ? zBehindEditOverlay : "
@@ -1068,7 +1068,7 @@ private slots:
     const QString cmakeSource = QString::fromUtf8(cmake.readAll());
 
     QVERIFY(!textPropertiesSectionSource.isEmpty());
-    QVERIFY(cmakeSource.contains(QStringLiteral("qml/TextPropertiesSection.qml")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("qml/panels/left/TextPropertiesSection.qml")));
     QVERIFY(textPropertiesSectionSource.contains(
         QStringLiteral("id: textPropertiesSection")));
     QVERIFY(textPropertiesSectionSource.contains(
@@ -1271,9 +1271,9 @@ private slots:
     QFile cmake(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../CMakeLists.txt"));
     QVERIFY(cmake.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString cmakeSource = QString::fromUtf8(cmake.readAll());
-    QVERIFY(cmakeSource.contains(QStringLiteral("qml/TextPresetsSection.qml")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("qml/panels/left/TextPresetsSection.qml")));
     QVERIFY(!pageTextsSource.isEmpty());
-    QVERIFY(cmakeSource.contains(QStringLiteral("qml/PageTextsSection.qml")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("qml/panels/left/PageTextsSection.qml")));
     QVERIFY(source.contains(QStringLiteral("id: pageTextsSection")));
     QVERIFY(pageTextsSource.contains(QStringLiteral("id: pageTextsSection")));
     QVERIFY(pageTextsSource.contains(QStringLiteral("property var editor: null")));

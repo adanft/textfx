@@ -1479,7 +1479,7 @@ private slots:
     QQmlComponent component(&engine);
     const QString qmlImportUrl = QUrl::fromLocalFile(
                                      QStringLiteral(TEXTFX_FIXTURE_DIR
-                                                    "/../../qml"))
+                                                    "/../../qml/shared"))
                                      .toString();
     const QString source = QStringLiteral(R"QML(
 import QtQml
@@ -1554,7 +1554,7 @@ QtObject {
     QQmlComponent component(&engine);
     const QString qmlImportUrl = QUrl::fromLocalFile(
                                      QStringLiteral(TEXTFX_FIXTURE_DIR
-                                                    "/../../qml"))
+                                                    "/../../qml/shared"))
                                      .toString();
     const QString source = QStringLiteral(R"QML(
 import QtQml
