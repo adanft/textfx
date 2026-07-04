@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
+import "../menus"
 
 Item {
     id: editorChrome
@@ -233,90 +234,27 @@ Item {
     MenuBar {
         id: chromeMenuBar
 
-        Menu {
-            title: qsTr("File")
-
-            ShortcutMenuItem {
-                action: newAction
-                shortcutLabel: "Ctrl+N"
-            }
-
-            ShortcutMenuItem {
-                action: openAction
-                shortcutLabel: "Ctrl+O"
-            }
-
-            ShortcutMenuItem {
-                action: saveAction
-                shortcutLabel: "Ctrl+S"
-            }
-
-            ShortcutMenuItem {
-                action: saveAllAction
-                shortcutLabel: "Ctrl+Shift+S"
-            }
-
-            MenuSeparator {
-            }
-
-            ShortcutMenuItem {
-                action: quitAction
-            }
-
+        FileMenu {
+            newAction: newAction
+            openAction: openAction
+            saveAction: saveAction
+            saveAllAction: saveAllAction
+            quitAction: quitAction
         }
 
-        Menu {
-            title: qsTr("Edit")
-
-            ShortcutMenuItem {
-                action: copyAction
-                shortcutLabel: "Ctrl+C"
-            }
-
-            ShortcutMenuItem {
-                action: pasteAction
-                shortcutLabel: "Ctrl+V"
-            }
-
-            ShortcutMenuItem {
-                action: deleteAction
-                shortcutLabel: "Del"
-            }
-
-            ShortcutMenuItem {
-                action: duplicateAction
-            }
-
+        EditMenu {
+            copyAction: copyAction
+            pasteAction: pasteAction
+            deleteAction: deleteAction
+            duplicateAction: duplicateAction
         }
 
-        Menu {
-            title: qsTr("View")
-
-            ShortcutMenuItem {
-                action: zoomInAction
-                shortcutLabel: "Ctrl++"
-            }
-
-            ShortcutMenuItem {
-                action: zoomOutAction
-                shortcutLabel: "Ctrl+-"
-            }
-
-            ShortcutMenuItem {
-                action: resetZoomAction
-                shortcutLabel: "Ctrl+0"
-            }
-
-            MenuSeparator {
-            }
-
-            ShortcutMenuItem {
-                action: rawOverlayAction
-                shortcutLabel: "Ctrl+H"
-            }
-
+        ViewMenu {
+            zoomInAction: zoomInAction
+            zoomOutAction: zoomOutAction
+            resetZoomAction: resetZoomAction
+            rawOverlayAction: rawOverlayAction
         }
-
     }
 
     Shortcut {

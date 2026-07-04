@@ -114,7 +114,9 @@ qt_add_qml_module(textfx
         qml/canvas/geometry/PerspectiveGeometry.qml
         qml/canvas/interactions/PerspectiveInteractionState.qml
         qml/panels/right/RightInspectorPanel.qml
-        qml/shell/ShortcutMenuItem.qml
+        qml/menus/FileMenu.qml
+        qml/menus/EditMenu.qml
+        qml/menus/ViewMenu.qml
         qml/shared/SelectedBoxState.qml
         qml/panels/right/TextEffectsSection.qml
         qml/panels/left/TextPropertiesSection.qml

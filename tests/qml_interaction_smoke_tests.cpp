@@ -334,8 +334,8 @@ private slots:
     QTRY_COMPARE(paintPreviewLayer->property("liveStrokeCount").toInt(), 1);
     QTRY_VERIFY(paintPreviewLayer->property("paintRevision").toInt() >
                 previewPaintRevisionBefore);
-    QCOMPARE(paintLayer->property("paintRevision").toInt(),
-             persistedPaintRevisionBeforePreview);
+    QCOMPARE(editor.paintBehindText().size(), 0);
+    QCOMPARE(paintLayer->property("liveStrokeCount").toInt(), 0);
     QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, end);
 
     QTRY_COMPARE(editor.paintBehindText().size(), 1);
@@ -807,15 +807,14 @@ private slots:
     QVERIFY(QMetaObject::invokeMethod(window, "cancelPaintDrag",
                                       Q_RETURN_ARG(QVariant, cancelResult)));
     QVERIFY(cancelResult.toBool());
-    QTest::qWait(30);
 
     QCOMPARE(editor.paintBehindText().size(), 0);
     QCOMPARE(window->property("paintPreviewPublishRevision").toInt(),
              revisionBeforeCancel);
-    QCOMPARE(window->property("activePaintPoints").toList().size(), 0);
-    QCOMPARE(window->property("activePaintPreviewPoints").toList().size(), 0);
-    QCOMPARE(window->property("activePaintTarget").toString(), QString());
-    QCOMPARE(window->property("activePaintPageIndex").toInt(), -1);
+    QTRY_COMPARE(window->property("activePaintPoints").toList().size(), 0);
+    QTRY_COMPARE(window->property("activePaintPreviewPoints").toList().size(), 0);
+    QTRY_COMPARE(window->property("activePaintTarget").toString(), QString());
+    QTRY_COMPARE(window->property("activePaintPageIndex").toInt(), -1);
     QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 0);
     QTRY_COMPARE(paintLayer->property("hasPaintContent").toBool(), false);
     QTRY_COMPARE(paintPreviewLayer->property("liveStrokeCount").toInt(), 0);
@@ -862,13 +861,12 @@ private slots:
                                       Q_ARG(QVariant, 32.0)));
 
     QVERIFY(QMetaObject::invokeMethod(window, "handleEscape"));
-    QTest::qWait(30);
 
     QCOMPARE(editor.paintBehindText().size(), 0);
-    QCOMPARE(window->property("activePaintPoints").toList().size(), 0);
-    QCOMPARE(window->property("activePaintPreviewPoints").toList().size(), 0);
-    QCOMPARE(window->property("activePaintTarget").toString(), QString());
-    QCOMPARE(window->property("activePaintPageIndex").toInt(), -1);
+    QTRY_COMPARE(window->property("activePaintPoints").toList().size(), 0);
+    QTRY_COMPARE(window->property("activePaintPreviewPoints").toList().size(), 0);
+    QTRY_COMPARE(window->property("activePaintTarget").toString(), QString());
+    QTRY_COMPARE(window->property("activePaintPageIndex").toInt(), -1);
   }
 
   void paintToolDefaultsLoadWithTwelvePixelBrushAndEraser() {

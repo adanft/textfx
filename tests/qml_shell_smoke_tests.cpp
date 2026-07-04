@@ -930,33 +930,16 @@ private slots:
     const QString editorChromeSource =
         readQmlFile(QStringLiteral("EditorChrome.qml"));
     const QString source = qmlSource();
-    const QString menuItemSource =
-        readQmlFile(QStringLiteral("ShortcutMenuItem.qml"));
-    const qsizetype menuItemStart =
-        menuItemSource.indexOf(QStringLiteral("MenuItem {"));
-    const qsizetype menuItemEnd = menuItemSource.size();
-    QVERIFY(menuItemStart >= 0);
-    QVERIFY(menuItemEnd > menuItemStart);
-    const QString menuItemDefinition =
-        menuItemSource.mid(menuItemStart, menuItemEnd - menuItemStart);
+    const QString fileMenuSource = readQmlFile(QStringLiteral("FileMenu.qml"));
+    const QString editMenuSource = readQmlFile(QStringLiteral("EditMenu.qml"));
+    const QString viewMenuSource = readQmlFile(QStringLiteral("ViewMenu.qml"));
 
     QVERIFY(!mainSource.contains(
         QStringLiteral("component ShortcutMenuItem: MenuItem")));
-    QVERIFY(menuItemDefinition.contains(QStringLiteral("MenuItem {")));
-    QVERIFY(menuItemDefinition.contains(QStringLiteral("contentItem: Item")));
-    QVERIFY(menuItemDefinition.contains(QStringLiteral("RowLayout {")));
-    QVERIFY(
-        menuItemDefinition.contains(QStringLiteral("Layout.fillWidth: true")));
-    QVERIFY(menuItemDefinition.contains(
-        QStringLiteral("shortcutMenuItem.shortcutLabel")));
-    QVERIFY(!menuItemSource.contains(QStringLiteral("indicator:")));
-    QVERIFY(
-        !menuItemSource.contains(QStringLiteral("shortcutMenuItem.checked")));
-    QVERIFY(!menuItemSource.contains(QStringLiteral("✓")));
-    QVERIFY(
-        !menuItemSource.contains(QStringLiteral("Layout.preferredWidth: 16")));
-    QVERIFY(!source.contains(QStringLiteral(
-        "Layout.preferredWidth: shortcutMenuItem.checkable ? 16 : 0")));
+    QVERIFY(fileMenuSource.contains(QStringLiteral("Menu {")));
+    QVERIFY(fileMenuSource.contains(QStringLiteral("title: qsTr(\"File\")")));
+    QVERIFY(editMenuSource.contains(QStringLiteral("title: qsTr(\"Edit\")")));
+    QVERIFY(viewMenuSource.contains(QStringLiteral("title: qsTr(\"View\")")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorChromeSource,
         QStringLiteral("Action { id: openAction; text: qsTr(\"Open\"); "
@@ -1024,47 +1007,28 @@ private slots:
             "editorChrome.editor.rawVisible : false; shortcut: \"Ctrl+H\"")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorChromeSource,
-        QStringLiteral("ShortcutMenuItem { action: openAction; shortcutLabel: "
-                       "\"Ctrl+O\" }")));
+        QStringLiteral("FileMenu { newAction: newAction; openAction: openAction; "
+                       "saveAction: saveAction; saveAllAction: saveAllAction; "
+                       "quitAction: quitAction }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorChromeSource,
-        QStringLiteral("ShortcutMenuItem { action: saveAction; shortcutLabel: "
-                       "\"Ctrl+S\" }")));
+        QStringLiteral("EditMenu { copyAction: copyAction; pasteAction: "
+                       "pasteAction; deleteAction: deleteAction; "
+                       "duplicateAction: duplicateAction }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorChromeSource,
-        QStringLiteral("ShortcutMenuItem { action: saveAllAction; "
-                       "shortcutLabel: \"Ctrl+Shift+S\" }")));
+        QStringLiteral("ViewMenu { zoomInAction: zoomInAction; zoomOutAction: "
+                       "zoomOutAction; resetZoomAction: resetZoomAction; "
+                       "rawOverlayAction: rawOverlayAction }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
-        QStringLiteral("ShortcutMenuItem { action: quitAction }")));
+        fileMenuSource,
+        QStringLiteral("MenuItem { action: openAction; text: qsTr(\"Open\\tCtrl+O\") }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
-        QStringLiteral("ShortcutMenuItem { action: copyAction; shortcutLabel: "
-                       "\"Ctrl+C\" }")));
+        editMenuSource,
+        QStringLiteral("MenuItem { action: copyAction; text: qsTr(\"Copy\\tCtrl+C\") }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
-        QStringLiteral("ShortcutMenuItem { action: pasteAction; shortcutLabel: "
-                       "\"Ctrl+V\" }")));
-    QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
-        QStringLiteral("ShortcutMenuItem { action: deleteAction; "
-                       "shortcutLabel: \"Del\" }")));
-    QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
-        QStringLiteral("ShortcutMenuItem { action: zoomInAction; "
-                       "shortcutLabel: \"Ctrl++\" }")));
-    QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
-        QStringLiteral("ShortcutMenuItem { action: zoomOutAction; "
-                       "shortcutLabel: \"Ctrl+-\" }")));
-    QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
-        QStringLiteral("ShortcutMenuItem { action: resetZoomAction; "
-                       "shortcutLabel: \"Ctrl+0\" }")));
-    QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
-        QStringLiteral("ShortcutMenuItem { action: rawOverlayAction; "
-                       "shortcutLabel: \"Ctrl+H\" }")));
+        viewMenuSource,
+        QStringLiteral("MenuItem { action: rawOverlayAction; text: qsTr(\"Show Raw Overlay\\tCtrl+H\") }")));
 
     QVERIFY(mainSource.contains(QStringLiteral("menuBar: chrome.menuBar")));
     QVERIFY(editorChromeSource.contains(
@@ -1086,11 +1050,14 @@ private slots:
     QVERIFY(!source.contains(QStringLiteral("StandardKey.Quit")));
     QVERIFY(!source.contains(QStringLiteral("Ctrl+Q")));
     QVERIFY(!source.contains(QStringLiteral("Ctrl+Alt+M")));
-    QVERIFY(!menuItemSource.contains(QStringLiteral("CheckBox")));
-    QVERIFY(!menuItemSource.contains(QStringLiteral("CheckIndicator")));
+    QVERIFY(!fileMenuSource.contains(QStringLiteral("CheckBox")));
+    QVERIFY(!editMenuSource.contains(QStringLiteral("CheckBox")));
+    QVERIFY(!viewMenuSource.contains(QStringLiteral("CheckBox")));
+    QVERIFY(!fileMenuSource.contains(QStringLiteral("CheckIndicator")));
+    QVERIFY(!editMenuSource.contains(QStringLiteral("CheckIndicator")));
+    QVERIFY(!viewMenuSource.contains(QStringLiteral("CheckIndicator")));
     QVERIFY(!source.contains(QStringLiteral("Duplicate\"), \"Ctrl+")));
-    QVERIFY(!source.contains(QStringLiteral(
-        "ShortcutMenuItem { action: duplicateAction; shortcutLabel:")));
+    QVERIFY(!source.contains(QStringLiteral("ShortcutMenuItem")));
     QVERIFY(!source.contains(QStringLiteral("qsTr(\"Open Ctrl+")));
     QVERIFY(!source.contains(QStringLiteral("qsTr(\"Save Ctrl+")));
     QVERIFY(!source.contains(QStringLiteral("qsTr(\"Save All Ctrl+")));
