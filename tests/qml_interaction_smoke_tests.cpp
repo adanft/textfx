@@ -229,6 +229,7 @@ private slots:
     QVERIFY(window);
     window->resize(1400, 1200);
     QVERIFY(QTest::qWaitForWindowExposed(window));
+    QVERIFY(window->setProperty("zoom", 1.5));
 
     QObject *paintModeObject = nullptr;
     QTRY_VERIFY(paintModeObject = findVisualChildByName(
@@ -266,6 +267,20 @@ private slots:
     auto *paintLayer = qobject_cast<QQuickItem *>(paintLayerObject);
     QVERIFY(paintLayer);
 
+    QObject *pageImageObject = nullptr;
+    QTRY_VERIFY(pageImageObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("pageImage")));
+    auto *pageImage = qobject_cast<QQuickItem *>(pageImageObject);
+    QVERIFY(pageImage);
+    QTRY_VERIFY(pageImage->isVisible());
+    QCOMPARE(paintLayer->isVisible(), false);
+    QCOMPARE(paintLayer->width(), 320.0);
+    QCOMPARE(paintLayer->height(), 240.0);
+    QVERIFY(paintInput->width() > paintLayer->width());
+    QCOMPARE(paintLayer->scale(),
+             window->property("pageBaseScale").toReal() *
+                 window->property("zoom").toReal());
+
     const int initialBoxCount = editor.boxes().size();
     const QPointF outsidePaintCanvasPoint =
         paintInput->x() > 32.0
@@ -295,6 +310,7 @@ private slots:
     QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, start);
     QTest::mouseMove(window, end);
 
+    QTRY_VERIFY(paintLayer->isVisible());
     QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
     QTRY_VERIFY(paintLayer->property("paintRevision").toInt() >
                 paintRevisionBefore);

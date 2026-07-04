@@ -716,12 +716,13 @@ ApplicationWindow {
                         objectName: "paintBehindTextLayer"
                         x: pageImage.x
                         y: pageImage.y
-                        width: pageImage.width
-                        height: pageImage.height
+                        width: pageImage.sourceSize.width
+                        height: pageImage.sourceSize.height
+                        scale: window.viewDocScale()
+                        transformOrigin: Item.TopLeft
                         strokes: Editor.paintBehindText
                         previewStroke: window.activePaintStroke("behind_text")
-                        scaleFactor: window.viewDocScale()
-                        visible: pageImage.visible
+                        visible: pageImage.visible && hasPaintContent
                     }
 
                     Image {
@@ -781,12 +782,13 @@ ApplicationWindow {
                         z: 30
                         x: pageImage.x
                         y: pageImage.y
-                        width: pageImage.width
-                        height: pageImage.height
+                        width: pageImage.sourceSize.width
+                        height: pageImage.sourceSize.height
+                        scale: window.viewDocScale()
+                        transformOrigin: Item.TopLeft
                         strokes: Editor.paintAboveText
                         previewStroke: window.activePaintStroke("above_text")
-                        scaleFactor: window.viewDocScale()
-                        visible: pageImage.visible
+                        visible: pageImage.visible && hasPaintContent
                     }
 
                     Repeater {

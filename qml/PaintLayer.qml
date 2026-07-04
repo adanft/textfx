@@ -5,7 +5,7 @@ Canvas {
 
     property var strokes: []
     property var previewStroke: ({})
-    property real scaleFactor: 1
+    readonly property bool hasPaintContent: strokes.length > 0 || hasDrawableStroke(previewStroke)
     readonly property int liveStrokeCount: strokes.length + (hasDrawableStroke(previewStroke) ? 1 : 0)
     property int lastPaintedStrokeCount: 0
     property int paintRevision: 0
@@ -20,13 +20,13 @@ Canvas {
 
         const points = stroke.points || [];
         ctx.strokeStyle = colorWithOpacity(stroke.color, stroke.opacity);
-        ctx.lineWidth = Math.max(1, stroke.size * scaleFactor);
+        ctx.lineWidth = Math.max(1, stroke.size);
         ctx.beginPath();
-        ctx.moveTo(points[0][0] * scaleFactor, points[0][1] * scaleFactor);
+        ctx.moveTo(points[0][0], points[0][1]);
         for (let pointIndex = 1; pointIndex < points.length; ++pointIndex)
-            ctx.lineTo(points[pointIndex][0] * scaleFactor, points[pointIndex][1] * scaleFactor);
+            ctx.lineTo(points[pointIndex][0], points[pointIndex][1]);
         if (points.length === 1)
-            ctx.lineTo(points[0][0] * scaleFactor + 0.1, points[0][1] * scaleFactor);
+            ctx.lineTo(points[0][0] + 0.1, points[0][1]);
         ctx.stroke();
         return true;
     }
@@ -47,7 +47,6 @@ Canvas {
 
     onStrokesChanged: schedulePaint()
     onPreviewStrokeChanged: schedulePaint()
-    onScaleFactorChanged: schedulePaint()
     onWidthChanged: schedulePaint()
     onHeightChanged: schedulePaint()
     onPaint: {
