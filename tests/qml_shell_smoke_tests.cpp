@@ -14,11 +14,50 @@
 #include <QUrl>
 #include <QVariantMap>
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 
 using namespace textfx;
 using namespace textfx::test;
+
+namespace {
+void scrollRightInspectorItemIntoView(QQuickWindow *window, QQuickItem *item) {
+  QObject *scrollObject = findVisualChildByName(
+      window->contentItem(), QStringLiteral("rightPanelScroll"));
+  if (!scrollObject)
+    return;
+  auto *scrollItem = qobject_cast<QQuickItem *>(scrollObject);
+  QObject *contentItem = scrollObject->property("contentItem").value<QObject *>();
+  if (!scrollItem || !contentItem ||
+      !contentItem->property("contentY").isValid())
+    return;
+
+  const QPointF center =
+      item->mapToScene(QPointF(item->width() / 2.0, item->height() / 2.0));
+  const qreal top = scrollItem->mapToScene(QPointF(0, 0)).y();
+  const qreal bottom =
+      scrollItem->mapToScene(QPointF(0, scrollItem->height())).y();
+  qreal contentY = contentItem->property("contentY").toReal();
+  if (center.y() < top)
+    contentY = std::max<qreal>(0.0, contentY - (top - center.y()) - 24.0);
+  else if (center.y() > bottom)
+    contentY += center.y() - bottom + 24.0;
+  else
+    return;
+
+  contentItem->setProperty("contentY", contentY);
+  QCoreApplication::processEvents();
+}
+
+void clickItemCenter(QQuickWindow *window, QQuickItem *item) {
+  scrollRightInspectorItemIntoView(window, item);
+  QTest::mouseClick(
+      window, Qt::LeftButton, Qt::NoModifier,
+      item->mapToScene(QPointF(item->width() / 2, item->height() / 2))
+          .toPoint());
+}
+} // namespace
 
 class QmlShellSmokeTests final : public QObject {
   Q_OBJECT
@@ -92,6 +131,8 @@ private slots:
         readQmlFile(QStringLiteral("ColorButton.qml"));
     const QString editorChromeSource =
         readQmlFile(QStringLiteral("EditorChrome.qml"));
+    const QString paintSectionSource =
+        readQmlFile(QStringLiteral("PaintSection.qml"));
     const QString source = qmlSource();
 
     QVERIFY(
@@ -117,6 +158,17 @@ private slots:
         QStringLiteral("editor.setSelectedGradientColorA(hex)")));
     QVERIFY(editorChromeSource.contains(
         QStringLiteral("editor.setSelectedGradientColorB(hex)")));
+    QVERIFY(editorChromeSource.contains(
+        QStringLiteral("colorDialogSetter === \"paint\"")));
+    QVERIFY(editorChromeSource.contains(
+        QStringLiteral("paintBrushColorTarget.paintBrushColor = hex")));
+    QVERIFY(paintSectionSource.contains(QStringLiteral("ColorButton {")));
+    QVERIFY(paintSectionSource.contains(
+        QStringLiteral("objectName: \"paintColorButton\"")));
+    QVERIFY(paintSectionSource.contains(
+        QStringLiteral("colorDialogRequested(swatchText, \"paint\")")));
+    QVERIFY(!paintSectionSource.contains(QStringLiteral("paintColorField")));
+    QVERIFY(!paintSectionSource.contains(QStringLiteral("TextField {")));
     QVERIFY(!mainSource.contains(QStringLiteral("ColorDialog {")));
     QVERIFY(
         !mainSource.contains(QStringLiteral("dialogColorHex(selectedColor)")));
@@ -372,6 +424,8 @@ private slots:
         QStringLiteral("SplitView.minimumWidth: 180")));
     QVERIFY(rightPanelSource.contains(QStringLiteral("id: rightPanelScroll")));
     QVERIFY(rightPanelSource.contains(
+        QStringLiteral("objectName: \"rightPanelScroll\"")));
+    QVERIFY(rightPanelSource.contains(
         QStringLiteral("width: rightPanelScroll.availableWidth")));
     const qsizetype propertiesStart = indexOfIgnoringWhitespace(
         sidePanelSource,
@@ -530,6 +584,10 @@ private slots:
         readQmlFile(QStringLiteral("BoxEffectsSection.qml"));
     const QString textEffectsSectionSource =
         readQmlFile(QStringLiteral("TextEffectsSection.qml"));
+    const QString pageEffectsSectionSource =
+        readQmlFile(QStringLiteral("PageEffectsSection.qml"));
+    const QString paintSectionSource =
+        readQmlFile(QStringLiteral("PaintSection.qml"));
     const qsizetype rightPanelStart =
         source.indexOf(QStringLiteral("id: rightPanel"));
     QVERIFY(rightPanelStart >= 0);
@@ -681,9 +739,29 @@ private slots:
         QStringLiteral("id: boxEffectsSection")));
     QVERIFY(textEffectsSectionSource.contains(
         QStringLiteral("id: textEffectsSection")));
+    QVERIFY(pageEffectsSectionSource.contains(
+        QStringLiteral("id: pageEffectsSection")));
     QVERIFY(navigationSectionSource.contains(QStringLiteral("id: navigationSection")));
     QVERIFY(layersSectionSource.contains(QStringLiteral("id: layersSection")));
+    QVERIFY(rightPanelSource.contains(QStringLiteral("PageEffectsSection {")));
     QVERIFY(rightPanelSource.contains(QStringLiteral("LayersSection {")));
+    const qsizetype textEffectsInRightPanel =
+        rightPanelSource.indexOf(QStringLiteral("TextEffectsSection {"));
+    const qsizetype pageEffectsInRightPanel =
+        rightPanelSource.indexOf(QStringLiteral("PageEffectsSection {"));
+    const qsizetype layersInRightPanel =
+        rightPanelSource.indexOf(QStringLiteral("LayersSection {"));
+    QVERIFY(textEffectsInRightPanel >= 0);
+    QVERIFY(pageEffectsInRightPanel > textEffectsInRightPanel);
+    QVERIFY(layersInRightPanel > pageEffectsInRightPanel);
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        rightPanelSource,
+        QStringLiteral("PageEffectsSection { id: pageEffectsSection; "
+                       "objectName: \"pageEffectsSection\"; qmlColorProvider: "
+                       "rightInspectorPanel.qmlColorProvider; "
+                       "onColorDialogRequested: (hex, setter) => { "
+                       "rightInspectorPanel.colorDialogRequested(hex, setter) "
+                       "}; Layout.fillWidth: true; Layout.minimumWidth: 0 }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         rightPanelSource,
         QStringLiteral("LayersSection { editor: rightInspectorPanel.editor; "
@@ -701,6 +779,9 @@ private slots:
         textEffectsSectionSource,
         QStringLiteral("Label { text: qsTr(\"Text Effects\"); font.bold: true; "
                        "enabled: textEffectsSection.sectionReady }")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        pageEffectsSectionSource,
+        QStringLiteral("Label { text: qsTr(\"Page Effects\"); font.bold: true }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         layersSectionSource,
         QStringLiteral("Label { text: qsTr(\"Layers\"); font.bold: true; "
@@ -810,6 +891,28 @@ private slots:
         "textEffectsSection.editor.setSelectedGradientEnabled(checked)")));
     QVERIFY(textEffectsSource.contains(QStringLiteral(
         "textEffectsSection.editor.setSelectedPathEnabled(checked)")));
+    QVERIFY(pageEffectsSectionSource.contains(
+        QStringLiteral("id: pageEffectsTabs")));
+    QVERIFY(pageEffectsSectionSource.contains(
+        QStringLiteral("objectName: \"rightInspectorPageEffectsTabs\"")));
+    QVERIFY(pageEffectsSectionSource.contains(QStringLiteral("StackLayout")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        pageEffectsSectionSource,
+        QStringLiteral("TabButton { text: qsTr(\"Paint\") }")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        pageEffectsSectionSource,
+        QStringLiteral("PaintSection { id: paintSection; objectName: "
+                       "\"paintSection\"; qmlColorProvider: "
+                       "pageEffectsSection.qmlColorProvider; "
+                       "Layout.fillWidth: true; Layout.minimumWidth: 0; "
+                       "onColorDialogRequested: (hex, setter) => { "
+                       "pageEffectsSection.colorDialogRequested(hex, setter) "
+                       "} }")));
+    QVERIFY(paintSectionSource.contains(
+        QStringLiteral("objectName: \"paintColorButton\"")));
+    QVERIFY(paintSectionSource.contains(
+        QStringLiteral("colorDialogRequested(swatchText, \"paint\")")));
+    QVERIFY(!paintSectionSource.contains(QStringLiteral("paintColorField")));
   }
 
   void qmlMenusOwnPrimaryControlsAndToolbarIsRemoved() {
@@ -1594,11 +1697,7 @@ QtObject {
     QVERIFY(nextButton);
     QTRY_VERIFY(nextButton->isVisible());
     QVERIFY(nextButton->isEnabled());
-    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier,
-                      nextButton
-                          ->mapToScene(QPointF(nextButton->width() / 2,
-                                               nextButton->height() / 2))
-                          .toPoint());
+    clickItemCenter(window, nextButton);
     QTRY_COMPARE(editor.currentPageIndex(), 1);
 
     editor.previousPage();
@@ -1612,11 +1711,7 @@ QtObject {
     auto *rawCheckBox = qobject_cast<QQuickItem *>(object);
     QVERIFY(rawCheckBox);
     QTRY_VERIFY(rawCheckBox->isVisible());
-    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier,
-                      rawCheckBox
-                          ->mapToScene(QPointF(rawCheckBox->width() / 2,
-                                               rawCheckBox->height() / 2))
-                          .toPoint());
+    clickItemCenter(window, rawCheckBox);
     QTRY_VERIFY(editor.rawVisible());
 
     QTRY_VERIFY(object = findVisualChildByName(
@@ -1626,11 +1721,7 @@ QtObject {
     QVERIFY(outlineCheckBox);
     QTRY_VERIFY(outlineCheckBox->isVisible());
     QVERIFY(outlineCheckBox->isEnabled());
-    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier,
-                      outlineCheckBox
-                          ->mapToScene(QPointF(outlineCheckBox->width() / 2,
-                                               outlineCheckBox->height() / 2))
-                          .toPoint());
+    clickItemCenter(window, outlineCheckBox);
     QTRY_VERIFY(
         editor.boxes().at(0).toMap().value(QStringLiteral("outline")).toBool());
   }
@@ -1667,10 +1758,7 @@ QtObject {
     QTRY_VERIFY(button->isVisible());
     QVERIFY(button->isEnabled());
 
-    const QPoint center =
-        button->mapToScene(QPointF(button->width() / 2, button->height() / 2))
-            .toPoint();
-    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, center);
+    clickItemCenter(window, button);
 
     QTRY_COMPARE(chrome->property("colorDialogSetter").toString(),
                  QStringLiteral("outline"));
@@ -1705,10 +1793,7 @@ QtObject {
       QVERIFY(item);
       QTRY_VERIFY(item->isVisible());
       QVERIFY(item->isEnabled());
-      QTest::mouseClick(
-          window, Qt::LeftButton, Qt::NoModifier,
-          item->mapToScene(QPointF(item->width() / 2, item->height() / 2))
-              .toPoint());
+      clickItemCenter(window, item);
     };
 
     QObject *tabsObject = nullptr;
@@ -1794,11 +1879,7 @@ QtObject {
     QTRY_VERIFY(delegate->isVisible());
     QVERIFY(delegate->isEnabled());
 
-    QTest::mouseClick(
-        window, Qt::LeftButton, Qt::NoModifier,
-        delegate
-            ->mapToScene(QPointF(delegate->width() / 2, delegate->height() / 2))
-            .toPoint());
+    clickItemCenter(window, delegate);
     QTRY_COMPARE(editor.selectedIndex(), 2);
 
     QTRY_VERIFY(object = findVisualChildByName(
@@ -1808,11 +1889,7 @@ QtObject {
     QVERIFY(downButton);
     QTRY_VERIFY(downButton->isVisible());
     QVERIFY(downButton->isEnabled());
-    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier,
-                      downButton
-                          ->mapToScene(QPointF(downButton->width() / 2,
-                                               downButton->height() / 2))
-                          .toPoint());
+    clickItemCenter(window, downButton);
     QTRY_COMPARE(editor.selectedIndex(), 1);
     QCOMPARE(
         editor.boxes().at(1).toMap().value(QStringLiteral("text")).toString(),
@@ -1825,11 +1902,7 @@ QtObject {
     QVERIFY(upButton);
     QTRY_VERIFY(upButton->isVisible());
     QVERIFY(upButton->isEnabled());
-    QTest::mouseClick(
-        window, Qt::LeftButton, Qt::NoModifier,
-        upButton
-            ->mapToScene(QPointF(upButton->width() / 2, upButton->height() / 2))
-            .toPoint());
+    clickItemCenter(window, upButton);
     QTRY_COMPARE(editor.selectedIndex(), 2);
     QCOMPARE(
         editor.boxes().at(2).toMap().value(QStringLiteral("text")).toString(),

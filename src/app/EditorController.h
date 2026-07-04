@@ -41,6 +41,10 @@ class EditorController final : public QObject {
   Q_PROPERTY(bool canGoPrevious READ canGoPrevious NOTIFY stateChanged)
   Q_PROPERTY(bool canGoNext READ canGoNext NOTIFY stateChanged)
   Q_PROPERTY(QVariantList boxes READ boxes NOTIFY documentChanged)
+  Q_PROPERTY(QVariantList paintBehindText READ paintBehindText NOTIFY
+                 documentChanged)
+  Q_PROPERTY(
+      QVariantList paintAboveText READ paintAboveText NOTIFY documentChanged)
   Q_PROPERTY(int boxCount READ boxCount NOTIFY documentChanged)
   Q_PROPERTY(QAbstractListModel *boxesModel READ boxesModel CONSTANT)
   Q_PROPERTY(QVariantList layers READ layers NOTIFY documentChanged)
@@ -70,6 +74,8 @@ public:
     return currentPageIndex_ >= 0 && currentPageIndex_ + 1 < pageCount();
   }
   QVariantList boxes() const;
+  QVariantList paintBehindText() const;
+  QVariantList paintAboveText() const;
   int boxCount() const;
   QAbstractListModel *boxesModel();
   QVariant selectedBoxViewModel() const;
@@ -91,6 +97,11 @@ public:
   Q_INVOKABLE void goToPage(int index);
   Q_INVOKABLE void selectBox(int index);
   Q_INVOKABLE void createTextBox(double x, double y, double w, double h);
+  Q_INVOKABLE void addPaintStroke(const QString &target, const QString &color,
+                                  double size, double opacity,
+                                  const QVariantList &points);
+  Q_INVOKABLE void erasePaintAt(const QString &target, double x, double y,
+                                double radius);
   Q_INVOKABLE QVariant boxRole(int row, const QString &roleName) const;
   Q_INVOKABLE bool
   boxRolesAffectSelectedBoxState(const QVariantList &roles) const;

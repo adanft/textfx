@@ -13,6 +13,7 @@
 #include <QColor>
 #include <QGuiApplication>
 #include <QImage>
+#include <QPoint>
 #include <QRect>
 #include <QTemporaryDir>
 
@@ -109,6 +110,19 @@ int countPixels(const QImage &image, const QColor &background,
     }
   }
   return count;
+}
+
+QPoint firstDarkPixelInRect(const QImage &image, const QRect &bounds) {
+  const QRect clipped = bounds.intersected(image.rect());
+  for (int y = clipped.top(); y <= clipped.bottom(); ++y) {
+    for (int x = clipped.left(); x <= clipped.right(); ++x) {
+      const QColor color = image.pixelColor(x, y);
+      if (color.alpha() > 200 && color.red() < 40 && color.green() < 40 &&
+          color.blue() < 40)
+        return QPoint(x, y);
+    }
+  }
+  return QPoint(-1, -1);
 }
 } // namespace
 
@@ -251,6 +265,59 @@ int main(int argc, char **argv) {
   const auto outPath = tempPath / "export.png";
   if (!page.save(QString::fromStdString(pagePath.string()), "PNG"))
     return 1;
+
+  DocumentModel paintOrderDocument;
+  TextBox paintOrderText;
+  paintOrderText.text = "MMMM";
+  paintOrderText.bounds = {36.0, 4.0, 180.0, 72.0};
+  paintOrderText.style.fontSize = 48;
+  paintOrderText.style.textColor = "000000ff";
+  paintOrderDocument.addTextBox(paintOrderText);
+  paintOrderDocument.paint().behindText.push_back(
+      {"ff0000ff", 30.0, 1.0, {{20.0, 40.0}, {220.0, 40.0}}});
+  paintOrderDocument.paint().aboveText.push_back(
+      {"0000ffff", 30.0, 1.0, {{20.0, 40.0}, {220.0, 40.0}}});
+
+  DocumentModel textOnlyPaintOrderDocument;
+  textOnlyPaintOrderDocument.addTextBox(paintOrderText);
+  const auto textOnlyPaintOrderImage = exportedImage(
+      graph, textOnlyPaintOrderDocument, pagePath,
+      tempPath / "paint-order-text-only.png");
+  const QPoint overlappedTextPixel =
+      firstDarkPixelInRect(textOnlyPaintOrderImage, QRect(40, 26, 150, 28));
+
+  DocumentModel behindTextPaintOrderDocument;
+  behindTextPaintOrderDocument.addTextBox(paintOrderText);
+  behindTextPaintOrderDocument.paint().behindText.push_back(
+      {"ff0000ff", 30.0, 1.0, {{20.0, 40.0}, {220.0, 40.0}}});
+  const auto behindTextPaintOrderImage = exportedImage(
+      graph, behindTextPaintOrderDocument, pagePath,
+      tempPath / "paint-order-behind-text.png");
+
+  const auto paintOrderImage = exportedImage(graph, paintOrderDocument, pagePath,
+                                             tempPath / "paint-order.png");
+  if (paintOrderImage.isNull() || textOnlyPaintOrderImage.isNull() ||
+      behindTextPaintOrderImage.isNull() || overlappedTextPixel.x() < 0 ||
+      behindTextPaintOrderImage.pixelColor(overlappedTextPixel) !=
+          textOnlyPaintOrderImage.pixelColor(overlappedTextPixel) ||
+      paintOrderImage.pixelColor(overlappedTextPixel) !=
+          QColor(0, 0, 255, 255)) {
+    std::cerr << "Expected paint export to draw behind-text paint below text "
+                 "and above-text paint above text\n";
+    return 1;
+  }
+
+  DocumentModel invalidPaintColorDocument;
+  invalidPaintColorDocument.paint().aboveText.push_back(
+      {"zzzzzzzz", 10.0, 1.0, {{20.0, 40.0}, {120.0, 40.0}}});
+  const auto invalidPaintColorImage = exportedImage(
+      graph, invalidPaintColorDocument, pagePath,
+      tempPath / "invalid-paint-color.png");
+  if (invalidPaintColorImage.isNull() ||
+      invalidPaintColorImage.pixelColor(70, 40) != QColor(0, 0, 0, 255)) {
+    std::cerr << "Expected invalid paint colors to export with a safe fallback\n";
+    return 1;
+  }
 
   const auto timedOutPath = tempPath / "timed-export.png";
   const auto timedResult =

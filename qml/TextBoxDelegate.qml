@@ -48,6 +48,8 @@ Rectangle {
     required property var boxEffects
     required property var canvasItem
     required property var interaction
+    property bool renderTextContent: true
+    property bool renderSelectionUi: true
     readonly property var rootWindow: ApplicationWindow.window
     readonly property var editorRef: rootWindow ? rootWindow.editor : null
     property bool selected: editorRef && boxIndex === editorRef.selectedIndex
@@ -122,13 +124,14 @@ Rectangle {
     readonly property int textAlignCenter: 1
     readonly property int textAlignRight: 2
 
-    objectName: "textBoxDelegate"
+    objectName: renderSelectionUi ? "textBoxDelegate" : "textBoxContentDelegate"
+    z: renderSelectionUi ? 40 : 0
     x: rootWindow.documentToViewX(visualDocX)
     y: rootWindow.documentToViewY(visualDocY)
     width: visualDocW * rootWindow.viewDocScale()
     height: visualDocH * rootWindow.viewDocScale()
     color: "transparent"
-    border.width: perspectiveActive ? 0 : selected ? rootWindow.selectionLineWidth() : Math.max(1, rootWindow.documentToViewLength(1))
+    border.width: !renderSelectionUi || perspectiveActive ? 0 : selected ? rootWindow.selectionLineWidth() : Math.max(1, rootWindow.documentToViewLength(1))
     border.color: textOverflow ? Qt.rgba(1, 0, 0, 1) : editingSelected ? Qt.rgba(1, 0.84, 0, 1) : selected ? rootWindow.palette.highlight : rootWindow.palette.mid
     rotation: boxRotation
 
@@ -145,7 +148,7 @@ Rectangle {
         y: -margin
         width: parent.width + margin * 2
         height: parent.height + margin * 2
-        visible: boxRef.selected && boxRef.perspectiveActive
+        visible: boxRef.renderSelectionUi && boxRef.selected && boxRef.perspectiveActive
         z: boxRef.zPerspectiveBorder
         onPaint: {
             const ctx = getContext("2d");
@@ -197,6 +200,7 @@ Rectangle {
         z: boxRef.zTextContent
         anchors.fill: parent
         clip: true
+        opacity: boxDelegate.renderTextContent ? 1 : 0
 
         OutlinedTextItem {
             id: boxOutlinedText
@@ -205,7 +209,7 @@ Rectangle {
             property var rootWindow: boxTextPerspective.rootWindow
             property var editorRef: boxTextPerspective.editorRef
 
-            objectName: "boxOutlinedText"
+            objectName: boxRef.renderTextContent ? "boxOutlinedText" : "boxOutlinedTextMetrics"
             width: boxRef.visualDocW * rootWindow.livePreviewScale()
             height: boxRef.visualDocH * rootWindow.livePreviewScale()
             transformOrigin: Item.TopLeft
@@ -250,7 +254,7 @@ Rectangle {
         property var boxRef: boxDelegate
 
         anchors.fill: parent
-        active: boxDelegate.pathGuideLoaded
+        active: boxDelegate.renderSelectionUi && boxDelegate.pathGuideLoaded
         sourceComponent: Component {
             TextPathGuide {
                 boxRef: pathGuideLoader.boxRef
@@ -264,17 +268,20 @@ Rectangle {
 
         boxRef: boxDelegate
         outlinedTextItem: boxOutlinedText
+        selectionUiVisible: boxDelegate.renderSelectionUi
     }
 
     TextBoxMoveArea {
         boxRef: boxDelegate
         canvasItem: boxDelegate.canvasItem
         editOverlay: boxTextOverlay
+        visible: boxDelegate.renderSelectionUi
     }
 
     TextResizeHandles {
         boxRef: boxDelegate
         canvasItem: boxDelegate.canvasItem
+        visible: boxDelegate.renderSelectionUi
     }
 
     Loader {
@@ -283,7 +290,7 @@ Rectangle {
         property var boxRef: boxDelegate
         property var canvasItem: boxDelegate.canvasItem
 
-        active: boxDelegate.rotateDecorationsLoaded
+        active: boxDelegate.renderSelectionUi && boxDelegate.rotateDecorationsLoaded
         sourceComponent: Component {
             TextRotateHandle {
                 boxRef: rotateHandleLoader.boxRef
@@ -300,7 +307,7 @@ Rectangle {
         property var canvasItem: boxDelegate.canvasItem
 
         anchors.fill: parent
-        active: boxDelegate.pathDecorationsLoaded
+        active: boxDelegate.renderSelectionUi && boxDelegate.pathDecorationsLoaded
         sourceComponent: Component {
             TextPathHandles {
                 boxRef: pathHandlesLoader.boxRef

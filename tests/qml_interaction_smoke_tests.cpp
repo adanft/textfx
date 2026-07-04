@@ -4,21 +4,54 @@
 #include <QClipboard>
 #include <QCoreApplication>
 #include <QGuiApplication>
+#include <QImage>
 #include <QMetaObject>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickItem>
 #include <QQuickWindow>
+#include <QTemporaryDir>
 #include <QTest>
 #include <QUrl>
 #include <QVariantMap>
 #include <QWheelEvent>
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
 using namespace textfx;
 using namespace textfx::test;
+
+namespace {
+void scrollRightInspectorItemIntoView(QQuickWindow *window, QQuickItem *item) {
+  QObject *scrollObject = findVisualChildByName(
+      window->contentItem(), QStringLiteral("rightPanelScroll"));
+  if (!scrollObject)
+    return;
+  auto *scrollItem = qobject_cast<QQuickItem *>(scrollObject);
+  QObject *contentItem = scrollObject->property("contentItem").value<QObject *>();
+  if (!scrollItem || !contentItem ||
+      !contentItem->property("contentY").isValid())
+    return;
+
+  const QPointF center =
+      item->mapToScene(QPointF(item->width() / 2.0, item->height() / 2.0));
+  const qreal top = scrollItem->mapToScene(QPointF(0, 0)).y();
+  const qreal bottom =
+      scrollItem->mapToScene(QPointF(0, scrollItem->height())).y();
+  qreal contentY = contentItem->property("contentY").toReal();
+  if (center.y() < top)
+    contentY = std::max<qreal>(0.0, contentY - (top - center.y()) - 24.0);
+  else if (center.y() > bottom)
+    contentY += center.y() - bottom + 24.0;
+  else
+    return;
+
+  contentItem->setProperty("contentY", contentY);
+  QCoreApplication::processEvents();
+}
+} // namespace
 
 class QmlInteractionSmokeTests final : public QObject {
   Q_OBJECT
@@ -170,6 +203,356 @@ private slots:
     QCoreApplication::sendEvent(window, &wheelEvent);
     QVERIFY(wheelEvent.isAccepted());
     QTRY_VERIFY(window->property("zoom").toReal() > zoomBeforeWheel);
+  }
+
+  void paintModeDragAddsPaintWithoutSelectingOrCreatingBoxes() {
+    registerQmlTypes();
+
+    QTemporaryDir projectDir;
+    QVERIFY(projectDir.isValid());
+    QImage page(320, 240, QImage::Format_RGB32);
+    page.fill(Qt::white);
+    QVERIFY(page.save(projectDir.filePath(QStringLiteral("page.png"))));
+
+    EditorController editor;
+    editor.openProject(projectDir.path());
+    editor.selectBox(-1);
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    window->resize(1400, 1200);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+
+    QObject *paintModeObject = nullptr;
+    QTRY_VERIFY(paintModeObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintModeCheck")));
+    auto *paintMode = qobject_cast<QQuickItem *>(paintModeObject);
+    QVERIFY(paintMode);
+    scrollRightInspectorItemIntoView(window, paintMode);
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier,
+                      paintMode->mapToScene(QPointF(8, 8)).toPoint());
+
+    QObject *shellObject = nullptr;
+    QTRY_VERIFY(shellObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("centralCanvasShell")));
+    auto *shell = qobject_cast<QQuickItem *>(shellObject);
+    QVERIFY(shell);
+
+    QObject *canvasObject = nullptr;
+    QTRY_VERIFY(canvasObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("centralCanvas")));
+    auto *canvas = qobject_cast<QQuickItem *>(canvasObject);
+    QVERIFY(canvas);
+
+    QObject *paintInputObject = nullptr;
+    QTRY_VERIFY(paintInputObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintInputArea")));
+    auto *paintInput = qobject_cast<QQuickItem *>(paintInputObject);
+    QVERIFY(paintInput);
+    QTRY_VERIFY(paintInput->isVisible());
+    QTRY_VERIFY(paintInput->width() > 64);
+    QTRY_VERIFY(paintInput->height() > 64);
+
+    QObject *paintLayerObject = nullptr;
+    QTRY_VERIFY(paintLayerObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintBehindTextLayer")));
+    auto *paintLayer = qobject_cast<QQuickItem *>(paintLayerObject);
+    QVERIFY(paintLayer);
+
+    const int initialBoxCount = editor.boxes().size();
+    const QPointF outsidePaintCanvasPoint =
+        paintInput->x() > 32.0
+            ? QPointF(paintInput->x() - 16.0, paintInput->y() + 32.0)
+            : QPointF(paintInput->x() + paintInput->width() + 16.0,
+                      paintInput->y() + 32.0);
+    QVERIFY(canvas->contains(outsidePaintCanvasPoint));
+    QVERIFY(!paintInput->contains(
+        paintInput->mapFromItem(canvas, outsidePaintCanvasPoint)));
+
+    const QPoint outsideStart =
+        canvas->mapToScene(outsidePaintCanvasPoint).toPoint();
+    const QPoint outsideEnd = outsideStart + QPoint(24, 0);
+    QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, outsideStart);
+    QTest::mouseMove(window, outsideEnd);
+    QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, outsideEnd);
+    QCoreApplication::processEvents();
+
+    QCOMPARE(editor.paintBehindText().size(), 0);
+    QCOMPARE(paintLayer->property("liveStrokeCount").toInt(), 0);
+    QCOMPARE(editor.boxes().size(), initialBoxCount);
+
+    const QPoint start = paintInput->mapToScene(QPointF(32, 32)).toPoint();
+    const QPoint end = start + QPoint(40, 0);
+    const QPointF canvasStart(paintInput->x() + 32, paintInput->y() + 32);
+    const int paintRevisionBefore = paintLayer->property("paintRevision").toInt();
+    QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, start);
+    QTest::mouseMove(window, end);
+
+    QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
+    QTRY_VERIFY(paintLayer->property("paintRevision").toInt() >
+                paintRevisionBefore);
+    QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, end);
+
+    QTRY_COMPARE(editor.paintBehindText().size(), 1);
+    QTRY_COMPARE(paintLayer->property("liveStrokeCount").toInt(), 1);
+    const QVariantMap stroke = editor.paintBehindText().constFirst().toMap();
+    const QVariantList points = stroke.value(QStringLiteral("points")).toList();
+    QVERIFY(points.size() >= 2);
+    const QVariantList firstPoint = points.constFirst().toList();
+    QVERIFY(firstPoint.size() >= 2);
+    const auto windowCoordinate = [&](const char *method, qreal value) {
+      QVariant result;
+      const bool invoked = QMetaObject::invokeMethod(
+          window, method, Q_RETURN_ARG(QVariant, result),
+          Q_ARG(QVariant, value));
+      return invoked ? result.toDouble()
+                     : std::numeric_limits<double>::quiet_NaN();
+    };
+    QVERIFY(std::abs(firstPoint.at(0).toDouble() -
+                    windowCoordinate("viewToDocumentX", canvasStart.x())) <=
+            0.5);
+    QVERIFY(std::abs(firstPoint.at(1).toDouble() -
+                    windowCoordinate("viewToDocumentY", canvasStart.y())) <=
+            0.5);
+    QCOMPARE(editor.boxes().size(), initialBoxCount);
+    QCOMPARE(editor.selectedIndex(), -1);
+  }
+
+  void paintColorDialogSelectionUpdatesBrushAndStrokeColor() {
+    registerQmlTypes();
+
+    QTemporaryDir projectDir;
+    QVERIFY(projectDir.isValid());
+    QImage page(320, 240, QImage::Format_RGB32);
+    page.fill(Qt::white);
+    QVERIFY(page.save(projectDir.filePath(QStringLiteral("page.png"))));
+
+    EditorController editor;
+    editor.openProject(projectDir.path());
+    editor.selectBox(-1);
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    window->resize(1400, 1200);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+
+    QObject *rightPanelObject = nullptr;
+    QTRY_VERIFY(rightPanelObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("rightInspectorPanel")));
+    QCOMPARE(rightPanelObject->property("paintBrushColor").toString(),
+             QStringLiteral("ff0000ff"));
+
+    QObject *paintColorButtonObject = nullptr;
+    QTRY_VERIFY(paintColorButtonObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintColorButton")));
+    auto *paintColorButton = qobject_cast<QQuickItem *>(paintColorButtonObject);
+    QVERIFY(paintColorButton);
+    scrollRightInspectorItemIntoView(window, paintColorButton);
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier,
+                      paintColorButton
+                          ->mapToScene(QPointF(paintColorButton->width() / 2.0,
+                                               paintColorButton->height() / 2.0))
+                          .toPoint());
+
+    QObject *chromeObject = nullptr;
+    QTRY_VERIFY(chromeObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("editorChrome")));
+    QTRY_COMPARE(chromeObject->property("colorDialogSetter").toString(),
+                 QStringLiteral("paint"));
+
+    const QString selectedColor = QStringLiteral("#00ff88");
+    QVERIFY(QMetaObject::invokeMethod(chromeObject, "applyColorDialogSelection",
+                                      Q_ARG(QVariant, selectedColor)));
+    QObject *colorDialogObject = chromeObject->findChild<QObject *>(
+        QStringLiteral("colorDialog"));
+    QVERIFY(colorDialogObject);
+    QVERIFY(QMetaObject::invokeMethod(colorDialogObject, "close"));
+    QTRY_COMPARE(rightPanelObject->property("paintBrushColor").toString(),
+                 selectedColor);
+
+    QObject *paintModeObject = nullptr;
+    QTRY_VERIFY(paintModeObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintModeCheck")));
+    auto *paintMode = qobject_cast<QQuickItem *>(paintModeObject);
+    QVERIFY(paintMode);
+    scrollRightInspectorItemIntoView(window, paintMode);
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier,
+                      paintMode->mapToScene(QPointF(8, 8)).toPoint());
+    QTRY_VERIFY(rightPanelObject->property("paintMode").toBool());
+
+    QObject *paintInputObject = nullptr;
+    QTRY_VERIFY(paintInputObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintInputArea")));
+    auto *paintInput = qobject_cast<QQuickItem *>(paintInputObject);
+    QVERIFY(paintInput);
+    QTRY_VERIFY(paintInput->isVisible());
+    QTRY_VERIFY(paintInput->width() > 64);
+    QTRY_VERIFY(paintInput->height() > 64);
+
+    const QPoint start = paintInput->mapToScene(QPointF(32, 32)).toPoint();
+    const QPoint end = start + QPoint(40, 0);
+    QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, start);
+    QTest::mouseMove(window, end);
+    QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, end);
+
+    QTRY_COMPARE(editor.paintBehindText().size(), 1);
+    const QVariantMap stroke = editor.paintBehindText().constFirst().toMap();
+    QCOMPARE(stroke.value(QStringLiteral("color")).toString(),
+             QStringLiteral("00ff88ff"));
+  }
+
+  void paintToolDefaultsLoadWithTwelvePixelBrushAndEraser() {
+    registerQmlTypes();
+
+    QTemporaryDir projectDir;
+    QVERIFY(projectDir.isValid());
+    QImage page(320, 240, QImage::Format_RGB32);
+    page.fill(Qt::white);
+    QVERIFY(page.save(projectDir.filePath(QStringLiteral("page.png"))));
+
+    EditorController editor;
+    editor.openProject(projectDir.path());
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    window->resize(1400, 1200);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+
+    QObject *rightPanelObject = nullptr;
+    QTRY_VERIFY(rightPanelObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("rightInspectorPanel")));
+    QCOMPARE(rightPanelObject->property("paintBrushSize").toDouble(), 12.0);
+    QCOMPARE(rightPanelObject->property("paintEraserSize").toDouble(), 12.0);
+
+    QObject *brushSizeObject = nullptr;
+    QTRY_VERIFY(brushSizeObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintBrushSizeSpin")));
+    QCOMPARE(brushSizeObject->property("value").toDouble(), 12.0);
+
+    QObject *eraserSizeObject = nullptr;
+    QTRY_VERIFY(eraserSizeObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintEraserSizeSpin")));
+    QCOMPARE(eraserSizeObject->property("value").toDouble(), 12.0);
+  }
+
+  void paintModeCursorChangesOnlyOverPaintCanvas() {
+    registerQmlTypes();
+
+    QTemporaryDir projectDir;
+    QVERIFY(projectDir.isValid());
+    QImage page(320, 240, QImage::Format_RGB32);
+    page.fill(Qt::white);
+    QVERIFY(page.save(projectDir.filePath(QStringLiteral("page.png"))));
+
+    EditorController editor;
+    editor.openProject(projectDir.path());
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    window->resize(1400, 1200);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+
+    QObject *paintInputObject = nullptr;
+    QTRY_VERIFY(paintInputObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintInputArea")));
+    auto *paintInput = qobject_cast<QQuickItem *>(paintInputObject);
+    QVERIFY(paintInput);
+    QVERIFY(!paintInput->isVisible());
+    QCOMPARE(paintInput->property("cursorShape").toInt(),
+             static_cast<int>(Qt::CrossCursor));
+
+    QObject *paintModeObject = nullptr;
+    QTRY_VERIFY(paintModeObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintModeCheck")));
+    auto *paintMode = qobject_cast<QQuickItem *>(paintModeObject);
+    QVERIFY(paintMode);
+    scrollRightInspectorItemIntoView(window, paintMode);
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier,
+                      paintMode->mapToScene(QPointF(8, 8)).toPoint());
+
+    QTRY_VERIFY(paintInput->isVisible());
+    QTRY_VERIFY(paintInput->width() > 16);
+    QTRY_VERIFY(paintInput->height() > 16);
+    QCOMPARE(paintInput->property("cursorShape").toInt(),
+             static_cast<int>(Qt::CrossCursor));
+    QVERIFY(paintInput->contains(QPointF(8, 8)));
+    QVERIFY(!paintInput->contains(QPointF(paintInput->width() + 8, 8)));
+  }
+
+  void aboveTextPaintLayerStaysAboveTextContentButBelowSelectionUi() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(40, 50, 100, 60);
+    editor.selectBox(0);
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+
+    QObject *paintObject = nullptr;
+    QTRY_VERIFY(paintObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("paintAboveTextLayer")));
+    auto *paintLayer = qobject_cast<QQuickItem *>(paintObject);
+    QVERIFY(paintLayer);
+
+    QObject *contentDelegateObject = nullptr;
+    QTRY_VERIFY(contentDelegateObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("textBoxContentDelegate")));
+    auto *contentDelegate = qobject_cast<QQuickItem *>(contentDelegateObject);
+    QVERIFY(contentDelegate);
+
+    QObject *uiDelegateObject = nullptr;
+    QTRY_VERIFY(uiDelegateObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("textBoxDelegate")));
+    auto *uiDelegate = qobject_cast<QQuickItem *>(uiDelegateObject);
+    QVERIFY(uiDelegate);
+
+    QObject *resizeHandleObject = nullptr;
+    QTRY_VERIFY(resizeHandleObject = findVisualChildByName(
+                    uiDelegate, QStringLiteral("resizeHandle_nw")));
+    auto *resizeHandle = qobject_cast<QQuickItem *>(resizeHandleObject);
+    QVERIFY(resizeHandle);
+
+    QVERIFY(paintLayer->z() > contentDelegate->z());
+    QVERIFY(uiDelegate->z() > paintLayer->z());
+    QVERIFY(resizeHandle->isVisible());
   }
 
   void qmlViewportMetricsConvertsCoordinatesAndZoomsAroundFocus() {

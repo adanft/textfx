@@ -1376,7 +1376,7 @@ private slots:
     QVERIFY(!source.contains(
         QStringLiteral("function anyBoxNeedsPreviewArtifact()")));
     QVERIFY(source.contains(
-        QStringLiteral("visible: boxRef.selected && editorRef.editingText")));
+        QStringLiteral("visible: selectionUiVisible && boxRef.selected && editorRef.editingText")));
     QVERIFY(source.contains(QStringLiteral("OutlinedTextItem {")));
     QCOMPARE(source.count(QStringLiteral("OutlinedTextItem {")), 1);
     QVERIFY(source.contains(QStringLiteral("id: boxOutlinedText")));
@@ -1470,7 +1470,7 @@ private slots:
     const QString editorBlock = source.mid(
         editor, source.indexOf(QStringLiteral("MouseArea {"), editor) - editor);
     QVERIFY(editorBlock.contains(
-        QStringLiteral("visible: boxRef.selected && editorRef.editingText")));
+        QStringLiteral("visible: selectionUiVisible && boxRef.selected && editorRef.editingText")));
     QVERIFY(editorBlock.contains(QStringLiteral("color: \"transparent\"")));
     QVERIFY(editorBlock.contains(
         QStringLiteral("selectedTextColor: \"transparent\"")));
@@ -1605,12 +1605,12 @@ private slots:
     QVERIFY(
         source.contains(QStringLiteral("window.editor.setPerspectiveHandle")));
     QVERIFY(source.contains(
-        QStringLiteral("border.width: perspectiveActive ? 0 : selected ? "
+        QStringLiteral("border.width: !renderSelectionUi || perspectiveActive ? 0 : selected ? "
                        "rootWindow.selectionLineWidth() : Math.max(1, "
                        "rootWindow.documentToViewLength(1))")));
     QVERIFY(source.contains(QStringLiteral("id: perspectiveBorder")));
     QVERIFY(source.contains(QStringLiteral(
-        "visible: boxRef.selected && boxRef.perspectiveActive")));
+        "visible: boxRef.renderSelectionUi && boxRef.selected && boxRef.perspectiveActive")));
     QVERIFY(source.contains(QStringLiteral("return Qt.matrix4x4(1, 0, 0, 0,")));
 
     const qsizetype wrapper =
@@ -1857,7 +1857,7 @@ private slots:
     QVERIFY(sourceContainsIgnoringWhitespace(
         source, QStringLiteral("x: corner.x * scale")));
     QVERIFY(source.contains(
-        QStringLiteral("border.width: perspectiveActive ? 0 : selected ? "
+        QStringLiteral("border.width: !renderSelectionUi || perspectiveActive ? 0 : selected ? "
                        "rootWindow.selectionLineWidth() : Math.max(1, "
                        "rootWindow.documentToViewLength(1))")));
     QVERIFY(sourceContainsIgnoringWhitespace(

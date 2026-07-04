@@ -73,6 +73,18 @@ struct TextBox {
   TextEffects effects;
 };
 
+struct PaintStroke {
+  std::string color = "000000ff";
+  double size = 12.0;
+  double opacity = 1.0;
+  std::vector<Point> points;
+};
+
+struct PagePaint {
+  std::vector<PaintStroke> behindText;
+  std::vector<PaintStroke> aboveText;
+};
+
 struct TextPreset {
   std::string name;
   TextStyle style;
@@ -86,6 +98,9 @@ public:
   const std::vector<TextPreset> &presets() const { return presets_; }
   std::vector<TextPreset> &presets() { return presets_; }
 
+  const PagePaint &paint() const { return paint_; }
+  PagePaint &paint() { return paint_; }
+
   bool dirty() const { return dirty_; }
   void setDirty(bool dirty) { dirty_ = dirty; }
   void markSaved() { dirty_ = false; }
@@ -97,6 +112,7 @@ public:
 private:
   std::vector<TextBox> boxes_;
   std::vector<TextPreset> presets_;
+  PagePaint paint_;
   bool dirty_ = false;
 };
 

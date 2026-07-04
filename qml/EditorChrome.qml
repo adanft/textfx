@@ -14,6 +14,7 @@ Item {
     property bool sidePanelTextInputFocused: false
     property alias menuBar: chromeMenuBar
     property string colorDialogSetter: ""
+    property var paintBrushColorTarget: null
     readonly property bool editingText: editor ? editor.editingText : false
     readonly property bool hasSelectedBox: editor ? editor.selectedIndex >= 0 : false
     readonly property bool boxActionsAvailable: hasSelectedBox && !editingText
@@ -73,6 +74,8 @@ Item {
             editor.setSelectedGradientColorA(hex);
         else if (colorDialogSetter === "gradientB")
             editor.setSelectedGradientColorB(hex);
+        else if (colorDialogSetter === "paint" && paintBrushColorTarget)
+            paintBrushColorTarget.paintBrushColor = hex;
     }
 
     width: 0
@@ -377,6 +380,7 @@ Item {
 
     ColorDialog {
         id: colorDialog
+        objectName: "colorDialog"
 
         onAccepted: editorChrome.applyColorDialogSelection(editorChrome.dialogColorHex(selectedColor))
     }

@@ -20,6 +20,8 @@
 #include <QTextDocument>
 #include <QUrl>
 
+#include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <utility>
 
@@ -31,6 +33,84 @@ QString toQString(const std::string &value) {
   return QString::fromStdString(value);
 }
 std::string toStdString(const QString &value) { return value.toStdString(); }
+
+std::string normalizedPaintColor(QString color) {
+  if (color.startsWith(QStringLiteral("#")))
+    color = color.sliced(1);
+  if (color.size() == 6)
+    color.append(QStringLiteral("ff"));
+  if (color.size() != 8)
+    return "000000ff";
+  color = color.toLower();
+  for (const QChar ch : color) {
+    if (!ch.isDigit() && (ch < QLatin1Char('a') || ch > QLatin1Char('f')))
+      return "000000ff";
+  }
+  return color.toStdString();
+}
+
+QVariantMap paintStrokeMap(const PaintStroke &stroke) {
+  QVariantList points;
+  for (const auto &point : stroke.points)
+    points.append(QVariant::fromValue(QVariantList{point.x, point.y}));
+  return {{"color", QString::fromStdString(stroke.color)},
+          {"size", stroke.size},
+          {"opacity", stroke.opacity},
+          {"points", points}};
+}
+
+QVariantList paintStrokeList(const std::vector<PaintStroke> &strokes) {
+  QVariantList result;
+  for (const auto &stroke : strokes)
+    result.append(paintStrokeMap(stroke));
+  return result;
+}
+
+std::vector<PaintStroke> *paintLayer(DocumentModel &document,
+                                     const QString &target) {
+  if (target == QStringLiteral("above_text"))
+    return &document.paint().aboveText;
+  if (target == QStringLiteral("behind_text"))
+    return &document.paint().behindText;
+  return nullptr;
+}
+
+std::vector<Point> pointsFromVariantList(const QVariantList &values) {
+  std::vector<Point> result;
+  for (const auto &value : values) {
+    const QVariantList point = value.toList();
+    if (point.size() < 2)
+      continue;
+    result.push_back({point.at(0).toDouble(), point.at(1).toDouble()});
+  }
+  return result;
+}
+
+double distanceToSegment(Point point, Point a, Point b) {
+  const double dx = b.x - a.x;
+  const double dy = b.y - a.y;
+  if (dx == 0.0 && dy == 0.0)
+    return std::hypot(point.x - a.x, point.y - a.y);
+  const double t = std::clamp(((point.x - a.x) * dx + (point.y - a.y) * dy) /
+                                  (dx * dx + dy * dy),
+                              0.0, 1.0);
+  return std::hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy));
+}
+
+bool strokeIntersectsEraser(const PaintStroke &stroke, Point center,
+                            double radius) {
+  const double hitRadius = std::max(0.0, radius) + std::max(0.0, stroke.size) / 2.0;
+  for (const auto &point : stroke.points) {
+    if (std::hypot(point.x - center.x, point.y - center.y) <= hitRadius)
+      return true;
+  }
+  for (std::size_t i = 1; i < stroke.points.size(); ++i) {
+    if (distanceToSegment(center, stroke.points[i - 1], stroke.points[i]) <=
+        hitRadius)
+      return true;
+  }
+  return false;
+}
 
 bool ensureRegularFile(const std::filesystem::path &path, std::string *error) {
   if (std::filesystem::exists(path) &&
@@ -71,6 +151,14 @@ EditorController::EditorController(QObject *parent)
 
 QVariantList EditorController::boxes() const {
   return EditorViewModels::textBoxList(document_.textBoxes());
+}
+
+QVariantList EditorController::paintBehindText() const {
+  return paintStrokeList(document_.paint().behindText);
+}
+
+QVariantList EditorController::paintAboveText() const {
+  return paintStrokeList(document_.paint().aboveText);
 }
 
 int EditorController::boxCount() const {
@@ -366,6 +454,40 @@ void EditorController::createTextBox(double x, double y, double w, double h) {
   selectedIndex_ = static_cast<int>(document_.textBoxes().size()) - 1;
   markDocumentChanged();
   emit selectionChanged();
+}
+
+void EditorController::addPaintStroke(const QString &target, const QString &color,
+                                      double size, double opacity,
+                                      const QVariantList &points) {
+  if (!hasProject())
+    return;
+  auto *layer = paintLayer(document_, target);
+  if (!layer)
+    return;
+  PaintStroke stroke;
+  stroke.color = normalizedPaintColor(color);
+  stroke.size = std::max(1.0, size);
+  stroke.opacity = std::clamp(opacity, 0.0, 1.0);
+  stroke.points = pointsFromVariantList(points);
+  if (stroke.points.empty())
+    return;
+  layer->push_back(std::move(stroke));
+  markDocumentChanged();
+}
+
+void EditorController::erasePaintAt(const QString &target, double x, double y,
+                                    double radius) {
+  if (!hasProject())
+    return;
+  auto *layer = paintLayer(document_, target);
+  if (!layer)
+    return;
+  const auto oldSize = layer->size();
+  std::erase_if(*layer, [&](const PaintStroke &stroke) {
+    return strokeIntersectsEraser(stroke, {x, y}, radius);
+  });
+  if (layer->size() != oldSize)
+    markDocumentChanged();
 }
 
 QVariant EditorController::boxRole(int row, const QString &roleName) const {

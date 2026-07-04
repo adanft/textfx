@@ -5,7 +5,9 @@
 #include <QJsonObject>
 
 #include <algorithm>
+#include <cctype>
 #include <fstream>
+#include <system_error>
 
 namespace textfx {
 namespace {
@@ -23,15 +25,49 @@ std::string readFile(const std::filesystem::path &path) {
 }
 
 bool writeFile(const std::filesystem::path &path, const QByteArray &bytes,
-               std::string *error) {
-  std::filesystem::create_directories(path.parent_path());
-  std::ofstream output(path, std::ios::binary);
+                std::string *error) {
+  std::error_code filesystemError;
+  const auto parent = path.parent_path();
+  if (!parent.empty())
+    std::filesystem::create_directories(parent, filesystemError);
+  if (filesystemError) {
+    setError(error, "Could not create save directory.");
+    return false;
+  }
+
+  const auto tempPath = path.string() + ".tmp";
+  std::ofstream output(tempPath, std::ios::binary | std::ios::trunc);
   if (!output) {
     setError(error, "Could not open save file.");
     return false;
   }
   output.write(bytes.constData(), bytes.size());
+  output.close();
+  if (!output) {
+    std::filesystem::remove(tempPath, filesystemError);
+    setError(error, "Could not write save file.");
+    return false;
+  }
+
+  std::filesystem::rename(tempPath, path, filesystemError);
+  if (filesystemError) {
+    std::filesystem::remove(tempPath, filesystemError);
+    setError(error, "Could not replace save file.");
+    return false;
+  }
   return true;
+}
+
+bool isHexByteColor(const std::string &color) {
+  return color.size() == 8 &&
+         std::ranges::all_of(color, [](unsigned char ch) {
+           return std::isxdigit(ch) != 0;
+         });
+}
+
+std::string sanitizedByteColor(const std::string &color,
+                               const std::string &fallback) {
+  return isHexByteColor(color) ? color : fallback;
 }
 
 QJsonArray pointToJson(Point point) { return {point.x, point.y}; }
@@ -62,11 +98,66 @@ QJsonArray pathPointsToJson(const std::vector<Point> &points) {
   return result;
 }
 
+QJsonArray pointsToJson(const std::vector<Point> &points) {
+  QJsonArray result;
+  for (const auto &point : points)
+    result.append(pointToJson(point));
+  return result;
+}
+
 std::vector<Point> pathPointsFromJson(const QJsonValue &value) {
   std::vector<Point> result;
   for (const auto &item : value.toArray())
     result.push_back(pointFromJson(item));
   return result;
+}
+
+PaintStroke paintStrokeFromJson(const QJsonObject &object) {
+  PaintStroke stroke;
+  stroke.color = sanitizedByteColor(object.value("color")
+                                        .toString(QString::fromStdString(stroke.color))
+                                        .toStdString(),
+                                    stroke.color);
+  stroke.size = object.value("size").toDouble(stroke.size);
+  stroke.opacity = object.value("opacity").toDouble(stroke.opacity);
+  stroke.points = pathPointsFromJson(object.value("points"));
+  return stroke;
+}
+
+std::vector<PaintStroke> paintStrokesFromJson(const QJsonValue &value) {
+  std::vector<PaintStroke> result;
+  for (const auto &item : value.toArray()) {
+    if (item.isObject())
+      result.push_back(paintStrokeFromJson(item.toObject()));
+  }
+  return result;
+}
+
+QJsonObject paintStrokeToJson(const PaintStroke &stroke) {
+  return {{"color", QString::fromStdString(stroke.color)},
+          {"size", stroke.size},
+          {"opacity", stroke.opacity},
+          {"points", pointsToJson(stroke.points)}};
+}
+
+QJsonArray paintStrokesToJson(const std::vector<PaintStroke> &strokes) {
+  QJsonArray result;
+  for (const auto &stroke : strokes)
+    result.append(paintStrokeToJson(stroke));
+  return result;
+}
+
+PagePaint paintFromJson(const QJsonValue &value) {
+  PagePaint paint;
+  const auto object = value.toObject();
+  paint.behindText = paintStrokesFromJson(object.value("behind_text"));
+  paint.aboveText = paintStrokesFromJson(object.value("above_text"));
+  return paint;
+}
+
+QJsonObject paintToJson(const PagePaint &paint) {
+  return {{"behind_text", paintStrokesToJson(paint.behindText)},
+          {"above_text", paintStrokesToJson(paint.aboveText)}};
 }
 
 QJsonObject outlineLayerToJson(const OutlineLayer &layer) {
@@ -274,6 +365,7 @@ bool JsonSerializer::loadPage(const std::filesystem::path &path,
     if (item.isObject())
       document.textBoxes().push_back(boxFromJson(item.toObject()));
   }
+  document.paint() = paintFromJson(root.value("paint"));
   document.markSaved();
   return true;
 }
@@ -287,7 +379,8 @@ bool JsonSerializer::savePage(const std::filesystem::path &path,
     boxes.append(boxToJson(box));
   const QJsonObject root{{"format", PageFormat},
                          {"page", QString::fromStdString(pageName)},
-                         {"boxes", boxes}};
+                         {"boxes", boxes},
+                         {"paint", paintToJson(document.paint())}};
   return writeFile(path, QJsonDocument(root).toJson(QJsonDocument::Indented),
                    error);
 }

@@ -78,6 +78,8 @@ ApplicationWindow {
     property alias pathHandlePressLocalY: pathHandleInteraction.pathHandlePressLocalY
     property alias pathHandleStartX: pathHandleInteraction.pathHandleStartX
     property alias pathHandleStartY: pathHandleInteraction.pathHandleStartY
+    property var activePaintPoints: []
+    property string activePaintTarget: ""
 
     function fitPageScale() {
         return viewportMetrics.fitPageScale();
@@ -414,6 +416,61 @@ ApplicationWindow {
         }
     }
 
+    function paintPoint(x, y) {
+        return [window.viewToDocumentX(x), window.viewToDocumentY(y)];
+    }
+
+    function activePaintStroke(target) {
+        if (window.activePaintTarget !== target || rightPanel.paintEraserMode || activePaintPoints.length === 0)
+            return {};
+
+        return {
+            "color": rightPanel.paintBrushColor,
+            "size": rightPanel.paintBrushSize,
+            "opacity": rightPanel.paintBrushOpacity,
+            "points": activePaintPoints
+        };
+    }
+
+    function beginPaintDrag(x, y) {
+        if (!rightPanel.paintMode)
+            return false;
+        Editor.endTextEdit();
+        dragMode = editorInteraction.dragModePaint;
+        activePaintTarget = rightPanel.paintTarget;
+        const point = paintPoint(x, y);
+        if (rightPanel.paintEraserMode) {
+            Editor.erasePaintAt(activePaintTarget, point[0], point[1], rightPanel.paintEraserSize);
+        } else {
+            activePaintPoints = [point];
+        }
+        return true;
+    }
+
+    function updatePaintDrag(x, y) {
+        if (dragMode !== editorInteraction.dragModePaint)
+            return ;
+        const point = paintPoint(x, y);
+        if (rightPanel.paintEraserMode) {
+            Editor.erasePaintAt(activePaintTarget, point[0], point[1], rightPanel.paintEraserSize);
+            return ;
+        }
+        const points = activePaintPoints.slice();
+        points.push(point);
+        activePaintPoints = points;
+    }
+
+    function endPaintDrag() {
+        if (dragMode !== editorInteraction.dragModePaint)
+            return false;
+        if (!rightPanel.paintEraserMode && activePaintPoints.length > 0)
+            Editor.addPaintStroke(activePaintTarget, rightPanel.paintBrushColor, rightPanel.paintBrushSize, rightPanel.paintBrushOpacity, activePaintPoints);
+        activePaintPoints = [];
+        activePaintTarget = "";
+        dragMode = editorInteraction.dragModeIdle;
+        return true;
+    }
+
     width: 1280
     height: 800
     visible: true
@@ -431,6 +488,7 @@ ApplicationWindow {
         readonly property int dragModeRotate: 6
         readonly property int dragModeMove: 7
         readonly property int dragModePathHandle: 8
+        readonly property int dragModePaint: 9
     }
 
     QtObject {
@@ -538,6 +596,7 @@ ApplicationWindow {
         hostHeight: window.height
         zoomCenterX: canvas.width / 2
         zoomCenterY: canvas.height / 2
+        paintBrushColorTarget: rightPanel
         sidePanelTextInputFocused: window.sidePanelFocusedTextInputs > 0
         onZoomAtRequested: (x, y, factor) => {
             return window.zoomAt(x, y, factor);
@@ -600,12 +659,16 @@ ApplicationWindow {
                     }
                     onDeletePressed: Editor.deleteSelected()
                     onCanvasPressed: (x, y, button, modifiers) => {
+                        if (rightPanel.paintMode)
+                            return ;
                         if (button === Qt.LeftButton)
                             Editor.endTextEdit();
 
                         canvasInteraction.beginPress(x, y, button, modifiers);
                     }
                     onCanvasPositionChanged: (x, y, pressed) => {
+                        if (rightPanel.paintMode)
+                            return ;
                         const update = canvasInteraction.updatePointer(x, y, pressed);
                         if (update.panned) {
                             window.panX += update.panDx;
@@ -613,6 +676,8 @@ ApplicationWindow {
                         }
                     }
                     onCanvasReleased: (x, y, button, modifiers) => {
+                        if (rightPanel.paintMode)
+                            return ;
                         const release = canvasInteraction.endRelease();
                         if (release.creating) {
                             const rectangle = release.rectangle;
@@ -629,6 +694,7 @@ ApplicationWindow {
 
                     Image {
                         id: pageImage
+                        objectName: "pageImage"
 
                         x: window.documentToViewX(0)
                         y: window.documentToViewY(0)
@@ -643,6 +709,19 @@ ApplicationWindow {
                                 window.pageBaseScale = window.fitPageScale();
 
                         }
+                    }
+
+                    PaintLayer {
+                        id: paintBehindTextLayer
+                        objectName: "paintBehindTextLayer"
+                        x: pageImage.x
+                        y: pageImage.y
+                        width: pageImage.width
+                        height: pageImage.height
+                        strokes: Editor.paintBehindText
+                        previewStroke: window.activePaintStroke("behind_text")
+                        scaleFactor: window.viewDocScale()
+                        visible: pageImage.visible
                     }
 
                     Image {
@@ -691,8 +770,78 @@ ApplicationWindow {
                         delegate: TextBoxDelegate {
                             canvasItem: canvas
                             interaction: editorInteraction
+                            renderSelectionUi: false
                         }
 
+                    }
+
+                    PaintLayer {
+                        id: paintAboveTextLayer
+                        objectName: "paintAboveTextLayer"
+                        z: 30
+                        x: pageImage.x
+                        y: pageImage.y
+                        width: pageImage.width
+                        height: pageImage.height
+                        strokes: Editor.paintAboveText
+                        previewStroke: window.activePaintStroke("above_text")
+                        scaleFactor: window.viewDocScale()
+                        visible: pageImage.visible
+                    }
+
+                    Repeater {
+                        model: Editor.boxesModel
+
+                        delegate: TextBoxDelegate {
+                            canvasItem: canvas
+                            interaction: editorInteraction
+                            renderTextContent: false
+                        }
+
+                    }
+
+                    MouseArea {
+                        id: paintInputArea
+                        objectName: "paintInputArea"
+                        x: pageImage.x
+                        y: pageImage.y
+                        width: pageImage.width
+                        height: pageImage.height
+                        visible: rightPanel.paintMode && pageImage.visible
+                        enabled: visible
+                        z: 200
+                        hoverEnabled: true
+                        cursorShape: Qt.CrossCursor
+                        acceptedButtons: Qt.LeftButton
+                        preventStealing: true
+                        function containsLocal(localX, localY) {
+                            return localX >= 0 && localY >= 0 && localX <= width && localY <= height;
+                        }
+                        function canvasPoint(localX, localY) {
+                            return paintInputArea.mapToItem(canvas, localX, localY);
+                        }
+                        onPressed: (mouse) => {
+                            if (!containsLocal(mouse.x, mouse.y)) {
+                                mouse.accepted = false;
+                                return ;
+                            }
+                            canvas.forceActiveFocus();
+                            const point = canvasPoint(mouse.x, mouse.y);
+                            window.beginPaintDrag(point.x, point.y);
+                            mouse.accepted = true;
+                        }
+                        onPositionChanged: (mouse) => {
+                            if (pressed && containsLocal(mouse.x, mouse.y)) {
+                                const point = canvasPoint(mouse.x, mouse.y);
+                                window.updatePaintDrag(point.x, point.y);
+                            }
+                            mouse.accepted = true;
+                        }
+                        onReleased: (mouse) => {
+                            window.endPaintDrag();
+                            mouse.accepted = true;
+                        }
+                        onCanceled: window.endPaintDrag()
                     }
 
                 }

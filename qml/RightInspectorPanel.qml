@@ -34,6 +34,13 @@ Pane {
     property real displayScale: 1
     property real minimumDisplayScale: 0.5
     property real maximumDisplayScale: 6
+    property alias paintMode: pageEffectsSection.paintMode
+    property alias paintEraserMode: pageEffectsSection.paintEraserMode
+    property alias paintTarget: pageEffectsSection.paintTarget
+    property alias paintBrushColor: pageEffectsSection.paintBrushColor
+    property alias paintBrushSize: pageEffectsSection.paintBrushSize
+    property alias paintBrushOpacity: pageEffectsSection.paintBrushOpacity
+    property alias paintEraserSize: pageEffectsSection.paintEraserSize
 
     signal colorDialogRequested(string hex, string setter)
     signal zoomRequested(real displayScale)
@@ -50,6 +57,8 @@ Pane {
 
     ScrollView {
         id: rightPanelScroll
+
+        objectName: "rightPanelScroll"
 
         anchors.fill: parent
         clip: true
@@ -92,14 +101,23 @@ Pane {
                 Layout.minimumWidth: 0
             }
 
+            PageEffectsSection {
+                id: pageEffectsSection
+                objectName: "pageEffectsSection"
+                qmlColorProvider: rightInspectorPanel.qmlColorProvider
+                onColorDialogRequested: (hex, setter) => {
+                    rightInspectorPanel.colorDialogRequested(hex, setter);
+                }
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+            }
+
             LayersSection {
                 editor: rightInspectorPanel.editor
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
                 Layout.fillHeight: true
-
             }
-
         }
 
     }

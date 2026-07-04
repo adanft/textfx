@@ -6,6 +6,7 @@ TextArea {
 
     property var boxRef
     property var outlinedTextItem
+    property bool selectionUiVisible: true
     property var rootWindow: boxRef.rootWindow
     property var editorRef: boxRef.editorRef
     property real editLineSpacing: boxRef.boxModel.lineSpacing
@@ -76,7 +77,7 @@ TextArea {
         applyLineSpacing();
     }
 
-    objectName: "boxTextArea"
+    objectName: selectionUiVisible ? "boxTextArea" : "boxTextAreaInactive"
     z: zEditOverlay
     x: editLayoutPaintOffsetX * rootWindow.viewDocScale()
     y: editLayoutPaintOffsetY * rootWindow.viewDocScale()
@@ -85,7 +86,7 @@ TextArea {
     transformOrigin: Item.TopLeft
     scale: rootWindow.viewDocScale()
     clip: true
-    visible: boxRef.selected && editorRef.editingText
+    visible: selectionUiVisible && boxRef.selected && editorRef.editingText
     text: ""
     color: "transparent"
     selectedTextColor: "transparent"

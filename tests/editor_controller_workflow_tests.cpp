@@ -155,6 +155,39 @@ private slots:
     QVERIFY(changed.count() >= 1);
   }
 
+  void paintWorkflowKeepsTextBoxesSeparate() {
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 100, 50);
+    editor.updateSelectedText(QStringLiteral("Keep me"));
+
+    const QVariantList strokePoints{QVariantList{12.0, 14.0},
+                                    QVariantList{30.0, 14.0}};
+    editor.addPaintStroke(QStringLiteral("behind_text"), QStringLiteral("ff0000ff"),
+                          8.0, 0.75, strokePoints);
+    editor.addPaintStroke(QStringLiteral("above_text"), QStringLiteral("0000ffff"),
+                          8.0, 1.0, strokePoints);
+    editor.addPaintStroke(QStringLiteral("above_text"), QStringLiteral("zzzzzzzz"),
+                          8.0, 1.0, strokePoints);
+
+    QCOMPARE(editor.paintBehindText().size(), 1);
+    QCOMPARE(editor.paintAboveText().size(), 2);
+    QCOMPARE(editor.paintAboveText().at(1).toMap().value(QStringLiteral("color")).toString(),
+             QStringLiteral("000000ff"));
+    QCOMPARE(editor.boxes().size(), 1);
+    QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
+             QStringLiteral("Keep me"));
+    QVERIFY(editor.dirty());
+
+    editor.erasePaintAt(QStringLiteral("behind_text"), 20.0, 14.0, 10.0);
+
+    QCOMPARE(editor.paintBehindText().size(), 0);
+    QCOMPARE(editor.paintAboveText().size(), 2);
+    QCOMPARE(editor.boxes().size(), 1);
+    QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
+             QStringLiteral("Keep me"));
+  }
+
   void createdBoxesAreEmptyExactDragWithTypeXMinimum() {
     EditorController editor;
     editor.newDocument();
@@ -693,6 +726,28 @@ private slots:
     QCOMPARE(editor.pageCount(), 1);
     QCOMPARE(editor.currentPageName(), QStringLiteral("page1.png"));
     QVERIFY(editor.currentPageUrl().isLocalFile());
+  }
+
+  void failedSaveKeepsDocumentDirty() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    touch(dir.filePath(QStringLiteral("page1.png")));
+
+    EditorController editor;
+    editor.openProject(dir.path());
+    editor.createTextBox(1, 2, 80, 40);
+    editor.updateSelectedText(QStringLiteral("Unsaved"));
+    QVERIFY(editor.dirty());
+
+    QFile saveFolderBlocker(dir.filePath(QStringLiteral(".textfx")));
+    QVERIFY(saveFolderBlocker.open(QIODevice::WriteOnly));
+    saveFolderBlocker.write("not a directory");
+    saveFolderBlocker.close();
+
+    editor.save();
+
+    QVERIFY(editor.dirty());
+    QVERIFY(editor.notification().contains(QStringLiteral("Could not save boxes")));
   }
 
   void openProjectUrlRejectsNonLocalUrls() {

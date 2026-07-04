@@ -1549,7 +1549,7 @@ private slots:
             "function handleSize() { return Math.max(1, "
             "documentToViewLength(editorLimits.minimumBoxSize)) }")));
     QVERIFY(delegateSource.contains(
-        QStringLiteral("border.width: perspectiveActive ? 0 : selected ? "
+        QStringLiteral("border.width: !renderSelectionUi || perspectiveActive ? 0 : selected ? "
                        "rootWindow.selectionLineWidth() : Math.max(1, "
                        "rootWindow.documentToViewLength(1))")));
     QVERIFY(!mainSource.contains(

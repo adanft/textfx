@@ -23,6 +23,7 @@ void DocumentModel::moveLayer(std::size_t from, std::size_t to) {
 void DocumentModel::clear() {
   boxes_.clear();
   presets_.clear();
+  paint_ = {};
   dirty_ = false;
 }
 

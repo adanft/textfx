@@ -12,6 +12,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPainterPathStroker>
+#include <QPen>
 #include <QString>
 #include <QVector>
 
@@ -24,12 +25,31 @@
 namespace textfx {
 namespace {
 QColor toQColor(const std::string &color) {
+  const auto hexValue = [](char ch) -> int {
+    if (ch >= '0' && ch <= '9')
+      return ch - '0';
+    if (ch >= 'a' && ch <= 'f')
+      return ch - 'a' + 10;
+    if (ch >= 'A' && ch <= 'F')
+      return ch - 'A' + 10;
+    return -1;
+  };
   if (color.size() != 8)
     return QColor(0, 0, 0, 255);
-  const auto byte = [&](std::size_t i) {
-    return std::stoi(color.substr(i, 2), nullptr, 16);
+  const auto byte = [&](std::size_t i) -> int {
+    const int high = hexValue(color[i]);
+    const int low = hexValue(color[i + 1]);
+    if (high < 0 || low < 0)
+      return -1;
+    return high * 16 + low;
   };
-  return QColor(byte(0), byte(2), byte(4), byte(6));
+  const int red = byte(0);
+  const int green = byte(2);
+  const int blue = byte(4);
+  const int alpha = byte(6);
+  if (red < 0 || green < 0 || blue < 0 || alpha < 0)
+    return QColor(0, 0, 0, 255);
+  return QColor(red, green, blue, alpha);
 }
 
 QFont qFontFor(const TextBox &box) {
@@ -78,6 +98,29 @@ std::vector<OutlineLayer> effectiveOutlineLayers(const TextEffects &effects) {
 
 std::vector<OutlineLayer> paintOutlineLayers(const TextEffects &effects) {
   return effectiveOutlineLayers(effects);
+}
+
+void drawPaintStrokes(QPainter &painter, const std::vector<PaintStroke> &strokes) {
+  painter.save();
+  painter.setRenderHint(QPainter::Antialiasing, true);
+  for (const auto &stroke : strokes) {
+    if (stroke.points.empty() || stroke.size <= 0.0 || stroke.opacity <= 0.0)
+      continue;
+    QColor color = toQColor(stroke.color);
+    color.setAlphaF(std::clamp(stroke.opacity, 0.0, 1.0) * color.alphaF());
+    QPen pen(color, stroke.size, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    painter.setPen(pen);
+    if (stroke.points.size() == 1) {
+      const auto &point = stroke.points.front();
+      painter.drawPoint(QPointF(point.x, point.y));
+      continue;
+    }
+    QPainterPath path(QPointF(stroke.points.front().x, stroke.points.front().y));
+    for (std::size_t i = 1; i < stroke.points.size(); ++i)
+      path.lineTo(stroke.points[i].x, stroke.points[i].y);
+    painter.drawPath(path);
+  }
+  painter.restore();
 }
 
 std::vector<qreal>
@@ -312,8 +355,10 @@ RenderGraph::exportPagePngTimed(const DocumentModel &document,
   source = source.convertToFormat(QImage::Format_ARGB32_Premultiplied);
 
   QPainter painter(&source);
+  drawPaintStrokes(painter, document.paint().behindText);
   for (const auto &box : document.textBoxes())
     drawTextBox(painter, box);
+  drawPaintStrokes(painter, document.paint().aboveText);
   painter.end();
 
   std::error_code filesystemError;

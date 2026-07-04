@@ -96,6 +96,70 @@ int main() {
     return 1;
   }
 
+  const auto legacyNoPaintPath = std::filesystem::path(tempDir.path().toStdString()) /
+                                 "legacy-no-paint.json";
+  {
+    std::ofstream legacy(legacyNoPaintPath, std::ios::binary);
+    legacy << R"({"format":"textfx.page-boxes.v1","page":"legacy.png","boxes":[]})";
+  }
+  DocumentModel legacyNoPaint;
+  if (!JsonSerializer::loadPage(legacyNoPaintPath, legacyNoPaint, &error) ||
+      !legacyNoPaint.paint().behindText.empty() ||
+      !legacyNoPaint.paint().aboveText.empty()) {
+    std::cerr << "Missing paint object did not load as empty paint layers\n";
+    return 1;
+  }
+
+  DocumentModel paintDocument;
+  paintDocument.paint().behindText.push_back(
+      {"ff0000ff", 10.0, 0.5, {{1.0, 2.0}, {3.0, 4.0}}});
+  paintDocument.paint().aboveText.push_back(
+      {"0000ffff", 6.0, 1.0, {{5.0, 6.0}, {7.0, 8.0}}});
+  const auto paintOutput = std::filesystem::path(tempDir.path().toStdString()) /
+                           "paint-roundtrip.json";
+  if (!JsonSerializer::savePage(paintOutput, "paint.png", paintDocument,
+                                &error)) {
+    std::cerr << "Paint page failed to save: " << error << '\n';
+    return 1;
+  }
+  DocumentModel paintRoundTrip;
+  if (!JsonSerializer::loadPage(paintOutput, paintRoundTrip, &error) ||
+      paintRoundTrip.paint().behindText.size() != 1 ||
+      paintRoundTrip.paint().aboveText.size() != 1 ||
+      paintRoundTrip.paint().behindText.front().color != "ff0000ff" ||
+      paintRoundTrip.paint().behindText.front().opacity != 0.5 ||
+      paintRoundTrip.paint().behindText.front().points.size() != 2 ||
+      paintRoundTrip.paint().aboveText.front().points.back().x != 7.0) {
+    std::cerr << "Paint layers did not round-trip\n";
+    return 1;
+  }
+
+  const auto invalidPaintPath = std::filesystem::path(tempDir.path().toStdString()) /
+                                "invalid-paint-color.json";
+  {
+    std::ofstream invalid(invalidPaintPath, std::ios::binary);
+    invalid << R"({"format":"textfx.page-boxes.v1","page":"invalid.png","boxes":[],"paint":{"behind_text":[{"color":"zzzzzzzz","size":3,"opacity":1,"points":[[1,2],[3,4]]}],"above_text":[{"color":"123","size":3,"opacity":1,"points":[[1,2],[3,4]]}]}})";
+  }
+  DocumentModel invalidPaintDocument;
+  if (!JsonSerializer::loadPage(invalidPaintPath, invalidPaintDocument,
+                                &error) ||
+      invalidPaintDocument.paint().behindText.size() != 1 ||
+      invalidPaintDocument.paint().aboveText.size() != 1 ||
+      invalidPaintDocument.paint().behindText.front().color != "000000ff" ||
+      invalidPaintDocument.paint().aboveText.front().color != "000000ff") {
+    std::cerr << "Invalid paint colors were not sanitized on load\n";
+    return 1;
+  }
+
+  const auto blockedSavePath =
+      std::filesystem::path(tempDir.path().toStdString()) / "blocked-save";
+  std::filesystem::create_directory(blockedSavePath);
+  if (JsonSerializer::savePage(blockedSavePath, "blocked.png", paintDocument,
+                               &error)) {
+    std::cerr << "Blocked page save unexpectedly reported success\n";
+    return 1;
+  }
+
   const auto legacyOutlinePath = std::filesystem::path(tempDir.path().toStdString()) /
                                  "legacy-outline.json";
   {

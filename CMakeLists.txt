@@ -106,7 +106,10 @@ qt_add_qml_module(textfx
         qml/LayersSection.qml
         qml/LeftInspectorPanel.qml
         qml/NavigationSection.qml
+        qml/PageEffectsSection.qml
         qml/PageTextsSection.qml
+        qml/PaintLayer.qml
+        qml/PaintSection.qml
         qml/PathHandleInteractionState.qml
         qml/PerspectiveGeometry.qml
         qml/PerspectiveInteractionState.qml
