@@ -14,6 +14,10 @@ Item {
     property bool sidePanelTextInputFocused: false
     property alias menuBar: chromeMenuBar
     property string colorDialogSetter: ""
+    readonly property bool editingText: editor ? editor.editingText : false
+    readonly property bool hasSelectedBox: editor ? editor.selectedIndex >= 0 : false
+    readonly property bool boxActionsAvailable: hasSelectedBox && !editingText
+    readonly property bool projectAvailable: editor ? editor.hasProject : false
 
     signal zoomAtRequested(real x, real y, real factor)
     signal resetZoomRequested()
@@ -141,35 +145,43 @@ Item {
     Action {
         id: copyAction
 
+        objectName: "copyAction"
+
         text: qsTr("Copy")
         shortcut: StandardKey.Copy
-        enabled: editorChrome.editor && editorChrome.editor.actionEnabled("copy") && !editorChrome.editor.editingText
+        enabled: editorChrome.editor && editorChrome.boxActionsAvailable && editorChrome.editor.actionEnabled("copy")
         onTriggered: editorChrome.editor.copySelected()
     }
 
     Action {
         id: pasteAction
 
+        objectName: "pasteAction"
+
         text: qsTr("Paste")
         shortcut: StandardKey.Paste
-        enabled: editorChrome.editor && editorChrome.editor.actionEnabled("paste") && !editorChrome.editor.editingText
+        enabled: editorChrome.editor && editorChrome.projectAvailable && !editorChrome.editingText && editorChrome.editor.actionEnabled("paste")
         onTriggered: editorChrome.editor.pasteBox()
     }
 
     Action {
         id: duplicateAction
 
+        objectName: "duplicateAction"
+
         text: qsTr("Duplicate")
-        enabled: editorChrome.editor && editorChrome.editor.actionEnabled("duplicate") && !editorChrome.editor.editingText
+        enabled: editorChrome.editor && editorChrome.boxActionsAvailable && editorChrome.editor.actionEnabled("duplicate")
         onTriggered: editorChrome.editor.duplicateSelected()
     }
 
     Action {
         id: deleteAction
 
+        objectName: "deleteAction"
+
         text: qsTr("Delete")
         shortcut: StandardKey.Delete
-        enabled: editorChrome.editor && editorChrome.editor.actionEnabled("delete") && !editorChrome.editor.editingText
+        enabled: editorChrome.editor && editorChrome.boxActionsAvailable && editorChrome.editor.actionEnabled("delete")
         onTriggered: editorChrome.editor.deleteSelected()
     }
 

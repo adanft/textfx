@@ -578,6 +578,7 @@ private slots:
     editor.setPerspectiveHandle(QStringLiteral("ne"), 0.9, 0.1);
     editor.setSelectedPathMode(1);
     editor.setPathHandle(0, 0.2, 0.8);
+    const auto copied = editor.boxes().at(0).toMap();
     editor.copySelected();
     editor.pasteBox();
 
@@ -589,8 +590,17 @@ private slots:
     QVERIFY(!pasted.value(QStringLiteral("text"))
                  .toString()
                  .startsWith(QLatin1Char('{')));
-    QCOMPARE(pasted.value(QStringLiteral("x")).toDouble(), 26.0);
-    QCOMPARE(pasted.value(QStringLiteral("y")).toDouble(), 36.0);
+    QCOMPARE(pasted.value(QStringLiteral("x")).toDouble(),
+             copied.value(QStringLiteral("x")).toDouble() + 16.0);
+    QCOMPARE(pasted.value(QStringLiteral("y")).toDouble(),
+             copied.value(QStringLiteral("y")).toDouble() + 16.0);
+    for (auto it = copied.cbegin(); it != copied.cend(); ++it) {
+      const auto key = it.key();
+      if (key == QStringLiteral("index") || key == QStringLiteral("x") ||
+          key == QStringLiteral("y"))
+        continue;
+      QCOMPARE(pasted.value(key), it.value());
+    }
     QCOMPARE(pasted.value(QStringLiteral("rotation")).toDouble(), 12.5);
     QVERIFY(pasted.value(QStringLiteral("outline")).toBool());
     QCOMPARE(pasted.value(QStringLiteral("outlineColor")).toString(),

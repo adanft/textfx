@@ -864,20 +864,35 @@ private slots:
                        "onTriggered: Qt.quit() }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorChromeSource,
-        QStringLiteral("Action { id: copyAction; text: qsTr(\"Copy\"); "
-                       "shortcut: StandardKey.Copy")));
+        QStringLiteral("Action { id: copyAction; objectName: \"copyAction\"; "
+                       "text: qsTr(\"Copy\"); shortcut: StandardKey.Copy; "
+                       "enabled:")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorChromeSource,
-        QStringLiteral("Action { id: pasteAction; text: qsTr(\"Paste\"); "
-                       "shortcut: StandardKey.Paste")));
+        QStringLiteral("Action { id: pasteAction; objectName: "
+                       "\"pasteAction\"; text: qsTr(\"Paste\"); shortcut: "
+                       "StandardKey.Paste; enabled:")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        readQmlFile(QStringLiteral("CentralCanvasShell.qml")),
+        QStringLiteral("signal copyPressed(); signal pastePressed()")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        readQmlFile(QStringLiteral("CentralCanvasShell.qml")),
+        QStringLiteral("event.modifiers & Qt.ControlModifier && event.key === "
+                       "Qt.Key_C")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        readQmlFile(QStringLiteral("CentralCanvasShell.qml")),
+        QStringLiteral("event.modifiers & Qt.ControlModifier && event.key === "
+                       "Qt.Key_V")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorChromeSource,
-        QStringLiteral("Action { id: deleteAction; text: qsTr(\"Delete\"); "
+        QStringLiteral("Action { id: deleteAction; objectName: "
+                       "\"deleteAction\"; text: qsTr(\"Delete\"); "
                        "shortcut: StandardKey.Delete")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorChromeSource,
-        QStringLiteral("Action { id: duplicateAction; text: "
-                       "qsTr(\"Duplicate\"); enabled:")));
+        QStringLiteral("Action { id: duplicateAction; objectName: "
+                       "\"duplicateAction\"; text: qsTr(\"Duplicate\"); "
+                       "enabled:")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorChromeSource,
         QStringLiteral("Action { id: zoomInAction; text: qsTr(\"Zoom In\"); "
@@ -1014,6 +1029,60 @@ private slots:
     QCOMPARE(editor.selectedIndex(), 0);
     QVERIFY(QMetaObject::invokeMethod(chrome, "escapeRequested"));
     QTRY_COMPARE(editor.selectedIndex(), -1);
+  }
+
+  void qmlEditorChromeEditActionsTrackSelectionAndEditMode() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 100, 50);
+    editor.selectBox(-1);
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    auto *copyAction =
+        window->findChild<QObject *>(QStringLiteral("copyAction"));
+    auto *pasteAction =
+        window->findChild<QObject *>(QStringLiteral("pasteAction"));
+    auto *duplicateAction =
+        window->findChild<QObject *>(QStringLiteral("duplicateAction"));
+    auto *deleteAction =
+        window->findChild<QObject *>(QStringLiteral("deleteAction"));
+    QVERIFY(copyAction);
+    QVERIFY(pasteAction);
+    QVERIFY(duplicateAction);
+    QVERIFY(deleteAction);
+
+    QTRY_VERIFY(!copyAction->property("enabled").toBool());
+    QTRY_VERIFY(pasteAction->property("enabled").toBool());
+    QTRY_VERIFY(!duplicateAction->property("enabled").toBool());
+    QTRY_VERIFY(!deleteAction->property("enabled").toBool());
+
+    editor.selectBox(0);
+    QTRY_VERIFY(copyAction->property("enabled").toBool());
+    QTRY_VERIFY(pasteAction->property("enabled").toBool());
+    QTRY_VERIFY(duplicateAction->property("enabled").toBool());
+    QTRY_VERIFY(deleteAction->property("enabled").toBool());
+
+    editor.beginTextEdit();
+    QTRY_VERIFY(!copyAction->property("enabled").toBool());
+    QTRY_VERIFY(!pasteAction->property("enabled").toBool());
+    QTRY_VERIFY(!duplicateAction->property("enabled").toBool());
+    QTRY_VERIFY(!deleteAction->property("enabled").toBool());
+
+    editor.endTextEdit();
+    QTRY_VERIFY(copyAction->property("enabled").toBool());
+    QTRY_VERIFY(pasteAction->property("enabled").toBool());
+    QTRY_VERIFY(duplicateAction->property("enabled").toBool());
+    QTRY_VERIFY(deleteAction->property("enabled").toBool());
   }
 
   void qmlMainWiresLeftInspectorPanelApi() {

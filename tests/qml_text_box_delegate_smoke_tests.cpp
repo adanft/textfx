@@ -1,9 +1,11 @@
 #include "app/EditorController.h"
 #include "qt_test_helpers.h"
 
+#include <QClipboard>
 #include <QMetaObject>
 #include <QFile>
 #include <QFont>
+#include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickItem>
@@ -214,6 +216,55 @@ private slots:
 
     editor.setSelectedLineSpacing(9);
     QTRY_COMPARE(lineSpacing(), 9.0);
+  }
+
+  void qmlTextAreaCtrlCopyPasteEditsTextWithoutPastingBox() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 260, 90);
+    editor.updateSelectedText(QStringLiteral("abc"));
+    editor.beginTextEdit();
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window =
+        qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+    QObject *textArea = nullptr;
+    QTRY_VERIFY(textArea = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxTextArea")));
+    QTRY_VERIFY(textArea->property("visible").toBool());
+    QTRY_VERIFY(textArea->property("activeFocus").toBool());
+    QTRY_COMPARE(textArea->property("text").toString(), QStringLiteral("abc"));
+    QCOMPARE(editor.boxes().size(), 1);
+
+    QGuiApplication::clipboard()->clear();
+    QTest::keyClick(window, Qt::Key_A, Qt::ControlModifier);
+    QTest::keyClick(window, Qt::Key_C, Qt::ControlModifier);
+    QTRY_COMPARE(QGuiApplication::clipboard()->text(), QStringLiteral("abc"));
+
+    QVERIFY(QMetaObject::invokeMethod(textArea, "deselect"));
+    textArea->setProperty("cursorPosition", 3);
+    QTest::keyClick(window, Qt::Key_V, Qt::ControlModifier);
+
+    QTRY_COMPARE(textArea->property("text").toString(),
+                 QStringLiteral("abcabc"));
+    QTRY_COMPARE(editor.selectedBoxViewModel()
+                     .toMap()
+                     .value(QStringLiteral("text"))
+                     .toString(),
+                 QStringLiteral("abcabc"));
+    QCOMPARE(editor.boxes().size(), 1);
+    QCOMPARE(editor.selectedIndex(), 0);
+    QVERIFY(editor.editingText());
+    QVERIFY(textArea->property("activeFocus").toBool());
   }
 
   void qmlTextEditPreviewUsesUpdatedModelWhenEditEnds() {

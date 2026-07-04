@@ -590,6 +590,14 @@ ApplicationWindow {
                     hostPalette: window.palette
                     editingText: Editor.editingText
                     onEscapePressed: window.handleEscape()
+                    onCopyPressed: {
+                        if (Editor.actionEnabled("copy"))
+                            Editor.copySelected();
+                    }
+                    onPastePressed: {
+                        if (Editor.actionEnabled("paste"))
+                            Editor.pasteBox();
+                    }
                     onDeletePressed: Editor.deleteSelected()
                     onCanvasPressed: (x, y, button, modifiers) => {
                         if (button === Qt.LeftButton)

@@ -1,7 +1,9 @@
 #include "app/EditorController.h"
 #include "qt_test_helpers.h"
 
+#include <QClipboard>
 #include <QCoreApplication>
+#include <QGuiApplication>
 #include <QMetaObject>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -137,6 +139,28 @@ private slots:
     QTRY_VERIFY(canvas->hasActiveFocus());
     QTest::keyClick(window, Qt::Key_Delete);
     QTRY_COMPARE(editor.boxes().size(), 1);
+
+    editor.selectBox(0);
+    editor.updateSelectedText(QStringLiteral("Keyboard copied box"));
+    const auto copiedBox = editor.boxes().at(0).toMap();
+    QGuiApplication::clipboard()->clear();
+    canvas->forceActiveFocus();
+    QTRY_VERIFY(canvas->hasActiveFocus());
+
+    QTest::keyClick(window, Qt::Key_C, Qt::ControlModifier);
+    QTRY_VERIFY(QGuiApplication::clipboard()->text().contains(
+        QStringLiteral("Keyboard copied box")));
+
+    QTest::keyClick(window, Qt::Key_V, Qt::ControlModifier);
+    QTRY_COMPARE(editor.boxes().size(), 2);
+    const auto pastedBox = editor.boxes().at(1).toMap();
+    QCOMPARE(pastedBox.value(QStringLiteral("text")).toString(),
+             QStringLiteral("Keyboard copied box"));
+    QCOMPARE(pastedBox.value(QStringLiteral("x")).toDouble(),
+             copiedBox.value(QStringLiteral("x")).toDouble() + 16.0);
+    QCOMPARE(pastedBox.value(QStringLiteral("y")).toDouble(),
+             copiedBox.value(QStringLiteral("y")).toDouble() + 16.0);
+    QCOMPARE(editor.selectedIndex(), 1);
 
     const qreal zoomBeforeWheel = window->property("zoom").toReal();
     const QPointF wheelPosition = shell->mapToScene(QPointF(220, 180));

@@ -10,6 +10,8 @@ Item {
     default property alias canvasContent: canvas.data
 
     signal escapePressed()
+    signal copyPressed()
+    signal pastePressed()
     signal deletePressed()
     signal canvasPressed(real x, real y, int button, int modifiers)
     signal canvasPositionChanged(real x, real y, bool pressed)
@@ -40,6 +42,17 @@ Item {
             }
             if (canvasShell.editingText)
                 return ;
+
+            if (event.modifiers & Qt.ControlModifier && event.key === Qt.Key_C) {
+                canvasShell.copyPressed();
+                event.accepted = true;
+                return ;
+            }
+            if (event.modifiers & Qt.ControlModifier && event.key === Qt.Key_V) {
+                canvasShell.pastePressed();
+                event.accepted = true;
+                return ;
+            }
 
             if (event.key === Qt.Key_Delete) {
                 canvasShell.deletePressed();
