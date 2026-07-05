@@ -591,6 +591,16 @@ private slots:
         readQmlFile(QStringLiteral("BoxEffectsSection.qml"));
     const QString textEffectsSectionSource =
         readQmlFile(QStringLiteral("TextEffectsSection.qml"));
+    const QString outlineEffectEditorSource =
+        readQmlFile(QStringLiteral("OutlineEffectEditor.qml"));
+    const QString blurEffectEditorSource =
+        readQmlFile(QStringLiteral("BlurEffectEditor.qml"));
+    const QString shadowEffectEditorSource =
+        readQmlFile(QStringLiteral("ShadowEffectEditor.qml"));
+    const QString gradientEffectEditorSource =
+        readQmlFile(QStringLiteral("GradientEffectEditor.qml"));
+    const QString pathEffectEditorSource =
+        readQmlFile(QStringLiteral("PathEffectEditor.qml"));
     const QString pageEffectsSectionSource =
         readQmlFile(QStringLiteral("PageEffectsSection.qml"));
     const QString paintSectionSource =
@@ -823,7 +833,12 @@ private slots:
     QVERIFY((rightPanelSource + boxEffectsSectionSource + textEffectsSectionSource)
                 .count(QStringLiteral("GroupBox {")) >= 2);
     QVERIFY(navigationSectionSource.count(QStringLiteral("GroupBox {")) >= 1);
-    QVERIFY((rightPanelSource + textEffectsSectionSource)
+    const QString textEffectsEditorsSource = outlineEffectEditorSource +
+                                             blurEffectEditorSource +
+                                             shadowEffectEditorSource +
+                                             gradientEffectEditorSource +
+                                             pathEffectEditorSource;
+    QVERIFY((rightPanelSource + textEffectsSectionSource + textEffectsEditorsSource)
                 .count(QStringLiteral("Layout.minimumWidth: 0")) >= 14);
     QVERIFY(sourceContainsIgnoringWhitespace(
         navigationSectionSource,
@@ -870,7 +885,8 @@ private slots:
     QVERIFY(boxEffectsSource.contains(QStringLiteral(
         "boxEffectsSection.editor.resetSelectedPerspective()")));
 
-    const QString textEffectsSource = textEffectsSectionSource;
+    const QString textEffectsSource =
+        textEffectsSectionSource + textEffectsEditorsSource;
     QVERIFY(!rightPanelSource.contains(
         QStringLiteral("id: textEffectsTabs")));
     QVERIFY(textEffectsSource.contains(QStringLiteral("id: textEffectsTabs")));
@@ -889,23 +905,37 @@ private slots:
                                      feature + QStringLiteral("\") }")),
           qPrintable(feature));
     }
-    QVERIFY(textEffectsSource.contains(QStringLiteral(
-        "textEffectsSection.editor.setSelectedOutlineEnabled(checked)")));
-    QVERIFY(textEffectsSource.contains(QStringLiteral(
-        "textEffectsSection.editor.addSelectedOutlineLayer()")));
-    QVERIFY(textEffectsSource.contains(QStringLiteral("\"synthetic\": true")));
-    QVERIFY(textEffectsSource.contains(
+    for (const QString &component :
+         {QStringLiteral("OutlineEffectEditor {"),
+          QStringLiteral("BlurEffectEditor {"),
+          QStringLiteral("ShadowEffectEditor {"),
+          QStringLiteral("GradientEffectEditor {"),
+          QStringLiteral("PathEffectEditor {")}) {
+      QVERIFY2(textEffectsSectionSource.contains(component), qPrintable(component));
+    }
+    QVERIFY(outlineEffectEditorSource.contains(
+        QStringLiteral("objectName: \"rightInspectorAddOutlineLayerButton\"")));
+    QVERIFY(outlineEffectEditorSource.contains(
+        QStringLiteral("rightInspectorOutlineEnabledCheckBox")));
+    QVERIFY(outlineEffectEditorSource.contains(
+        QStringLiteral("setSelectedOutlineEnabled(checked)")));
+    QVERIFY(outlineEffectEditorSource.contains(
+        QStringLiteral("addSelectedOutlineLayer()")));
+    QVERIFY(outlineEffectEditorSource.contains(QStringLiteral("\"synthetic\": true")));
+    QVERIFY(outlineEffectEditorSource.contains(
         QStringLiteral("visible: !modelData.synthetic")));
-    QVERIFY(textEffectsSource.contains(QStringLiteral(
-        "textEffectsSection.editor.setSelectedOutlineLayerSize(index, value)")));
-    QVERIFY(textEffectsSource.contains(QStringLiteral(
-        "textEffectsSection.editor.setSelectedBlurEnabled(checked)")));
-    QVERIFY(textEffectsSource.contains(QStringLiteral(
-        "textEffectsSection.editor.setSelectedShadowEnabled(checked)")));
-    QVERIFY(textEffectsSource.contains(QStringLiteral(
-        "textEffectsSection.editor.setSelectedGradientEnabled(checked)")));
-    QVERIFY(textEffectsSource.contains(QStringLiteral(
-        "textEffectsSection.editor.setSelectedPathEnabled(checked)")));
+    QVERIFY(outlineEffectEditorSource.contains(
+        QStringLiteral("setSelectedOutlineLayerSize(index, value)")));
+    QVERIFY(blurEffectEditorSource.contains(
+        QStringLiteral("setSelectedBlurEnabled(checked)")));
+    QVERIFY(shadowEffectEditorSource.contains(
+        QStringLiteral("setSelectedShadowEnabled(checked)")));
+    QVERIFY(gradientEffectEditorSource.contains(
+        QStringLiteral("setSelectedGradientEnabled(checked)")));
+    QVERIFY(pathEffectEditorSource.contains(
+        QStringLiteral("objectName: \"rightInspectorPathEnabledCheckBox\"")));
+    QVERIFY(pathEffectEditorSource.contains(
+        QStringLiteral("setSelectedPathEnabled(checked)")));
     QVERIFY(pageEffectsSectionSource.contains(
         QStringLiteral("id: pageEffectsTabs")));
     QVERIFY(pageEffectsSectionSource.contains(
@@ -1913,7 +1943,8 @@ QtObject {
     QVERIFY(source.contains(
         QStringLiteral("model: [qsTr(\"Straight\"), qsTr(\"Smooth\")]")));
     QVERIFY(source.contains(
-        QStringLiteral("textEffectsSection.editor.addSelectedPathPoint()")));
+        QStringLiteral("objectName: \"rightInspectorAddPathPointButton\"")));
+    QVERIFY(source.contains(QStringLiteral("addSelectedPathPoint()")));
     QVERIFY(source.contains(QStringLiteral("PathHandleInteractionState")));
     QVERIFY(source.contains(
         QStringLiteral("objectName: \"pathHandleInteractionState\"")));

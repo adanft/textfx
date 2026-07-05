@@ -123,6 +123,11 @@ qt_add_qml_module(textfx
         qml/features/menus/ViewMenu.qml
         qml/shared/SelectedBoxState.qml
         qml/features/rightPanel/TextEffectsSection.qml
+        qml/features/rightPanel/textEffects/OutlineEffectEditor.qml
+        qml/features/rightPanel/textEffects/BlurEffectEditor.qml
+        qml/features/rightPanel/textEffects/ShadowEffectEditor.qml
+        qml/features/rightPanel/textEffects/GradientEffectEditor.qml
+        qml/features/rightPanel/textEffects/PathEffectEditor.qml
         qml/features/leftPanel/TextPropertiesSection.qml
         qml/features/leftPanel/TextPresetsSection.qml
         qml/features/canvas/text/TextBoxDelegate.qml
