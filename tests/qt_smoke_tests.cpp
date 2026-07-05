@@ -501,6 +501,8 @@ private slots:
         readQmlFile(QStringLiteral("BoxMoveInteractionState.qml"));
     const QString delegateSource =
         readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+    const QString editControlsSource =
+        readQmlFile(QStringLiteral("TextBoxEditControls.qml"));
     const QString moveAreaSource =
         readQmlFile(QStringLiteral("TextBoxMoveArea.qml"));
     QFile cmake(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../CMakeLists.txt"));
@@ -509,7 +511,9 @@ private slots:
     QVERIFY(!source.isEmpty());
     QVERIFY(!moveStateSource.isEmpty());
     QVERIFY(!delegateSource.isEmpty());
+    QVERIFY(!editControlsSource.isEmpty());
     QVERIFY(!moveAreaSource.isEmpty());
+    QVERIFY(cmakeSource.contains(QStringLiteral("qml/features/canvas/text/TextBoxEditControls.qml")));
     QVERIFY(cmakeSource.contains(QStringLiteral("qml/features/canvas/text/TextBoxMoveArea.qml")));
 
     const qsizetype moveStart = moveAreaSource.indexOf(QStringLiteral(
@@ -585,8 +589,13 @@ private slots:
     QVERIFY(!delegateSource.contains(QStringLiteral("property bool resizeActive")));
     QVERIFY(delegateSource.contains(
         QStringLiteral("x: rootWindow.documentToViewX(visualDocX)")));
-    QVERIFY(delegateSource.contains(QStringLiteral("TextBoxMoveArea {")));
-    QVERIFY(delegateSource.contains(QStringLiteral("editOverlay: boxTextOverlay")));
+    QVERIFY(delegateSource.contains(QStringLiteral("TextBoxEditControls {")));
+    QVERIFY(delegateSource.contains(QStringLiteral("outlinedTextItem: textContent.outlinedTextItem")));
+    QVERIFY(!delegateSource.contains(QStringLiteral("TextBoxMoveArea {")));
+    QVERIFY(editControlsSource.contains(QStringLiteral("TextEditOverlay {")));
+    QVERIFY(editControlsSource.contains(QStringLiteral("TextBoxMoveArea {")));
+    QVERIFY(editControlsSource.contains(QStringLiteral("id: boxTextOverlay")));
+    QVERIFY(editControlsSource.contains(QStringLiteral("editOverlay: boxTextOverlay")));
     QVERIFY(moveSource.contains(
         QStringLiteral("editorRef.selectBox(boxRef.boxModel.index)")));
     QVERIFY(

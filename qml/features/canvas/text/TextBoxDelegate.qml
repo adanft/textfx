@@ -193,19 +193,10 @@ Rectangle {
         boxRef: boxDelegate
     }
 
-    TextEditOverlay {
-        id: boxTextOverlay
-
-        boxRef: boxDelegate
-        outlinedTextItem: textContent.outlinedTextItem
-        selectionUiVisible: boxDelegate.renderSelectionUi
-    }
-
-    TextBoxMoveArea {
+    TextBoxEditControls {
         boxRef: boxDelegate
         canvasItem: boxDelegate.canvasItem
-        editOverlay: boxTextOverlay
-        visible: boxDelegate.renderSelectionUi
+        outlinedTextItem: textContent.outlinedTextItem
     }
 
     TextResizeHandles {
