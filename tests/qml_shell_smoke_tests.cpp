@@ -219,7 +219,8 @@ private slots:
     QVERIFY(source.contains(QStringLiteral("color: window.palette.window")));
     QVERIFY(
         source.contains(QStringLiteral("color: canvasShell.hostPalette.base")));
-    QVERIFY(source.contains(QStringLiteral("window.palette.highlight")));
+    QVERIFY(source.contains(QStringLiteral("window.palette.highlight")) ||
+            source.contains(QStringLiteral("appWindow.palette.highlight")));
     QVERIFY(source.contains(QStringLiteral("hostPalette: window.palette")));
     QVERIFY(
         source.contains(QStringLiteral("editorChrome.hostPalette.highlight")));
@@ -238,9 +239,9 @@ private slots:
         mainSource, QStringLiteral("selectedBox: Editor.selectedBox")));
     QVERIFY(!mainSource.contains(QStringLiteral("selectedBoxProvider")));
     QVERIFY(!mainSource.contains(QStringLiteral("function selectedBox()")));
-    QVERIFY(mainSource.contains(QStringLiteral("CentralCanvasShell {")));
-    QVERIFY(mainSource.contains(
-        QStringLiteral("objectName: \"centralCanvasShell\"")));
+    QVERIFY(mainSource.contains(QStringLiteral("CanvasView {")));
+    QVERIFY(source.contains(QStringLiteral("CentralCanvasShell {")));
+    QVERIFY(source.contains(QStringLiteral("objectName: \"centralCanvasShell\"")));
     QVERIFY(source.contains(QStringLiteral("id: canvas")));
     QVERIFY(canvasShellSource.contains(
         QStringLiteral("objectName: \"centralCanvas\"")));
@@ -256,7 +257,7 @@ private slots:
     const qsizetype sidePanelStart =
         mainSource.indexOf(QStringLiteral("id: sidePanel"));
     const qsizetype canvasShellStart =
-        mainSource.indexOf(QStringLiteral("id: canvasShell"), sidePanelStart);
+        mainSource.indexOf(QStringLiteral("id: canvasView"), sidePanelStart);
     const qsizetype canvasStart =
         canvasShellSource.indexOf(QStringLiteral("id: canvas\n"));
     QVERIFY(sidePanelStart >= 0);
@@ -267,7 +268,7 @@ private slots:
     QVERIFY(rightPanelStart > canvasShellStart);
     QVERIFY(leftPanelSource.contains(QStringLiteral("z: 1")));
     QVERIFY(mainSource.mid(canvasShellStart, rightPanelStart - canvasShellStart)
-                .contains(QStringLiteral("id: canvasShell")));
+                .contains(QStringLiteral("id: canvasView")));
     QVERIFY(
         canvasShellSource.mid(0, canvasStart).contains(QStringLiteral("z: 0")));
     QVERIFY(canvasShellSource
@@ -548,7 +549,11 @@ private slots:
         sourceContainsIgnoringWhitespace(
             source, QStringLiteral("if (status === Image.Ready) "
                                    "window.pageBaseScale = "
-                                   "window.fitPageScale()")));
+                                   "window.fitPageScale()")) ||
+        sourceContainsIgnoringWhitespace(
+            source, QStringLiteral("if (status === Image.Ready) "
+                                   "canvasView.appWindow.pageBaseScale = "
+                                   "canvasView.appWindow.fitPageScale()")));
 
     const QString viewportSource =
         readQmlFile(QStringLiteral("ViewportMetrics.qml"));

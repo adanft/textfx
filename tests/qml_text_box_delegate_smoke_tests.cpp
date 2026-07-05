@@ -1459,10 +1459,12 @@ private slots:
 
   void qmlPreviewRepeaterUsesRoleSafeBoxesModelDelegate() {
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
+    const QString canvasSource = readQmlFile(QStringLiteral("CanvasView.qml"));
     const QString delegateSource =
         readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
 
-    QVERIFY(mainSource.contains(QStringLiteral("model: Editor.boxesModel")));
+    QVERIFY(mainSource.contains(QStringLiteral("CanvasView {")));
+    QVERIFY(canvasSource.contains(QStringLiteral("model: canvasView.editor.boxesModel")));
     QVERIFY(delegateSource.contains(
         QStringLiteral("required property int boxIndex")));
     QVERIFY(delegateSource.contains(

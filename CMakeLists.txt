@@ -104,6 +104,7 @@ qt_add_qml_module(textfx
         qml/features/canvas/CanvasInteractionState.qml
         qml/shared/ColorButton.qml
         qml/features/canvas/CentralCanvasShell.qml
+        qml/features/canvas/CanvasView.qml
         qml/app/EditorChrome.qml
         qml/commands/EditorCommands.qml
         qml/features/rightPanel/LayersSection.qml

@@ -182,6 +182,7 @@ QStringList qmlSourceFiles() {
       QStringLiteral("features/canvas/CanvasInteractionState.qml"),
       QStringLiteral("shared/ColorButton.qml"),
       QStringLiteral("features/canvas/CentralCanvasShell.qml"),
+      QStringLiteral("features/canvas/CanvasView.qml"),
       QStringLiteral("app/EditorChrome.qml"),
       QStringLiteral("commands/EditorCommands.qml"),
       QStringLiteral("features/leftPanel/LeftInspectorPanel.qml"),

@@ -5,7 +5,6 @@ import TextFX.Ui 1.0
 import "../features/leftPanel"
 import "../features/rightPanel"
 import "../features/canvas"
-import "../features/canvas/text"
 import "../features/canvas/interactions"
 import "../features/canvas/geometry"
 
@@ -13,7 +12,7 @@ ApplicationWindow {
     id: window
 
     readonly property var editor: Editor
-    property alias canvas: canvasShell.canvasItem
+    property alias canvas: canvasView.canvasItem
     property real zoom: 1
     property real pageBaseScale: 1
     property real panX: 0
@@ -573,8 +572,8 @@ ApplicationWindow {
         panY: window.panY
         canvasWidth: canvas.width
         canvasHeight: canvas.height
-        pageSourceWidth: pageImage.sourceSize.width
-        pageSourceHeight: pageImage.sourceSize.height
+        pageSourceWidth: canvasView.pageSourceWidth
+        pageSourceHeight: canvasView.pageSourceHeight
     }
 
     CanvasInteractionState {
@@ -701,239 +700,15 @@ ApplicationWindow {
                     }
                 }
 
-                CentralCanvasShell {
-                    id: canvasShell
+                CanvasView {
+                    id: canvasView
 
-                    objectName: "centralCanvasShell"
-                    hostPalette: window.palette
-                    editingText: Editor.editingText
-                    onEscapePressed: window.handleEscape()
-                    onCopyPressed: {
-                        if (Editor.actionEnabled("copy"))
-                            Editor.copySelected();
-                    }
-                    onPastePressed: {
-                        if (Editor.actionEnabled("paste"))
-                            Editor.pasteBox();
-                    }
-                    onDeletePressed: Editor.deleteSelected()
-                    onCanvasPressed: (x, y, button, modifiers) => {
-                        if (rightPanel.paintMode)
-                            return ;
-                        if (button === Qt.LeftButton)
-                            Editor.endTextEdit();
-
-                        canvasInteraction.beginPress(x, y, button, modifiers);
-                    }
-                    onCanvasPositionChanged: (x, y, pressed) => {
-                        if (rightPanel.paintMode)
-                            return ;
-                        const update = canvasInteraction.updatePointer(x, y, pressed);
-                        if (update.panned) {
-                            window.panX += update.panDx;
-                            window.panY += update.panDy;
-                        }
-                    }
-                    onCanvasReleased: (x, y, button, modifiers) => {
-                        if (rightPanel.paintMode)
-                            return ;
-                        const release = canvasInteraction.endRelease();
-                        if (release.creating) {
-                            const rectangle = release.rectangle;
-                            const w = rectangle.width / window.viewDocScale();
-                            const h = rectangle.height / window.viewDocScale();
-                            if (w >= editorLimits.minimumBoxSize && h >= editorLimits.minimumBoxSize)
-                                Editor.createTextBox(window.viewToDocumentX(rectangle.x), window.viewToDocumentY(rectangle.y), w, h);
-
-                        }
-                    }
-                    onCanvasWheel: (x, y, angleDeltaY) => {
-                        return window.zoomAt(x, y, angleDeltaY > 0 ? 1.1 : 1 / 1.1);
-                    }
-
-                    Image {
-                        id: pageImage
-                        objectName: "pageImage"
-
-                        x: window.documentToViewX(0)
-                        y: window.documentToViewY(0)
-                        width: window.pageDisplayWidth() * window.zoom
-                        height: window.pageDisplayHeight() * window.zoom
-                        source: Editor.currentPageUrl
-                        fillMode: Image.Stretch
-                        asynchronous: true
-                        visible: source.toString().length > 0
-                        onStatusChanged: {
-                            if (status === Image.Ready)
-                                window.pageBaseScale = window.fitPageScale();
-
-                        }
-                    }
-
-                    PaintLayer {
-                        id: paintBehindTextLayer
-                        objectName: "paintBehindTextLayer"
-                        x: pageImage.x
-                        y: pageImage.y
-                        width: pageImage.sourceSize.width
-                        height: pageImage.sourceSize.height
-                        scale: window.viewDocScale()
-                        transformOrigin: Item.TopLeft
-                        strokes: Editor.paintBehindText
-                        drawPreviewStroke: false
-                        visible: pageImage.visible && hasPaintContent
-                    }
-
-                    PaintLayer {
-                        id: paintBehindTextPreviewLayer
-                        objectName: "paintBehindTextPreviewLayer"
-                        x: pageImage.x
-                        y: pageImage.y
-                        width: pageImage.sourceSize.width
-                        height: pageImage.sourceSize.height
-                        scale: window.viewDocScale()
-                        transformOrigin: Item.TopLeft
-                        previewStroke: window.activePaintStroke("behind_text")
-                        drawPersistedStrokes: false
-                        visible: pageImage.visible && hasPaintContent
-                    }
-
-                    Image {
-                        id: rawOverlayImage
-
-                        x: pageImage.x
-                        y: pageImage.y
-                        width: pageImage.width
-                        height: pageImage.height
-                        source: Editor.rawPageUrl
-                        fillMode: Image.Stretch
-                        asynchronous: true
-                        opacity: 0.45
-                        visible: Editor.rawVisible && source.toString().length > 0
-                    }
-
-                    Rectangle {
-                        visible: window.dragMode === editorInteraction.dragModeCreate
-                        x: Math.min(window.createStartX, window.createCurrentX)
-                        y: Math.min(window.createStartY, window.createCurrentY)
-                        width: Math.abs(window.createCurrentX - window.createStartX)
-                        height: Math.abs(window.createCurrentY - window.createStartY)
-                        color: Qt.alpha(window.palette.highlight, 0.14)
-                        border.color: window.palette.highlight
-                        border.width: 1
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        visible: window.dragMode === editorInteraction.dragModePathHandle && window.pathHandleInteractionActive
-                        enabled: visible
-                        z: 100
-                        hoverEnabled: true
-                        acceptedButtons: Qt.LeftButton
-                        preventStealing: true
-                        onPositionChanged: (mouse) => {
-                            window.updatePathHandleDragFromCanvas(mouse.x, mouse.y);
-                        }
-                        onReleased: window.endPathHandleDrag()
-                        onCanceled: window.endPathHandleDrag()
-                    }
-
-                    Repeater {
-                        model: Editor.boxesModel
-
-                        delegate: TextBoxDelegate {
-                            canvasItem: canvas
-                            interaction: editorInteraction
-                            renderSelectionUi: false
-                        }
-
-                    }
-
-                    PaintLayer {
-                        id: paintAboveTextLayer
-                        objectName: "paintAboveTextLayer"
-                        z: 30
-                        x: pageImage.x
-                        y: pageImage.y
-                        width: pageImage.sourceSize.width
-                        height: pageImage.sourceSize.height
-                        scale: window.viewDocScale()
-                        transformOrigin: Item.TopLeft
-                        strokes: Editor.paintAboveText
-                        drawPreviewStroke: false
-                        visible: pageImage.visible && hasPaintContent
-                    }
-
-                    PaintLayer {
-                        id: paintAboveTextPreviewLayer
-                        objectName: "paintAboveTextPreviewLayer"
-                        z: 30
-                        x: pageImage.x
-                        y: pageImage.y
-                        width: pageImage.sourceSize.width
-                        height: pageImage.sourceSize.height
-                        scale: window.viewDocScale()
-                        transformOrigin: Item.TopLeft
-                        previewStroke: window.activePaintStroke("above_text")
-                        drawPersistedStrokes: false
-                        visible: pageImage.visible && hasPaintContent
-                    }
-
-                    Repeater {
-                        model: Editor.boxesModel
-
-                        delegate: TextBoxDelegate {
-                            canvasItem: canvas
-                            interaction: editorInteraction
-                            renderTextContent: false
-                        }
-
-                    }
-
-                    MouseArea {
-                        id: paintInputArea
-                        objectName: "paintInputArea"
-                        x: pageImage.x
-                        y: pageImage.y
-                        width: pageImage.width
-                        height: pageImage.height
-                        visible: rightPanel.paintMode && pageImage.visible
-                        enabled: visible
-                        z: 200
-                        hoverEnabled: true
-                        cursorShape: Qt.CrossCursor
-                        acceptedButtons: Qt.LeftButton
-                        preventStealing: true
-                        function containsLocal(localX, localY) {
-                            return localX >= 0 && localY >= 0 && localX <= width && localY <= height;
-                        }
-                        function canvasPoint(localX, localY) {
-                            return paintInputArea.mapToItem(canvas, localX, localY);
-                        }
-                        onPressed: (mouse) => {
-                            if (!containsLocal(mouse.x, mouse.y)) {
-                                mouse.accepted = false;
-                                return ;
-                            }
-                            canvas.forceActiveFocus();
-                            const point = canvasPoint(mouse.x, mouse.y);
-                            window.beginPaintDrag(point.x, point.y);
-                            mouse.accepted = true;
-                        }
-                        onPositionChanged: (mouse) => {
-                            if (pressed && containsLocal(mouse.x, mouse.y)) {
-                                const point = canvasPoint(mouse.x, mouse.y);
-                                window.updatePaintDrag(point.x, point.y);
-                            }
-                            mouse.accepted = true;
-                        }
-                        onReleased: (mouse) => {
-                            window.endPaintDrag();
-                            mouse.accepted = true;
-                        }
-                        onCanceled: window.cancelPaintDrag()
-                    }
-
+                    appWindow: window
+                    editor: window.editor
+                    rightPanel: rightPanel
+                    editorLimits: editorLimits
+                    editorInteraction: editorInteraction
+                    canvasInteraction: canvasInteraction
                 }
 
                 RightInspectorPanel {
