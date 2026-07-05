@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../constants/UiConstants.js" as UiConstants
 
 ColumnLayout {
     id: navigationSection
@@ -39,12 +40,12 @@ ColumnLayout {
 
         ColumnLayout {
             anchors.fill: parent
-            spacing: 6
+            spacing: UiConstants.panelSpacing
 
             RowLayout {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                spacing: 6
+                spacing: UiConstants.panelSpacing
 
                 Label {
                     id: zoomLabel
@@ -90,15 +91,15 @@ ColumnLayout {
             Flow {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                spacing: 6
+                spacing: UiConstants.panelSpacing
 
                 Button {
                     text: qsTr("Previous")
                     enabled: navigationSection.pageNavigationEnabled && navigationSection.editor && navigationSection.editor.canGoPrevious
                     display: AbstractButton.IconOnly
                     icon.source: "qrc:/qt/qml/TextFX/assets/icons/flat/arrow-left.svg"
-                    icon.width: 20
-                    icon.height: 20
+                    icon.width: UiConstants.iconSize
+                    icon.height: UiConstants.iconSize
                     icon.color: !enabled ? palette.mid : palette.buttonText
                     onClicked: navigationSection.editor.previousPage()
                 }
@@ -109,8 +110,8 @@ ColumnLayout {
                     enabled: navigationSection.pageNavigationEnabled && navigationSection.editor && navigationSection.editor.canGoNext
                     display: AbstractButton.IconOnly
                     icon.source: "qrc:/qt/qml/TextFX/assets/icons/flat/arrow-right.svg"
-                    icon.width: 20
-                    icon.height: 20
+                    icon.width: UiConstants.iconSize
+                    icon.height: UiConstants.iconSize
                     icon.color: !enabled ? palette.mid : palette.buttonText
                     onClicked: navigationSection.editor.nextPage()
                 }

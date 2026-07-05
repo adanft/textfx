@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../constants/UiConstants.js" as UiConstants
 import "../../shared"
 
 ColumnLayout {
@@ -19,7 +20,7 @@ ColumnLayout {
 
     signal colorDialogRequested(string hex, string setter)
 
-    spacing: 6
+    spacing: UiConstants.panelSpacing
 
     CheckBox {
         id: paintModeCheck

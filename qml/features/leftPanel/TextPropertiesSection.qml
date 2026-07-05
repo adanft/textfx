@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../constants/UiConstants.js" as UiConstants
 import "../../shared"
 
 ColumnLayout {
@@ -40,7 +41,7 @@ ColumnLayout {
 
         ColumnLayout {
             anchors.fill: parent
-            spacing: 6
+            spacing: UiConstants.panelSpacing
 
             Label {
                 text: qsTr("Font Family")
@@ -68,7 +69,7 @@ ColumnLayout {
             RowLayout {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                spacing: 8
+                spacing: UiConstants.inlineSpacing
 
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -143,7 +144,7 @@ ColumnLayout {
             Flow {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                spacing: 6
+                spacing: UiConstants.panelSpacing
 
                 TextStyleButton {
                     objectName: "leftInspectorBoldButton"
@@ -183,7 +184,7 @@ ColumnLayout {
             Flow {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                spacing: 6
+                spacing: UiConstants.panelSpacing
 
                 TextStyleButton {
                     iconSource: "qrc:/qt/qml/TextFX/assets/icons/flat/align-left.svg"

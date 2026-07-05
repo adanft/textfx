@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../constants/UiConstants.js" as UiConstants
 
 ColumnLayout {
     id: pageEffectsSection
@@ -29,7 +30,7 @@ ColumnLayout {
 
         ColumnLayout {
             anchors.fill: parent
-            spacing: 6
+            spacing: UiConstants.panelSpacing
 
             TabBar {
                 id: pageEffectsTabs

@@ -1,4 +1,5 @@
 import QtQuick
+import "../../../constants/UiConstants.js" as UiConstants
 
 Item {
     id: pathHandlePlane
@@ -6,11 +7,11 @@ Item {
     property var boxRef
     property var canvasItem
     property var rootWindow: boxRef.rootWindow
-    readonly property int zPathHandles: 20
-    readonly property real handleViewSize: Math.max(1, rootWindow.documentToViewLength(10))
-    readonly property real minimumTouchMargin: 8
-    readonly property color handleColor: "#ffb000"
-    readonly property color handleBorderColor: "#202020"
+    readonly property int zPathHandles: UiConstants.pathHandleZ
+    readonly property real handleViewSize: Math.max(1, rootWindow.documentToViewLength(UiConstants.pathHandleDocumentSize))
+    readonly property real minimumTouchMargin: UiConstants.pathHandleMinimumTouchMargin
+    readonly property color handleColor: UiConstants.textPathAccent
+    readonly property color handleBorderColor: UiConstants.textPathBorder
 
     anchors.fill: parent
     z: zPathHandles

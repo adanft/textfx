@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
 import "../features/menus"
+import "../commands"
 
 Item {
     id: editorChrome
@@ -93,186 +94,47 @@ Item {
         target: editorChrome.editor
     }
 
-    Action {
-        id: openAction
+    EditorCommands {
+        id: editorCommands
 
-        text: qsTr("Open")
-        shortcut: StandardKey.Open
-        enabled: editorChrome.editor && editorChrome.editor.actionEnabled("open")
-        onTriggered: openProjectDialog.open()
-    }
-
-    Action {
-        id: newAction
-
-        text: qsTr("New")
-        shortcut: StandardKey.New
-        enabled: editorChrome.editor && editorChrome.editor.actionEnabled("new")
-        onTriggered: newProjectDialog.open()
-    }
-
-    Action {
-        id: saveAction
-
-        text: qsTr("Save")
-        shortcut: StandardKey.Save
-        enabled: editorChrome.editor && editorChrome.editor.hasProject
-        onTriggered: editorChrome.editor.save()
-    }
-
-    Action {
-        id: saveAllAction
-
-        text: qsTr("Save All")
-        shortcut: "Ctrl+Shift+S"
-        enabled: editorChrome.editor && editorChrome.editor.hasProject
-        onTriggered: editorChrome.editor.saveAll()
-    }
-
-    Action {
-        id: previousPageAction
-
-        text: qsTr("Previous")
-        shortcut: "PgUp"
-        enabled: editorChrome.pageNavigationEnabled && editorChrome.editor && editorChrome.editor.canGoPrevious
-        onTriggered: editorChrome.editor.previousPage()
-    }
-
-    Action {
-        id: nextPageAction
-
-        text: qsTr("Next")
-        shortcut: "PgDown"
-        enabled: editorChrome.pageNavigationEnabled && editorChrome.editor && editorChrome.editor.canGoNext
-        onTriggered: editorChrome.editor.nextPage()
-    }
-
-    Action {
-        id: copyAction
-
-        objectName: "copyAction"
-
-        text: qsTr("Copy")
-        shortcut: StandardKey.Copy
-        enabled: editorChrome.editor && editorChrome.boxActionsAvailable && editorChrome.editor.actionEnabled("copy")
-        onTriggered: editorChrome.editor.copySelected()
-    }
-
-    Action {
-        id: pasteAction
-
-        objectName: "pasteAction"
-
-        text: qsTr("Paste")
-        shortcut: StandardKey.Paste
-        enabled: editorChrome.editor && editorChrome.projectAvailable && !editorChrome.editingText && editorChrome.editor.actionEnabled("paste")
-        onTriggered: editorChrome.editor.pasteBox()
-    }
-
-    Action {
-        id: duplicateAction
-
-        objectName: "duplicateAction"
-
-        text: qsTr("Duplicate")
-        enabled: editorChrome.editor && editorChrome.boxActionsAvailable && editorChrome.editor.actionEnabled("duplicate")
-        onTriggered: editorChrome.editor.duplicateSelected()
-    }
-
-    Action {
-        id: deleteAction
-
-        objectName: "deleteAction"
-
-        text: qsTr("Delete")
-        shortcut: StandardKey.Delete
-        enabled: editorChrome.editor && editorChrome.boxActionsAvailable && editorChrome.editor.actionEnabled("delete")
-        onTriggered: editorChrome.editor.deleteSelected()
-    }
-
-    Action {
-        id: quitAction
-
-        text: qsTr("Quit")
-        onTriggered: Qt.quit()
-    }
-
-    Action {
-        id: zoomInAction
-
-        text: qsTr("Zoom In")
-        shortcut: "Ctrl++"
-        onTriggered: editorChrome.zoomAtRequested(editorChrome.zoomCenterX, editorChrome.zoomCenterY, 1.1)
-    }
-
-    Action {
-        id: zoomOutAction
-
-        text: qsTr("Zoom Out")
-        shortcut: "Ctrl+-"
-        onTriggered: editorChrome.zoomAtRequested(editorChrome.zoomCenterX, editorChrome.zoomCenterY, 1 / 1.1)
-    }
-
-    Action {
-        id: resetZoomAction
-
-        text: qsTr("Reset Zoom")
-        shortcut: "Ctrl+0"
-        onTriggered: editorChrome.resetZoomRequested()
-    }
-
-    Action {
-        id: rawOverlayAction
-
-        text: qsTr("Show Raw Overlay")
-        checkable: true
-        checked: editorChrome.editor ? editorChrome.editor.rawVisible : false
-        shortcut: "Ctrl+H"
-        onTriggered: editorChrome.editor.rawVisible = checked
+        editor: editorChrome.editor
+        pageNavigationEnabled: editorChrome.pageNavigationEnabled
+        sidePanelTextInputFocused: editorChrome.sidePanelTextInputFocused
+        zoomCenterX: editorChrome.zoomCenterX
+        zoomCenterY: editorChrome.zoomCenterY
+        onOpenProjectRequested: openProjectDialog.open()
+        onNewProjectRequested: newProjectDialog.open()
+        onZoomAtRequested: (x, y, factor) => editorChrome.zoomAtRequested(x, y, factor)
+        onResetZoomRequested: editorChrome.resetZoomRequested()
+        onEscapeRequested: editorChrome.escapeRequested()
     }
 
     MenuBar {
         id: chromeMenuBar
 
         FileMenu {
-            newAction: newAction
-            openAction: openAction
-            saveAction: saveAction
-            saveAllAction: saveAllAction
-            quitAction: quitAction
+            newAction: editorCommands.newAction
+            openAction: editorCommands.openAction
+            saveAction: editorCommands.saveAction
+            saveAllAction: editorCommands.saveAllAction
+            quitAction: editorCommands.quitAction
         }
 
         EditMenu {
-            copyAction: copyAction
-            pasteAction: pasteAction
-            deleteAction: deleteAction
-            duplicateAction: duplicateAction
+            copyAction: editorCommands.copyAction
+            pasteAction: editorCommands.pasteAction
+            deleteAction: editorCommands.deleteAction
+            duplicateAction: editorCommands.duplicateAction
         }
 
         ViewMenu {
-            zoomInAction: zoomInAction
-            zoomOutAction: zoomOutAction
-            resetZoomAction: resetZoomAction
-            rawOverlayAction: rawOverlayAction
+            zoomInAction: editorCommands.zoomInAction
+            zoomOutAction: editorCommands.zoomOutAction
+            resetZoomAction: editorCommands.resetZoomAction
+            rawOverlayAction: editorCommands.rawOverlayAction
         }
     }
 
-    Shortcut {
-        sequence: "Ctrl+="
-        onActivated: zoomInAction.trigger()
-    }
-
-    Shortcut {
-        sequence: "Ctrl+Space"
-        enabled: editorChrome.editor && !editorChrome.sidePanelTextInputFocused
-        onActivated: editorChrome.editor.applyNextPageText()
-    }
-
-    Shortcut {
-        sequence: "Esc"
-        context: Qt.ApplicationShortcut
-        onActivated: editorChrome.escapeRequested()
-    }
 
     Popup {
         id: toastPopup

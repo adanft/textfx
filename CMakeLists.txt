@@ -95,6 +95,8 @@ qt_add_qml_module(textfx
     VERSION 1.0
     QML_FILES
         qml/app/Main.qml
+        qml/constants/UiConstants.js
+        qml/utils/ColorUtils.js
         qml/features/rightPanel/BoxEffectsSection.qml
         qml/features/canvas/interactions/BoxMoveInteractionState.qml
         qml/features/canvas/interactions/BoxRotateInteractionState.qml
@@ -103,6 +105,7 @@ qt_add_qml_module(textfx
         qml/shared/ColorButton.qml
         qml/features/canvas/CentralCanvasShell.qml
         qml/app/EditorChrome.qml
+        qml/commands/EditorCommands.qml
         qml/features/rightPanel/LayersSection.qml
         qml/features/leftPanel/LeftInspectorPanel.qml
         qml/features/rightPanel/NavigationSection.qml

@@ -830,7 +830,7 @@ private slots:
     QVERIFY(buttonSource.contains(QStringLiteral("Button {")));
     QVERIFY(buttonSource.contains(QStringLiteral("checkable: true")));
     QVERIFY(buttonSource.contains(
-        QStringLiteral("property int minimumButtonSize: 32")));
+        QStringLiteral("property int minimumButtonSize: UiConstants.styleButtonSize")));
     QVERIFY(buttonSource.contains(
         QStringLiteral("Layout.minimumWidth: minimumButtonSize")));
     QVERIFY(buttonSource.contains(
@@ -838,8 +838,8 @@ private slots:
     QVERIFY(buttonSource.contains(QStringLiteral("property url iconSource")));
     QVERIFY(buttonSource.contains(QStringLiteral("display: AbstractButton.IconOnly")));
     QVERIFY(buttonSource.contains(QStringLiteral("icon.source: iconSource")));
-    QVERIFY(buttonSource.contains(QStringLiteral("icon.width: 20")));
-    QVERIFY(buttonSource.contains(QStringLiteral("icon.height: 20")));
+    QVERIFY(buttonSource.contains(QStringLiteral("icon.width: UiConstants.iconSize")));
+    QVERIFY(buttonSource.contains(QStringLiteral("icon.height: UiConstants.iconSize")));
     QVERIFY(
         !buttonSource.contains(QStringLiteral("Layout.preferredWidth: 32")));
     QVERIFY(
@@ -1932,7 +1932,8 @@ private slots:
             "layersSection.editor.boxCount - 1; display: "
             "AbstractButton.IconOnly; icon.source: "
             "\"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-up.svg\"; "
-            "icon.width: 20; icon.height: 20; icon.color: !enabled ? "
+            "icon.width: UiConstants.iconSize; "
+            "icon.height: UiConstants.iconSize; icon.color: !enabled ? "
             "palette.mid : palette.buttonText; onClicked: "
             "layersSection.editor.moveLayer(layersSection.editor."
             "selectedIndex + 1)")));
@@ -1943,7 +1944,8 @@ private slots:
             "layersSection.editor.selectedIndex > 0; display: "
             "AbstractButton.IconOnly; icon.source: "
             "\"qrc:/qt/qml/TextFX/assets/icons/flat/arrow-down.svg\"; "
-            "icon.width: 20; icon.height: 20; icon.color: !enabled ? "
+            "icon.width: UiConstants.iconSize; "
+            "icon.height: UiConstants.iconSize; icon.color: !enabled ? "
             "palette.mid : palette.buttonText; onClicked: "
             "layersSection.editor.moveLayer(layersSection.editor."
             "selectedIndex - 1)")));

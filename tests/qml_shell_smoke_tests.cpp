@@ -72,8 +72,8 @@ private slots:
     QVERIFY(source.contains(QStringLiteral(
         "sidePanelTextInputFocused: window.sidePanelFocusedTextInputs > 0")));
     QVERIFY(source.contains(QStringLiteral(
-        "enabled: editorChrome.editor && "
-        "!editorChrome.sidePanelTextInputFocused")));
+        "enabled: editorCommands.editor && "
+        "!editorCommands.sidePanelTextInputFocused")));
     QVERIFY(source.contains(QStringLiteral(
         "onActiveFocusChanged: "
         "textPresetsSection.textInputFocusChanged(activeFocus)")));
@@ -113,7 +113,9 @@ private slots:
         source,
         QStringLiteral(
             "Shortcut { sequence: \"Esc\"; context: Qt.ApplicationShortcut; "
-            "onActivated: editorChrome.escapeRequested() }")));
+            "onActivated: editorCommands.escapeRequested() }")));
+    QVERIFY(source.contains(
+        QStringLiteral("onEscapeRequested: editorChrome.escapeRequested()")));
     QVERIFY(source.contains(
         QStringLiteral("onEscapeRequested: window.handleEscape()")));
     QVERIFY(sourceContainsIgnoringWhitespace(
@@ -381,7 +383,7 @@ private slots:
     QVERIFY(sourceContainsIgnoringWhitespace(
         textPropertiesSectionSource,
         QStringLiteral("RowLayout { Layout.fillWidth: true; "
-                       "Layout.minimumWidth: 0; spacing: 8")));
+                       "Layout.minimumWidth: 0; spacing: UiConstants.inlineSpacing")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         textPropertiesSectionSource,
         QStringLiteral(
@@ -408,7 +410,7 @@ private slots:
     QVERIFY(sourceContainsIgnoringWhitespace(
         rightPanelSource,
         QStringLiteral("outlineColor: selectedBoxState.effectValue(\"outline\", "
-                       "\"color\", \"boxOutlineColor\", \"#ffffff\")")));
+                       "\"color\", \"boxOutlineColor\", UiConstants.defaultWhite)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         rightPanelSource,
         QStringLiteral("shadowBlurSize: selectedBoxState.effectValue(\"shadow\", "
@@ -933,6 +935,8 @@ private slots:
     const QString fileMenuSource = readQmlFile(QStringLiteral("FileMenu.qml"));
     const QString editMenuSource = readQmlFile(QStringLiteral("EditMenu.qml"));
     const QString viewMenuSource = readQmlFile(QStringLiteral("ViewMenu.qml"));
+    const QString editorCommandsSource =
+        readQmlFile(QStringLiteral("EditorCommands.qml"));
 
     QVERIFY(!mainSource.contains(
         QStringLiteral("component ShortcutMenuItem: MenuItem")));
@@ -941,28 +945,28 @@ private slots:
     QVERIFY(editMenuSource.contains(QStringLiteral("title: qsTr(\"Edit\")")));
     QVERIFY(viewMenuSource.contains(QStringLiteral("title: qsTr(\"View\")")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
+        editorCommandsSource,
         QStringLiteral("Action { id: openAction; text: qsTr(\"Open\"); "
                        "shortcut: StandardKey.Open")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
+        editorCommandsSource,
         QStringLiteral("Action { id: saveAction; text: qsTr(\"Save\"); "
                        "shortcut: StandardKey.Save")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
+        editorCommandsSource,
         QStringLiteral("Action { id: saveAllAction; text: qsTr(\"Save All\"); "
                        "shortcut: \"Ctrl+Shift+S\"")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
+        editorCommandsSource,
         QStringLiteral("Action { id: quitAction; text: qsTr(\"Quit\"); "
                        "onTriggered: Qt.quit() }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
+        editorCommandsSource,
         QStringLiteral("Action { id: copyAction; objectName: \"copyAction\"; "
                        "text: qsTr(\"Copy\"); shortcut: StandardKey.Copy; "
                        "enabled:")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
+        editorCommandsSource,
         QStringLiteral("Action { id: pasteAction; objectName: "
                        "\"pasteAction\"; text: qsTr(\"Paste\"); shortcut: "
                        "StandardKey.Paste; enabled:")));
@@ -978,48 +982,52 @@ private slots:
         QStringLiteral("event.modifiers & Qt.ControlModifier && event.key === "
                        "Qt.Key_V")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
+        editorCommandsSource,
         QStringLiteral("Action { id: deleteAction; objectName: "
                        "\"deleteAction\"; text: qsTr(\"Delete\"); "
                        "shortcut: StandardKey.Delete")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
+        editorCommandsSource,
         QStringLiteral("Action { id: duplicateAction; objectName: "
                        "\"duplicateAction\"; text: qsTr(\"Duplicate\"); "
                        "enabled:")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
+        editorCommandsSource,
         QStringLiteral("Action { id: zoomInAction; text: qsTr(\"Zoom In\"); "
                        "shortcut: \"Ctrl++\"")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
+        editorCommandsSource,
         QStringLiteral("Action { id: zoomOutAction; text: qsTr(\"Zoom Out\"); "
                        "shortcut: \"Ctrl+-\"")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
+        editorCommandsSource,
         QStringLiteral("Action { id: resetZoomAction; text: qsTr(\"Reset "
                        "Zoom\"); shortcut: \"Ctrl+0\"")));
     QVERIFY(sourceContainsIgnoringWhitespace(
-        editorChromeSource,
+        editorCommandsSource,
         QStringLiteral(
             "Action { id: rawOverlayAction; text: qsTr(\"Show Raw Overlay\"); "
-            "checkable: true; checked: editorChrome.editor ? "
-            "editorChrome.editor.rawVisible : false; shortcut: \"Ctrl+H\"")));
+            "checkable: true; checked: editorCommands.editor ? "
+            "editorCommands.editor.rawVisible : false; shortcut: \"Ctrl+H\"")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorChromeSource,
-        QStringLiteral("FileMenu { newAction: newAction; openAction: openAction; "
-                       "saveAction: saveAction; saveAllAction: saveAllAction; "
-                       "quitAction: quitAction }")));
+        QStringLiteral("FileMenu { newAction: editorCommands.newAction; "
+                       "openAction: editorCommands.openAction; saveAction: "
+                       "editorCommands.saveAction; saveAllAction: "
+                       "editorCommands.saveAllAction; quitAction: "
+                       "editorCommands.quitAction }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorChromeSource,
-        QStringLiteral("EditMenu { copyAction: copyAction; pasteAction: "
-                       "pasteAction; deleteAction: deleteAction; "
-                       "duplicateAction: duplicateAction }")));
+        QStringLiteral("EditMenu { copyAction: editorCommands.copyAction; "
+                       "pasteAction: editorCommands.pasteAction; deleteAction: "
+                       "editorCommands.deleteAction; duplicateAction: "
+                       "editorCommands.duplicateAction }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorChromeSource,
-        QStringLiteral("ViewMenu { zoomInAction: zoomInAction; zoomOutAction: "
-                       "zoomOutAction; resetZoomAction: resetZoomAction; "
-                       "rawOverlayAction: rawOverlayAction }")));
+        QStringLiteral("ViewMenu { zoomInAction: editorCommands.zoomInAction; "
+                       "zoomOutAction: editorCommands.zoomOutAction; "
+                       "resetZoomAction: editorCommands.resetZoomAction; "
+                       "rawOverlayAction: editorCommands.rawOverlayAction }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         fileMenuSource,
         QStringLiteral("MenuItem { action: openAction; text: qsTr(\"Open\\tCtrl+O\") }")));
@@ -1035,6 +1043,7 @@ private slots:
         QStringLiteral("property alias menuBar: chromeMenuBar")));
     QVERIFY(mainSource.contains(QStringLiteral("EditorChrome {")));
     QVERIFY(!mainSource.contains(QStringLiteral("Action { id: openAction")));
+    QVERIFY(!editorChromeSource.contains(QStringLiteral("Action { id: openAction")));
     QVERIFY(!mainSource.contains(QStringLiteral("FolderDialog")));
     QVERIFY(!mainSource.contains(QStringLiteral("ColorDialog {")));
     QVERIFY(!source.contains(QStringLiteral("menuBarVisible")));

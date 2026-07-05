@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../constants/UiConstants.js" as UiConstants
 import "../../shared"
 
 Pane {
@@ -13,7 +14,7 @@ Pane {
         fontSize: selectedBoxState.value("boxFontSize", 16),
         lineSpacing: selectedBoxState.value("boxLineSpacing", 0),
         letterSpacing: selectedBoxState.value("boxLetterSpacing", 0),
-        color: selectedBoxState.value("boxColor", "#000000"),
+        color: selectedBoxState.value("boxColor", UiConstants.defaultBlack),
         bold: selectedBoxState.value("boxBold", false),
         italic: selectedBoxState.value("boxItalic", false),
         uppercase: selectedBoxState.value("boxUppercase", false),
@@ -51,7 +52,7 @@ Pane {
             width: leftPanelScroll.availableWidth
             // Keep the layout at least viewport-tall so Page Texts can consume spare vertical space.
             height: Math.max(implicitHeight, leftPanelScroll.availableHeight)
-            spacing: 8
+            spacing: UiConstants.inlineSpacing
 
             TextPropertiesSection {
                 editor: leftInspectorPanel.editor

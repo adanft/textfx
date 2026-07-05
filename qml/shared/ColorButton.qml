@@ -1,22 +1,23 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../constants/UiConstants.js" as UiConstants
 
 Button {
     id: colorButton
 
-    property color swatchColor: "#000000"
+    property color swatchColor: UiConstants.defaultBlack
     property string swatchText: "#000000"
 
     Layout.fillWidth: true
 
     contentItem: RowLayout {
-        spacing: 8
+        spacing: UiConstants.inlineSpacing
 
         Rectangle {
-            width: 22
-            height: 16
-            radius: 3
+            width: UiConstants.colorSwatchWidth
+            height: UiConstants.colorSwatchHeight
+            radius: UiConstants.colorSwatchRadius
             color: colorButton.enabled ? colorButton.swatchColor : colorButton.palette.mid
             border.color: colorButton.palette.mid
         }

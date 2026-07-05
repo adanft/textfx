@@ -1,4 +1,5 @@
 import QtQuick
+import "../../../constants/UiConstants.js" as UiConstants
 
 Canvas {
     id: pathGuide
@@ -57,7 +58,7 @@ Canvas {
         ctx.moveTo(guidePoints[0].x, guidePoints[0].y);
         for (let i = 1; i < guidePoints.length; ++i) ctx.lineTo(guidePoints[i].x, guidePoints[i].y)
         ctx.lineWidth = lineWidth;
-        ctx.strokeStyle = "#ffb000";
+        ctx.strokeStyle = UiConstants.textPathAccentHex;
         ctx.stroke();
     }
     onVisibleChanged: requestPaint()

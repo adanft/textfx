@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../constants/UiConstants.js" as UiConstants
 
 ColumnLayout {
     id: textPresetsSection
@@ -28,7 +29,7 @@ ColumnLayout {
 
         ColumnLayout {
             anchors.fill: parent
-            spacing: 6
+            spacing: UiConstants.panelSpacing
 
             RowLayout {
                 Layout.fillWidth: true
@@ -77,7 +78,7 @@ ColumnLayout {
             Flow {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                spacing: 6
+                spacing: UiConstants.panelSpacing
 
                 Button {
                     text: qsTr("Create")

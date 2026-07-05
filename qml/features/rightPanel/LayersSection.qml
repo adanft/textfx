@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../constants/UiConstants.js" as UiConstants
 
 ColumnLayout {
     id: layersSection
@@ -38,7 +39,7 @@ ColumnLayout {
         Layout.minimumWidth: 0
         Layout.minimumHeight: layersControls.implicitHeight + spacing + minimumListHeight
         Layout.fillHeight: true
-        spacing: 6
+        spacing: UiConstants.panelSpacing
         enabled: layersSection.sectionReady
 
         Flow {
@@ -46,7 +47,7 @@ ColumnLayout {
 
             Layout.fillWidth: true
             Layout.minimumWidth: 0
-            spacing: 6
+            spacing: UiConstants.panelSpacing
 
             Button {
                 objectName: "rightInspectorLayerUpButton"
@@ -54,8 +55,8 @@ ColumnLayout {
                 enabled: layersSection.editor.selectedIndex >= 0 && layersSection.editor.selectedIndex < layersSection.editor.boxCount - 1
                 display: AbstractButton.IconOnly
                 icon.source: "qrc:/qt/qml/TextFX/assets/icons/flat/arrow-up.svg"
-                icon.width: 20
-                icon.height: 20
+                icon.width: UiConstants.iconSize
+                icon.height: UiConstants.iconSize
                 icon.color: !enabled ? palette.mid : palette.buttonText
                 onClicked: layersSection.editor.moveLayer(layersSection.editor.selectedIndex + 1)
             }
@@ -66,8 +67,8 @@ ColumnLayout {
                 enabled: layersSection.editor.selectedIndex > 0
                 display: AbstractButton.IconOnly
                 icon.source: "qrc:/qt/qml/TextFX/assets/icons/flat/arrow-down.svg"
-                icon.width: 20
-                icon.height: 20
+                icon.width: UiConstants.iconSize
+                icon.height: UiConstants.iconSize
                 icon.color: !enabled ? palette.mid : palette.buttonText
                 onClicked: layersSection.editor.moveLayer(layersSection.editor.selectedIndex - 1)
             }

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "../../constants/UiConstants.js" as UiConstants
 import "../../shared"
 
 Pane {
@@ -12,20 +13,20 @@ Pane {
         rotation: selectedBoxState.value("boxRotation", 0),
         perspective: selectedBoxState.effectValue("perspective", "enabled", "boxPerspective", false),
         outline: selectedBoxState.effectValue("outline", "enabled", "boxOutline", false),
-        outlineColor: selectedBoxState.effectValue("outline", "color", "boxOutlineColor", "#ffffff"),
+        outlineColor: selectedBoxState.effectValue("outline", "color", "boxOutlineColor", UiConstants.defaultWhite),
         outlineSize: selectedBoxState.effectValue("outline", "size", "boxOutlineSize", 2),
         outlineLayers: selectedBoxState.effectValue("outline", "layers", "boxOutlineLayers", []),
         blur: selectedBoxState.effectValue("blur", "enabled", "boxBlur", false),
         blurSize: selectedBoxState.effectValue("blur", "size", "boxBlurSize", 0),
         shadow: selectedBoxState.effectValue("shadow", "enabled", "boxShadow", false),
-        shadowColor: selectedBoxState.effectValue("shadow", "color", "boxShadowColor", "#000000"),
+        shadowColor: selectedBoxState.effectValue("shadow", "color", "boxShadowColor", UiConstants.defaultBlack),
         shadowOffsetX: selectedBoxState.effectValue("shadow", "offsetX", "boxShadowOffsetX", 4),
         shadowOffsetY: selectedBoxState.effectValue("shadow", "offsetY", "boxShadowOffsetY", 4),
         shadowBlurSize: selectedBoxState.effectValue("shadow", "blurSize", "boxShadowBlurSize", 0),
         gradient: selectedBoxState.effectValue("gradient", "enabled", "boxGradient", false),
         gradientDirection: selectedBoxState.effectValue("gradient", "direction", "boxGradientDirection", 0),
-        gradientColorA: selectedBoxState.effectValue("gradient", "colorA", "boxGradientColorA", "#ffffff"),
-        gradientColorB: selectedBoxState.effectValue("gradient", "colorB", "boxGradientColorB", "#000000"),
+        gradientColorA: selectedBoxState.effectValue("gradient", "colorA", "boxGradientColorA", UiConstants.defaultWhite),
+        gradientColorB: selectedBoxState.effectValue("gradient", "colorB", "boxGradientColorB", UiConstants.defaultBlack),
         path: selectedBoxState.effectValue("path", "enabled", "boxPath", false),
         pathMode: selectedBoxState.effectValue("path", "mode", "boxPathMode", 0)
     })
@@ -70,7 +71,7 @@ Pane {
             width: rightPanelScroll.availableWidth
             // Keep the layout at least viewport-tall so Layers can consume spare vertical space.
             height: Math.max(implicitHeight, rightPanelScroll.availableHeight)
-            spacing: 8
+            spacing: UiConstants.inlineSpacing
 
             NavigationSection {
                 editor: rightInspectorPanel.editor
