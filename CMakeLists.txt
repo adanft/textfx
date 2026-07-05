@@ -134,6 +134,7 @@ qt_add_qml_module(textfx
         qml/features/canvas/text/TextBoxContent.qml
         qml/features/canvas/text/TextBoxEditControls.qml
         qml/features/canvas/text/TextBoxPathControls.qml
+        qml/features/canvas/text/TextBoxSelectionControls.qml
         qml/features/canvas/text/TextBoxMoveArea.qml
         qml/features/canvas/text/TextEditOverlay.qml
         qml/features/canvas/text/TextPathGuide.qml

@@ -912,6 +912,10 @@ private slots:
     }
     QVERIFY(selectedDelegate);
     QCOMPARE(perspectiveBorder->parentItem(), selectedDelegate);
+    QQuickItem *selectionControls = nullptr;
+    QTRY_VERIFY(selectionControls = findVisibleVisualChildByName(
+                    selectedDelegate, QStringLiteral("textBoxSelectionControls")));
+    QCOMPARE(selectionControls->parentItem(), selectedDelegate);
 
     QQuickItem *pathGuide = nullptr;
     QTRY_VERIFY(pathGuide = findVisibleVisualChildByName(
@@ -925,13 +929,27 @@ private slots:
         child = child->parentItem();
       return child;
     };
+    QQuickItem *resizeHandle = nullptr;
+    QTRY_VERIFY(resizeHandle = findVisibleVisualChildByName(
+                    content, QStringLiteral("resizeHandle_nw")));
+    QQuickItem *rotateHandle = nullptr;
+    QTRY_VERIFY(rotateHandle = findVisibleVisualChildByName(
+                    content, QStringLiteral("rotateHandle")));
     QQuickItem *pathGuideStackingItem = stackingChildUnderDelegate(pathGuide);
     QQuickItem *pathHandleStackingItem = stackingChildUnderDelegate(pathHandle);
+    QQuickItem *resizeStackingItem = stackingChildUnderDelegate(resizeHandle);
+    QQuickItem *rotateStackingItem = stackingChildUnderDelegate(rotateHandle);
     QVERIFY(pathGuideStackingItem);
     QVERIFY(pathHandleStackingItem);
+    QVERIFY(resizeStackingItem);
+    QVERIFY(rotateStackingItem);
     QCOMPARE(pathGuideStackingItem->parentItem(), selectedDelegate);
     QCOMPARE(pathHandleStackingItem->parentItem(), selectedDelegate);
+    QCOMPARE(resizeStackingItem->parentItem(), selectedDelegate);
+    QCOMPARE(rotateStackingItem->parentItem(), selectedDelegate);
     QVERIFY(pathGuideStackingItem->z() < perspectiveBorder->z());
+    QVERIFY(resizeStackingItem->z() > perspectiveBorder->z());
+    QVERIFY(rotateStackingItem->z() > perspectiveBorder->z());
     QVERIFY(pathHandleStackingItem->z() > perspectiveBorder->z());
 
     QVariant marginValue;
@@ -968,7 +986,7 @@ private slots:
     assertHandleCenter(QStringLiteral("se"));
     assertHandleCenter(QStringLiteral("sw"));
 
-    QQuickItem *rotateHandle = nullptr;
+    rotateHandle = nullptr;
     QTRY_VERIFY(rotateHandle = qobject_cast<QQuickItem *>(findVisualChildByName(
                     content, QStringLiteral("rotateHandle"))));
     QVERIFY(rotateHandle->width() > 0.0);
@@ -1536,6 +1554,8 @@ private slots:
         readQmlFile(QStringLiteral("TextRotateHandle.qml"));
     const QString pathControlsSource =
         readQmlFile(QStringLiteral("TextBoxPathControls.qml"));
+    const QString selectionControlsSource =
+        readQmlFile(QStringLiteral("TextBoxSelectionControls.qml"));
     const QString pathHandlesSource =
         readQmlFile(QStringLiteral("TextPathHandles.qml"));
 
@@ -1580,8 +1600,14 @@ private slots:
         QStringLiteral("readonly property var rootWindow: window")));
     QVERIFY(!delegateSource.contains(QStringLiteral("Editor.")));
     QVERIFY(!delegateSource.contains(QStringLiteral("window.")));
-    QVERIFY(delegateSource.contains(QStringLiteral("TextResizeHandles {")));
-    QVERIFY(delegateSource.contains(QStringLiteral("TextRotateHandle {")));
+    QVERIFY(delegateSource.contains(QStringLiteral("TextBoxSelectionControls {")));
+    QVERIFY(!delegateSource.contains(QStringLiteral("TextResizeHandles {")));
+    QVERIFY(!delegateSource.contains(QStringLiteral("TextRotateHandle {")));
+    QVERIFY(selectionControlsSource.contains(QStringLiteral("TextResizeHandles {")));
+    QVERIFY(selectionControlsSource.contains(QStringLiteral("TextRotateHandle {")));
+    QVERIFY(selectionControlsSource.contains(QStringLiteral("z: boxRef ? boxRef.zSelectionControls : 20")));
+    QVERIFY(!selectionControlsSource.contains(QStringLiteral("parent: selectionControls.boxRef")));
+    QVERIFY(selectionControlsSource.contains(QStringLiteral("boxRef.rotateDecorationsLoaded")));
     QVERIFY(delegateSource.contains(QStringLiteral("TextBoxPathControls {")));
     QVERIFY(pathControlsSource.contains(QStringLiteral("TextPathGuide {")));
     QVERIFY(pathControlsSource.contains(QStringLiteral("TextPathHandles {")));

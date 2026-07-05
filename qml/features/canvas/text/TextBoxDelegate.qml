@@ -199,26 +199,9 @@ Rectangle {
         outlinedTextItem: textContent.outlinedTextItem
     }
 
-    TextResizeHandles {
+    TextBoxSelectionControls {
         boxRef: boxDelegate
         canvasItem: boxDelegate.canvasItem
-        visible: boxDelegate.renderSelectionUi
-    }
-
-    Loader {
-        id: rotateHandleLoader
-
-        property var boxRef: boxDelegate
-        property var canvasItem: boxDelegate.canvasItem
-
-        active: boxDelegate.renderSelectionUi && boxDelegate.rotateDecorationsLoaded
-        sourceComponent: Component {
-            TextRotateHandle {
-                boxRef: rotateHandleLoader.boxRef
-                canvasItem: rotateHandleLoader.canvasItem
-            }
-        }
-        z: boxDelegate.zSelectionControls
     }
 
     TextBoxPathControls {
