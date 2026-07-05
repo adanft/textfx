@@ -131,6 +131,7 @@ qt_add_qml_module(textfx
         qml/features/leftPanel/TextPropertiesSection.qml
         qml/features/leftPanel/TextPresetsSection.qml
         qml/features/canvas/text/TextBoxDelegate.qml
+        qml/features/canvas/text/TextBoxContent.qml
         qml/features/canvas/text/TextBoxMoveArea.qml
         qml/features/canvas/text/TextEditOverlay.qml
         qml/features/canvas/text/TextPathGuide.qml

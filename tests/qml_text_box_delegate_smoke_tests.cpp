@@ -2,12 +2,14 @@
 #include "qt_test_helpers.h"
 
 #include <QClipboard>
+#include <QColor>
 #include <QMetaObject>
 #include <QFile>
 #include <QFont>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQmlProperty>
 #include <QQuickItem>
 #include <QQuickTextDocument>
 #include <QQuickWindow>
@@ -540,11 +542,22 @@ private slots:
     QTRY_VERIFY(outlinedObject = findVisualChildByName(
                     window->contentItem(), QStringLiteral("boxOutlinedText")));
     QTRY_VERIFY(textAreaObject->property("visible").toBool());
-    QVERIFY(outlinedObject->property("editLayoutMetricsValid").toBool());
+    auto *overlayOutlinedObject =
+        textAreaObject->property("outlinedTextItem").value<QObject *>();
+    QVERIFY(overlayOutlinedObject);
+    QVERIFY(overlayOutlinedObject->property("editLayoutMetricsValid").toBool());
+    auto *overlayOutlinedItem = qobject_cast<QQuickItem *>(overlayOutlinedObject);
+    QVERIFY(overlayOutlinedItem);
+    auto *contentItem = overlayOutlinedItem->parentItem();
+    QVERIFY(contentItem);
+    QCOMPARE(contentItem->property("outlinedTextItem").value<QObject *>(),
+             overlayOutlinedObject);
+    QCOMPARE(textAreaObject->property("outlinedTextItem").value<QObject *>(),
+             overlayOutlinedObject);
 
     const qreal expectedInset =
         window->property("zoom").toReal() *
-        outlinedObject->property("editLayoutLeftPadding").toReal();
+        overlayOutlinedObject->property("editLayoutLeftPadding").toReal();
     QCOMPARE(textAreaObject->property("leftPadding").toReal(), expectedInset);
     QCOMPARE(textAreaObject->property("rightPadding").toReal(), expectedInset);
     QVERIFY(textAreaObject->property("topPadding").toReal() > expectedInset);
@@ -1204,28 +1217,29 @@ private slots:
 
     const QString delegateSource =
         readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+    const QString contentSource =
+        readQmlFile(QStringLiteral("TextBoxContent.qml"));
     const QString editOverlaySource =
         readQmlFile(QStringLiteral("TextEditOverlay.qml"));
 
     const qsizetype delegateStart = delegateSource.indexOf(
         QStringLiteral("Rectangle {\n    id: boxDelegate"));
-    const qsizetype textPerspectiveStart = delegateSource.indexOf(
-        QStringLiteral("id: boxTextPerspective"), delegateStart);
+    const qsizetype textPerspectiveStart = contentSource.indexOf(
+        QStringLiteral("id: boxTextPerspective"));
     const qsizetype textAreaStart = editOverlaySource.indexOf(
         QStringLiteral("id: boxTextArea"));
     const qsizetype mouseAreaStart =
         editOverlaySource.indexOf(QStringLiteral("Connections {"), textAreaStart);
     const qsizetype textOverlayStart = delegateSource.indexOf(
-        QStringLiteral("TextEditOverlay {"), textPerspectiveStart);
+        QStringLiteral("TextEditOverlay {"), delegateStart);
     QVERIFY(delegateStart >= 0);
-    QVERIFY(textPerspectiveStart > delegateStart);
+    QVERIFY(textPerspectiveStart >= 0);
     QVERIFY(textAreaStart >= 0);
     QVERIFY(mouseAreaStart > textAreaStart);
-    QVERIFY(textOverlayStart > textPerspectiveStart);
+    QVERIFY(textOverlayStart > delegateStart);
     const QString delegateHeader =
-        delegateSource.mid(delegateStart, textPerspectiveStart - delegateStart);
-    const QString textPerspectiveSource = delegateSource.mid(
-        textPerspectiveStart, textOverlayStart - textPerspectiveStart);
+        delegateSource.mid(delegateStart, textOverlayStart - delegateStart);
+    const QString textPerspectiveSource = contentSource.mid(textPerspectiveStart);
     const QString textAreaSource =
         editOverlaySource.mid(textAreaStart, mouseAreaStart - textAreaStart);
 
@@ -1327,9 +1341,8 @@ private slots:
 
     EditorController editor;
     editor.newDocument();
-    editor.createTextBox(4, 4, 42, 24);
-    editor.updateSelectedText(
-        QStringLiteral("Supercalifragilisticexpialidocious"));
+    editor.createTextBox(4, 4, 300, 100);
+    editor.updateSelectedText(QStringLiteral("Fits"));
     editor.setSelectedFontSize(20);
 
     QQmlApplicationEngine engine;
@@ -1342,14 +1355,37 @@ private slots:
         qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
     QVERIFY(window);
     QObject *delegate = nullptr;
+    QObject *textAreaObject = nullptr;
     QTRY_VERIFY(delegate = findVisualChildByName(
                     window->contentItem(), QStringLiteral("textBoxDelegate")));
-    QTRY_VERIFY(delegate->property("textOverflow").toBool());
+    QTRY_VERIFY(textAreaObject = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxTextArea")));
+    auto *outlinedObject =
+        textAreaObject->property("outlinedTextItem").value<QObject *>();
+    QVERIFY(outlinedObject);
+    auto *outlinedItem = qobject_cast<QQuickItem *>(outlinedObject);
+    QVERIFY(outlinedItem);
+    auto *contentItem = outlinedItem->parentItem();
+    QVERIFY(contentItem);
+    QCOMPARE(contentItem->property("outlinedTextItem").value<QObject *>(),
+             outlinedObject);
 
-    const QString delegateSource =
-        readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
-    QVERIFY(delegateSource.contains(
-        QStringLiteral("border.color: textOverflow ? Qt.rgba(1, 0, 0, 1)")));
+    QQmlProperty borderColorProperty(delegate, QStringLiteral("border.color"));
+    QVERIFY(borderColorProperty.isValid());
+    const QColor overflowColor(255, 0, 0, 255);
+    QTRY_VERIFY(!outlinedObject->property("overflow").toBool());
+    QCOMPARE(contentItem->property("overflow").toBool(), false);
+    QCOMPARE(delegate->property("textOverflow").toBool(), false);
+    QVERIFY(borderColorProperty.read().value<QColor>() != overflowColor);
+
+    editor.updateSelectedText(
+        QStringLiteral("Supercalifragilisticexpialidocious"));
+    editor.setSelectedBounds(4, 4, 42, 24);
+
+    QTRY_VERIFY(outlinedObject->property("overflow").toBool());
+    QCOMPARE(contentItem->property("overflow").toBool(), true);
+    QCOMPARE(delegate->property("textOverflow").toBool(), true);
+    QTRY_COMPARE(borderColorProperty.read().value<QColor>(), overflowColor);
   }
 
   void qmlNestedInteractionHandlersUseStableEditorReference() {

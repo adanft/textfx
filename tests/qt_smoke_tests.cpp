@@ -1759,7 +1759,7 @@ private slots:
     const qsizetype borderStart =
         source.indexOf(QStringLiteral("id: perspectiveBorder"));
     const qsizetype borderEnd =
-        source.indexOf(QStringLiteral("OutlinedTextItem"), borderStart);
+        source.indexOf(QStringLiteral("TextBoxContent {"), borderStart);
     QVERIFY(borderStart >= 0);
     QVERIFY(borderEnd > borderStart);
     const QString borderSource =

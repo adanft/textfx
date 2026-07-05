@@ -209,6 +209,7 @@ QStringList qmlSourceFiles() {
       QStringLiteral("features/rightPanel/textEffects/ShadowEffectEditor.qml"),
       QStringLiteral("features/rightPanel/textEffects/GradientEffectEditor.qml"),
       QStringLiteral("features/rightPanel/textEffects/PathEffectEditor.qml"),
+      QStringLiteral("features/canvas/text/TextBoxContent.qml"),
       QStringLiteral("features/canvas/text/TextBoxDelegate.qml"),
       QStringLiteral("features/canvas/text/TextBoxMoveArea.qml"),
       QStringLiteral("features/canvas/text/TextEditOverlay.qml"),
