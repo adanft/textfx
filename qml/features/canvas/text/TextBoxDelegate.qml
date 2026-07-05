@@ -107,10 +107,7 @@ Rectangle {
     readonly property int zTextContent: 1
     readonly property int zPerspectiveBorder: 19
     readonly property int zSelectionControls: 20
-    readonly property bool activePathDragForThisBox: rootWindow && rootWindow.activePathHandlePlane && rootWindow.activePathHandlePlane.boxRef === boxDelegate
     readonly property bool rotateDecorationsLoaded: selected || (rootWindow && rootWindow.activeRotateDelegate === boxDelegate)
-    readonly property bool pathDecorationsLoaded: (selected && boxModel.path) || activePathDragForThisBox
-    readonly property bool pathGuideLoaded: selected && boxModel.path && boxModel.pathPoints && boxModel.pathPoints.length > 1
 
     function modelPreviewText() {
         return boxModel.uppercase ? String(boxModel.text).toUpperCase() : boxModel.lowercase ? String(boxModel.text).toLowerCase() : boxModel.text;
@@ -196,21 +193,6 @@ Rectangle {
         boxRef: boxDelegate
     }
 
-    Loader {
-        id: pathGuideLoader
-
-        property var boxRef: boxDelegate
-
-        anchors.fill: parent
-        active: boxDelegate.renderSelectionUi && boxDelegate.pathGuideLoaded
-        sourceComponent: Component {
-            TextPathGuide {
-                boxRef: pathGuideLoader.boxRef
-            }
-        }
-        z: 18
-    }
-
     TextEditOverlay {
         id: boxTextOverlay
 
@@ -248,21 +230,10 @@ Rectangle {
         z: boxDelegate.zSelectionControls
     }
 
-    Loader {
-        id: pathHandlesLoader
-
-        property var boxRef: boxDelegate
-        property var canvasItem: boxDelegate.canvasItem
-
-        anchors.fill: parent
-        active: boxDelegate.renderSelectionUi && boxDelegate.pathDecorationsLoaded
-        sourceComponent: Component {
-            TextPathHandles {
-                boxRef: pathHandlesLoader.boxRef
-                canvasItem: pathHandlesLoader.canvasItem
-            }
-        }
-        z: boxDelegate.zSelectionControls
+    TextBoxPathControls {
+        boxRef: boxDelegate
+        canvasItem: boxDelegate.canvasItem
     }
+
 
 }

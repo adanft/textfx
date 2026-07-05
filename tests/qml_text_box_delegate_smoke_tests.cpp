@@ -913,6 +913,27 @@ private slots:
     QVERIFY(selectedDelegate);
     QCOMPARE(perspectiveBorder->parentItem(), selectedDelegate);
 
+    QQuickItem *pathGuide = nullptr;
+    QTRY_VERIFY(pathGuide = findVisibleVisualChildByName(
+                    content, QStringLiteral("pathGuide")));
+    QQuickItem *pathHandle = nullptr;
+    QTRY_VERIFY(pathHandle = findVisibleVisualChildByName(
+                    content, QStringLiteral("pathHandle")));
+    const auto stackingChildUnderDelegate = [selectedDelegate](QQuickItem *item) {
+      QQuickItem *child = item;
+      while (child && child->parentItem() && child->parentItem() != selectedDelegate)
+        child = child->parentItem();
+      return child;
+    };
+    QQuickItem *pathGuideStackingItem = stackingChildUnderDelegate(pathGuide);
+    QQuickItem *pathHandleStackingItem = stackingChildUnderDelegate(pathHandle);
+    QVERIFY(pathGuideStackingItem);
+    QVERIFY(pathHandleStackingItem);
+    QCOMPARE(pathGuideStackingItem->parentItem(), selectedDelegate);
+    QCOMPARE(pathHandleStackingItem->parentItem(), selectedDelegate);
+    QVERIFY(pathGuideStackingItem->z() < perspectiveBorder->z());
+    QVERIFY(pathHandleStackingItem->z() > perspectiveBorder->z());
+
     QVariant marginValue;
     QVERIFY(QMetaObject::invokeMethod(
         window, "perspectiveMargin", Q_RETURN_ARG(QVariant, marginValue),
@@ -1398,6 +1419,8 @@ private slots:
         readQmlFile(QStringLiteral("TextResizeHandles.qml"));
     const QString rotateHandleSource =
         readQmlFile(QStringLiteral("TextRotateHandle.qml"));
+    const QString pathControlsSource =
+        readQmlFile(QStringLiteral("TextBoxPathControls.qml"));
     const QString pathHandlesSource =
         readQmlFile(QStringLiteral("TextPathHandles.qml"));
 
@@ -1413,7 +1436,7 @@ private slots:
         QStringLiteral(
             "rotateHandle.rootWindow.beginRotateDrag(rotateHandle.boxRef"));
     const qsizetype pathComponentStart =
-        delegateSource.indexOf(QStringLiteral("TextPathHandles {"),
+        delegateSource.indexOf(QStringLiteral("TextBoxPathControls {"),
                                0);
     QVERIFY(resizeStart >= 0);
     QVERIFY(!moveAreaSource.isEmpty());
@@ -1444,7 +1467,9 @@ private slots:
     QVERIFY(!delegateSource.contains(QStringLiteral("window.")));
     QVERIFY(delegateSource.contains(QStringLiteral("TextResizeHandles {")));
     QVERIFY(delegateSource.contains(QStringLiteral("TextRotateHandle {")));
-    QVERIFY(delegateSource.contains(QStringLiteral("TextPathHandles {")));
+    QVERIFY(delegateSource.contains(QStringLiteral("TextBoxPathControls {")));
+    QVERIFY(pathControlsSource.contains(QStringLiteral("TextPathGuide {")));
+    QVERIFY(pathControlsSource.contains(QStringLiteral("TextPathHandles {")));
     QVERIFY(delegateSource.contains(QStringLiteral("TextBoxMoveArea {")));
     QVERIFY(delegateSource.contains(QStringLiteral("boxRef: boxDelegate")));
     QVERIFY(delegateSource.contains(
