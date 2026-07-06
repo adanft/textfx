@@ -1,6 +1,6 @@
 #include "application/services/TextBoxEditingService.h"
 
-#include "core/AuthoringLimits.h"
+#include "domain/AuthoringLimits.h"
 
 #include <algorithm>
 #include <cctype>

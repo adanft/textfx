@@ -1,6 +1,6 @@
 #include "app/EditorController.h"
 #include "application/services/TextBoxSelectionService.h"
-#include "core/AuthoringLimits.h"
+#include "domain/AuthoringLimits.h"
 #include "fonts/FontResolver.h"
 #include "fonts/SfntNames.h"
 #include "qt_test_helpers.h"

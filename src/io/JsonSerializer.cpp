@@ -1,6 +1,6 @@
 #include "io/JsonSerializer.h"
 
-#include "core/AuthoringLimits.h"
+#include "domain/AuthoringLimits.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>

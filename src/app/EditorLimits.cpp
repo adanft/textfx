@@ -1,6 +1,6 @@
 #include "app/EditorLimits.h"
 
-#include "core/AuthoringLimits.h"
+#include "domain/AuthoringLimits.h"
 
 namespace textfx {
 

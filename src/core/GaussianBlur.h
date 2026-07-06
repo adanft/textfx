@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/AuthoringLimits.h"
+#include "domain/AuthoringLimits.h"
 
 #include <QImage>
 #include <QVector>

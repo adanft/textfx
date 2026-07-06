@@ -5,7 +5,7 @@
 #include "app/BoxRenderState.h"
 #include "application/queries/CommandAvailability.h"
 #include "app/EffectMetadata.h"
-#include "core/AuthoringLimits.h"
+#include "domain/AuthoringLimits.h"
 #include "fonts/FontResolver.h"
 #include "qt_test_helpers.h"
 

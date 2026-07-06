@@ -1,6 +1,6 @@
 #include "render/RenderGraph.h"
 
-#include "core/AuthoringLimits.h"
+#include "domain/AuthoringLimits.h"
 #include "core/GaussianBlur.h"
 #include "fonts/FontResolver.h"
 #include "render/RenderTextLayout.h"

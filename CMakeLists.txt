@@ -68,7 +68,7 @@ set(TEXTFX_CORE_SOURCES
     src/application/services/TextPresetService.h
     src/application/services/TextWorkflowService.cpp
     src/application/services/TextWorkflowService.h
-    src/core/AuthoringLimits.h
+    src/domain/AuthoringLimits.h
     src/core/DocumentModel.cpp
     src/core/DocumentModel.h
     src/fonts/FontResolver.cpp
