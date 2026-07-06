@@ -1,6 +1,7 @@
 #include "app/EditorController.h"
 
 #include "app/EditorViewModels.h"
+#include "app/CommandAvailability.h"
 #include "app/EffectMetadata.h"
 #include "app/PageTextService.h"
 #include "app/ProjectExportService.h"
@@ -241,18 +242,9 @@ QStringList EditorController::pageLabels() const {
 }
 
 bool EditorController::actionEnabled(const QString &command) const {
-  if (command == QStringLiteral("new") || command == QStringLiteral("open")) {
-    return true;
-  }
-  if (command == QStringLiteral("paste")) {
-    return hasProject();
-  }
-  if (command == QStringLiteral("copy") ||
-      command == QStringLiteral("delete") ||
-      command == QStringLiteral("duplicate")) {
-    return selectedBox() != nullptr;
-  }
-  return hasProject();
+  const CommandAvailabilityState state{.hasProject = hasProject(),
+                                       .hasSelectedBox = selectedBox() != nullptr};
+  return CommandAvailability::isEnabled(command, state);
 }
 
 void EditorController::openProject(const QString &folder) {

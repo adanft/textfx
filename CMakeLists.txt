@@ -37,6 +37,8 @@ set(TEXTFX_CORE_SOURCES
     src/app/BoxRenderState.h
     src/app/BoxesModel.cpp
     src/app/BoxesModel.h
+    src/app/CommandAvailability.cpp
+    src/app/CommandAvailability.h
     src/app/EditorController.cpp
     src/app/EditorController.h
     src/app/EditorLimits.cpp

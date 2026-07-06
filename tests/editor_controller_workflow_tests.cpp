@@ -1,6 +1,7 @@
 #include "app/EditorController.h"
 #include "app/BoxesModel.h"
 #include "app/BoxRenderState.h"
+#include "app/CommandAvailability.h"
 #include "app/EffectMetadata.h"
 #include "core/AuthoringLimits.h"
 #include "fonts/FontResolver.h"
@@ -172,6 +173,76 @@ private slots:
     QVERIFY(editor.actionEnabled(QStringLiteral("open")));
     QVERIFY(!editor.actionEnabled(QStringLiteral("save")));
     QVERIFY(!editor.actionEnabled(QStringLiteral("delete")));
+  }
+
+  void commandAvailabilityPolicyPreservesCurrentMatrix() {
+    const CommandAvailabilityState noProject{};
+    QVERIFY(CommandAvailability::isEnabled(QStringLiteral("new"), noProject));
+    QVERIFY(CommandAvailability::isEnabled(QStringLiteral("open"), noProject));
+    QVERIFY(!CommandAvailability::isEnabled(QStringLiteral("paste"), noProject));
+    QVERIFY(!CommandAvailability::isEnabled(QStringLiteral("save"), noProject));
+    QVERIFY(!CommandAvailability::isEnabled(QStringLiteral("unknown-command"),
+                                           noProject));
+    QVERIFY(!CommandAvailability::isEnabled(QStringLiteral("copy"), noProject));
+    QVERIFY(!CommandAvailability::isEnabled(QStringLiteral("delete"), noProject));
+    QVERIFY(!CommandAvailability::isEnabled(QStringLiteral("duplicate"),
+                                            noProject));
+
+    const CommandAvailabilityState projectWithoutSelection{true, false};
+    QVERIFY(CommandAvailability::isEnabled(QStringLiteral("paste"),
+                                           projectWithoutSelection));
+    QVERIFY(CommandAvailability::isEnabled(QStringLiteral("save"),
+                                           projectWithoutSelection));
+    QVERIFY(CommandAvailability::isEnabled(QStringLiteral("unknown-command"),
+                                           projectWithoutSelection));
+    QVERIFY(!CommandAvailability::isEnabled(QStringLiteral("copy"),
+                                            projectWithoutSelection));
+    QVERIFY(!CommandAvailability::isEnabled(QStringLiteral("delete"),
+                                            projectWithoutSelection));
+    QVERIFY(!CommandAvailability::isEnabled(QStringLiteral("duplicate"),
+                                            projectWithoutSelection));
+
+    const CommandAvailabilityState projectWithSelection{true, true};
+    QVERIFY(CommandAvailability::isEnabled(QStringLiteral("copy"),
+                                           projectWithSelection));
+    QVERIFY(CommandAvailability::isEnabled(QStringLiteral("delete"),
+                                           projectWithSelection));
+    QVERIFY(CommandAvailability::isEnabled(QStringLiteral("duplicate"),
+                                           projectWithSelection));
+  }
+
+  void actionEnabledUsesProjectAndSelectedBoxAvailability() {
+    EditorController editor;
+
+    QVERIFY(editor.actionEnabled(QStringLiteral("new")));
+    QVERIFY(editor.actionEnabled(QStringLiteral("open")));
+    QVERIFY(!editor.actionEnabled(QStringLiteral("paste")));
+    QVERIFY(!editor.actionEnabled(QStringLiteral("save")));
+    QVERIFY(!editor.actionEnabled(QStringLiteral("delete")));
+    QVERIFY(!editor.actionEnabled(QStringLiteral("unknown-command")));
+
+    editor.newDocument();
+
+    QVERIFY(editor.actionEnabled(QStringLiteral("paste")));
+    QVERIFY(editor.actionEnabled(QStringLiteral("save")));
+    QVERIFY(editor.actionEnabled(QStringLiteral("unknown-command")));
+    QVERIFY(!editor.actionEnabled(QStringLiteral("copy")));
+    QVERIFY(!editor.actionEnabled(QStringLiteral("delete")));
+    QVERIFY(!editor.actionEnabled(QStringLiteral("duplicate")));
+
+    editor.createTextBox(10, 20, MinBoxSize, MinBoxSize);
+
+    QVERIFY(editor.actionEnabled(QStringLiteral("copy")));
+    QVERIFY(editor.actionEnabled(QStringLiteral("delete")));
+    QVERIFY(editor.actionEnabled(QStringLiteral("duplicate")));
+
+    editor.selectBox(-1);
+
+    QVERIFY(!editor.actionEnabled(QStringLiteral("copy")));
+    QVERIFY(!editor.actionEnabled(QStringLiteral("delete")));
+    QVERIFY(!editor.actionEnabled(QStringLiteral("duplicate")));
+    QVERIFY(editor.actionEnabled(QStringLiteral("save")));
+    QVERIFY(editor.actionEnabled(QStringLiteral("unknown-command")));
   }
 
   void commandRefreshesDocumentState() {
