@@ -2,7 +2,7 @@
 
 #include "app/EditorControllerStringUtils.h"
 #include "app/EffectMetadata.h"
-#include "app/ProjectSessionService.h"
+#include "application/services/ProjectSessionService.h"
 #include "app/SelectionQueryService.h"
 #include "application/services/TextWorkflowService.h"
 

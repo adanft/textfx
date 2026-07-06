@@ -2,7 +2,7 @@
 
 #include "app/EditorViewModels.h"
 #include "app/ProjectExportService.h"
-#include "app/ProjectSessionService.h"
+#include "application/services/ProjectSessionService.h"
 #include "app/SelectionQueryService.h"
 #include "application/services/TextBoxSelectionService.h"
 #include "app/EditorControllerStringUtils.h"

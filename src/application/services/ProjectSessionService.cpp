@@ -1,4 +1,4 @@
-#include "app/ProjectSessionService.h"
+#include "application/services/ProjectSessionService.h"
 
 #include "core/ProjectStore.h"
 

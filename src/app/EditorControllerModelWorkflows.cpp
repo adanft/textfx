@@ -5,7 +5,7 @@
 #include "app/EditorViewModels.h"
 #include "app/EffectMetadata.h"
 #include "application/services/PageTextService.h"
-#include "app/ProjectSessionService.h"
+#include "application/services/ProjectSessionService.h"
 #include "app/TextBoxClipboardService.h"
 #include "application/services/TextBoxEditingService.h"
 #include "application/services/TextBoxSelectionService.h"

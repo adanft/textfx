@@ -1,5 +1,5 @@
 #include "application/services/PageTextService.h"
-#include "app/ProjectSessionService.h"
+#include "application/services/ProjectSessionService.h"
 #include "application/services/TextPresetService.h"
 #include "application/services/TextWorkflowService.h"
 #include "core/ProjectStore.h"
