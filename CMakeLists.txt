@@ -40,7 +40,10 @@ set(TEXTFX_CORE_SOURCES
     src/app/CommandAvailability.cpp
     src/app/CommandAvailability.h
     src/app/EditorController.cpp
+    src/app/EditorControllerModelWorkflows.cpp
+    src/app/EditorControllerSupport.cpp
     src/app/EditorController.h
+    src/app/EditorControllerStringUtils.h
     src/app/EditorLimits.cpp
     src/app/EditorLimits.h
     src/app/EditorViewModels.cpp
