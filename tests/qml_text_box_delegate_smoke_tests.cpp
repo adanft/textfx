@@ -12,6 +12,7 @@
 #include <QQmlProperty>
 #include <QQuickItem>
 #include <QQuickTextDocument>
+#include <QQuickView>
 #include <QQuickWindow>
 #include <QTemporaryDir>
 #include <QTest>
@@ -28,6 +29,98 @@ using namespace textfx;
 using namespace textfx::test;
 
 namespace {
+
+class ResizeHandleFakeRootWindow final : public QObject {
+  Q_OBJECT
+  Q_PROPERTY(QVariant palette READ palette CONSTANT)
+
+public:
+  QVariant palette() const {
+    QVariantMap value;
+    value.insert(QStringLiteral("highlight"), QStringLiteral("#448aff"));
+    return value;
+  }
+
+  Q_INVOKABLE QPointF visualHandlePosition(const QVariant &, const QString &, qreal,
+                                           qreal) {
+    return {10, 12};
+  }
+  Q_INVOKABLE qreal handleSize() const { return 8; }
+  Q_INVOKABLE void beginResizeDrag(QObject *, const QString &, qreal, qreal) {
+    ++resizeBeginCount;
+  }
+  Q_INVOKABLE void beginPerspectiveDrag(QObject *, const QString &, qreal, qreal) {
+    ++perspectiveBeginCount;
+  }
+  Q_INVOKABLE void updateResizeDrag(qreal, qreal) { ++resizeUpdateCount; }
+  Q_INVOKABLE void updatePerspectiveDrag(qreal, qreal) {
+    ++perspectiveUpdateCount;
+  }
+  Q_INVOKABLE void endResizeDrag(bool commit) {
+    ++resizeEndCount;
+    resizeCommit = commit;
+  }
+  Q_INVOKABLE void endPerspectiveDrag(bool commit) {
+    ++perspectiveEndCount;
+    perspectiveCommit = commit;
+  }
+
+  int resizeBeginCount = 0;
+  int perspectiveBeginCount = 0;
+  int resizeUpdateCount = 0;
+  int perspectiveUpdateCount = 0;
+  int resizeEndCount = 0;
+  int perspectiveEndCount = 0;
+  bool resizeCommit = false;
+  bool perspectiveCommit = false;
+};
+
+class ResizeHandleFakeEditor final : public QObject {
+  Q_OBJECT
+
+public:
+  Q_INVOKABLE void selectBox(int index) { selectedIndex = index; }
+  Q_INVOKABLE void beginInteraction() { ++beginCount; }
+  Q_INVOKABLE void endInteraction() { ++endCount; }
+
+  int selectedIndex = -1;
+  int beginCount = 0;
+  int endCount = 0;
+};
+
+class ResizeHandleFakeBox final : public QObject {
+  Q_OBJECT
+  Q_PROPERTY(QObject *rootWindow READ rootWindow CONSTANT)
+  Q_PROPERTY(QObject *editorRef READ editorRef CONSTANT)
+  Q_PROPERTY(QVariant boxModel READ boxModel CONSTANT)
+  Q_PROPERTY(bool selected READ selected CONSTANT)
+  Q_PROPERTY(bool perspectiveActive READ perspectiveActive WRITE setPerspectiveActive)
+  Q_PROPERTY(qreal width READ width CONSTANT)
+  Q_PROPERTY(qreal height READ height CONSTANT)
+
+public:
+  ResizeHandleFakeBox(ResizeHandleFakeRootWindow *rootWindow,
+                      ResizeHandleFakeEditor *editorRef)
+      : rootWindow_(rootWindow), editorRef_(editorRef) {}
+
+  QObject *rootWindow() const { return rootWindow_; }
+  QObject *editorRef() const { return editorRef_; }
+  QVariant boxModel() const {
+    QVariantMap value;
+    value.insert(QStringLiteral("index"), 3);
+    return value;
+  }
+  bool selected() const { return true; }
+  bool perspectiveActive() const { return perspectiveActive_; }
+  void setPerspectiveActive(bool value) { perspectiveActive_ = value; }
+  qreal width() const { return 100; }
+  qreal height() const { return 80; }
+
+private:
+  ResizeHandleFakeRootWindow *rootWindow_ = nullptr;
+  ResizeHandleFakeEditor *editorRef_ = nullptr;
+  bool perspectiveActive_ = false;
+};
 
 int countVisualChildrenByName(QQuickItem *item, const QString &objectName) {
   if (!item)
@@ -1589,7 +1682,7 @@ private slots:
         pathHandlesSource.mid(pathStart, pathEnd - pathStart);
 
     QVERIFY(resizeSource.contains(
-        QStringLiteral("resizeHandle.editorRef.endInteraction()")));
+        QStringLiteral("dragEditorRef.endInteraction()")));
     QVERIFY(rotateSource.contains(
         QStringLiteral("rotateHandle.editorRef.endInteraction()")));
     QVERIFY(mainSource.contains(
@@ -1630,9 +1723,13 @@ private slots:
     QVERIFY(
         resizeSource.contains(QStringLiteral("property var boxRef: resizeHandles.boxRef")));
     QVERIFY(resizeSource.contains(
-        QStringLiteral("property var rootWindow: boxRef.rootWindow")));
+        QStringLiteral("property var rootWindow: boxRef ? boxRef.rootWindow : null")));
     QVERIFY(resizeSource.contains(
-        QStringLiteral("property var editorRef: boxRef.editorRef")));
+        QStringLiteral("property var editorRef: boxRef ? boxRef.editorRef : null")));
+    QVERIFY(resizeSource.contains(QStringLiteral("readonly property bool handleReady")));
+    QVERIFY(resizeSource.contains(QStringLiteral("property var dragRootWindow: null")));
+    QVERIFY(resizeSource.contains(QStringLiteral("property var dragEditorRef: null")));
+    QVERIFY(resizeSource.contains(QStringLiteral("visible: handleReady && boxRef.selected")));
     QVERIFY(
         rotateSource.contains(QStringLiteral("property var boxRef")));
     QVERIFY(pathSource.contains(
@@ -1662,6 +1759,111 @@ private slots:
     QVERIFY(!pathSource.contains(QStringLiteral("window.")));
     QVERIFY(!delegateSource.contains(
         QStringLiteral("model: [{name: \"nw\"}, {name: \"n\"}")));
+  }
+
+  void qmlResizeHandleFinishesDragAfterBoxRefClears() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString qmlPath = dir.filePath(QStringLiteral("ResizeHarness.qml"));
+    QFile qml(qmlPath);
+    QVERIFY(qml.open(QIODevice::WriteOnly | QIODevice::Text));
+    qml.write(QStringLiteral(R"QML(
+import QtQuick
+import "%1"
+
+Item {
+    id: root
+    width: 120
+    height: 120
+    property var currentBox: fakeBox
+
+    TextResizeHandles {
+        anchors.fill: parent
+        boxRef: root.currentBox
+        canvasItem: root
+    }
+}
+)QML")
+                  .arg(QUrl::fromLocalFile(QStringLiteral(
+                           TEXTFX_FIXTURE_DIR
+                           "/../../qml/features/canvas/text"))
+                           .toString())
+                  .toUtf8());
+    qml.close();
+
+    ResizeHandleFakeRootWindow rootWindow;
+    ResizeHandleFakeEditor editor;
+    ResizeHandleFakeBox box(&rootWindow, &editor);
+    ResizeHandleFakeRootWindow replacementRootWindow;
+    ResizeHandleFakeEditor replacementEditor;
+    ResizeHandleFakeBox replacementBox(&replacementRootWindow, &replacementEditor);
+
+    QQuickView view;
+    view.rootContext()->setContextProperty(QStringLiteral("fakeBox"), &box);
+    view.setResizeMode(QQuickView::SizeRootObjectToView);
+    view.resize(120, 120);
+    view.setSource(QUrl::fromLocalFile(qmlPath));
+    QVERIFY2(view.status() == QQuickView::Ready,
+             qPrintable(view.errors().isEmpty()
+                            ? QStringLiteral("QML failed to load")
+                            : view.errors().constFirst().toString()));
+    view.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&view));
+
+    auto *root = qobject_cast<QQuickItem *>(view.rootObject());
+    QVERIFY(root);
+    QQuickItem *handle = nullptr;
+    QTRY_VERIFY(handle = findVisibleVisualChildByName(
+                    root, QStringLiteral("resizeHandle_nw")));
+    const QPoint pressPoint =
+        handle->mapToScene(QPointF(handle->width() / 2, handle->height() / 2))
+            .toPoint();
+
+    QTest::mousePress(&view, Qt::LeftButton, Qt::NoModifier, pressPoint);
+    QCOMPARE(editor.selectedIndex, 3);
+    QCOMPARE(editor.beginCount, 1);
+    QCOMPARE(rootWindow.resizeBeginCount, 1);
+
+    QVERIFY(root->setProperty("currentBox", QVariant::fromValue<QObject *>(&replacementBox)));
+    QCoreApplication::processEvents();
+    QVERIFY(handle->property("handleReady").toBool());
+    QTest::mouseMove(&view, pressPoint + QPoint(8, 8));
+    QCOMPARE(rootWindow.resizeUpdateCount, 1);
+    QCOMPARE(replacementRootWindow.resizeUpdateCount, 0);
+    QVERIFY(root->setProperty("currentBox", QVariant::fromValue<QObject *>(nullptr)));
+    QCoreApplication::processEvents();
+    QVERIFY(!handle->property("handleReady").toBool());
+    QTest::mouseRelease(&view, Qt::LeftButton, Qt::NoModifier,
+                        pressPoint + QPoint(8, 8));
+    QCOMPARE(rootWindow.resizeEndCount, 1);
+    QVERIFY(!rootWindow.resizeCommit);
+    QCOMPARE(rootWindow.perspectiveEndCount, 0);
+    QCOMPARE(editor.endCount, 1);
+
+    box.setPerspectiveActive(true);
+    QVERIFY(root->setProperty("currentBox", QVariant::fromValue<QObject *>(&box)));
+    QCoreApplication::processEvents();
+    QTRY_VERIFY(handle->property("handleReady").toBool());
+    QTest::mousePress(&view, Qt::LeftButton, Qt::NoModifier, pressPoint);
+    QCOMPARE(editor.beginCount, 2);
+    QCOMPARE(rootWindow.perspectiveBeginCount, 1);
+
+    replacementBox.setPerspectiveActive(false);
+    QVERIFY(root->setProperty("currentBox", QVariant::fromValue<QObject *>(&replacementBox)));
+    QCoreApplication::processEvents();
+    QVERIFY(handle->property("handleReady").toBool());
+    QTest::mouseMove(&view, pressPoint + QPoint(4, 4));
+    QCOMPARE(rootWindow.perspectiveUpdateCount, 1);
+    QCOMPARE(replacementRootWindow.perspectiveUpdateCount, 0);
+    QVERIFY(root->setProperty("currentBox", QVariant::fromValue<QObject *>(nullptr)));
+    QCoreApplication::processEvents();
+    QVERIFY(!handle->property("handleReady").toBool());
+    QTest::mouseRelease(&view, Qt::LeftButton, Qt::NoModifier,
+                        pressPoint + QPoint(4, 4));
+    QCOMPARE(rootWindow.perspectiveEndCount, 1);
+    QVERIFY(!rootWindow.perspectiveCommit);
+    QCOMPARE(rootWindow.resizeEndCount, 1);
+    QCOMPARE(editor.endCount, 2);
   }
 
   void qmlPreviewRepeaterUsesRoleSafeBoxesModelDelegate() {

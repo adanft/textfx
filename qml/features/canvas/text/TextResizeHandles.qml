@@ -35,19 +35,42 @@ Item {
 
             property var boxRef: resizeHandles.boxRef
             property var canvasItem: resizeHandles.canvasItem
-            property var rootWindow: boxRef.rootWindow
-            property var editorRef: boxRef.editorRef
-            readonly property var visualPosition: rootWindow.visualHandlePosition(boxRef.boxModel, modelData.name, boxRef.width, boxRef.height)
+            property var rootWindow: boxRef ? boxRef.rootWindow : null
+            property var editorRef: boxRef ? boxRef.editorRef : null
+            readonly property var boxModel: boxRef ? boxRef.boxModel : null
+            readonly property bool handleReady: rootWindow && editorRef && boxModel
+            property bool dragStarted: false
+            property bool dragPerspective: false
+            property var dragRootWindow: null
+            property var dragEditorRef: null
+            readonly property var visualPosition: handleReady ? rootWindow.visualHandlePosition(boxModel, modelData.name, boxRef.width, boxRef.height) : Qt.point(0, 0)
+
+            function finishDrag(commit) {
+                if (!dragStarted)
+                    return ;
+                if (dragRootWindow) {
+                    if (dragPerspective)
+                        dragRootWindow.endPerspectiveDrag(commit);
+                    else
+                        dragRootWindow.endResizeDrag(commit);
+                }
+                if (dragEditorRef)
+                    dragEditorRef.endInteraction();
+                dragStarted = false;
+                dragPerspective = false;
+                dragRootWindow = null;
+                dragEditorRef = null;
+            }
 
             objectName: "resizeHandle_" + modelData.name
             z: resizeHandles.zResizeHandles
-            width: rootWindow.handleSize()
+            width: handleReady ? rootWindow.handleSize() : 0
             height: width
             radius: width / 2
-            color: rootWindow.palette.highlight
+            color: handleReady ? rootWindow.palette.highlight : "transparent"
             x: visualPosition.x - width / 2
             y: visualPosition.y - height / 2
-            visible: boxRef.selected
+            visible: handleReady && boxRef.selected
 
             MouseArea {
                 anchors.fill: parent
@@ -56,39 +79,37 @@ Item {
                 cursorShape: Qt.SizeFDiagCursor
                 onPressed: (mouse) => {
                     mouse.accepted = true;
-                    resizeHandle.editorRef.selectBox(resizeHandle.boxRef.boxModel.index);
-                    resizeHandle.editorRef.beginInteraction();
+                    if (!resizeHandle.handleReady)
+                        return ;
+                    const pressedBoxRef = resizeHandle.boxRef;
+                    const pressedBoxModel = resizeHandle.boxModel;
+                    const pressedRootWindow = resizeHandle.rootWindow;
+                    const pressedEditorRef = resizeHandle.editorRef;
+                    resizeHandle.dragStarted = true;
+                    resizeHandle.dragPerspective = pressedBoxRef.perspectiveActive;
+                    resizeHandle.dragRootWindow = pressedRootWindow;
+                    resizeHandle.dragEditorRef = pressedEditorRef;
+                    pressedEditorRef.selectBox(pressedBoxModel.index);
+                    pressedEditorRef.beginInteraction();
                     const point = mapToItem(canvasItem, mouse.x, mouse.y);
-                    if (resizeHandle.boxRef.perspectiveActive)
-                        resizeHandle.rootWindow.beginPerspectiveDrag(resizeHandle.boxRef, modelData.name, point.x, point.y);
+                    if (resizeHandle.dragPerspective)
+                        pressedRootWindow.beginPerspectiveDrag(pressedBoxRef, modelData.name, point.x, point.y);
                     else
-                        resizeHandle.rootWindow.beginResizeDrag(resizeHandle.boxRef, modelData.name, point.x, point.y);
+                        pressedRootWindow.beginResizeDrag(pressedBoxRef, modelData.name, point.x, point.y);
                 }
                 onPositionChanged: (mouse) => {
-                    if (!pressed)
+                    if (!pressed || !resizeHandle.dragStarted || !resizeHandle.dragRootWindow)
                         return ;
 
                     const point = mapToItem(canvasItem, mouse.x, mouse.y);
-                    if (resizeHandle.boxRef.perspectiveActive) {
-                        resizeHandle.rootWindow.updatePerspectiveDrag(point.x, point.y);
+                    if (resizeHandle.dragPerspective) {
+                        resizeHandle.dragRootWindow.updatePerspectiveDrag(point.x, point.y);
                         return ;
                     }
-                    resizeHandle.rootWindow.updateResizeDrag(point.x, point.y);
+                    resizeHandle.dragRootWindow.updateResizeDrag(point.x, point.y);
                 }
-                onReleased: {
-                    if (resizeHandle.boxRef.perspectiveActive)
-                        resizeHandle.rootWindow.endPerspectiveDrag(true);
-                    else
-                        resizeHandle.rootWindow.endResizeDrag(true);
-                    resizeHandle.editorRef.endInteraction();
-                }
-                onCanceled: {
-                    if (resizeHandle.boxRef.perspectiveActive)
-                        resizeHandle.rootWindow.endPerspectiveDrag(false);
-                    else
-                        resizeHandle.rootWindow.endResizeDrag(false);
-                    resizeHandle.editorRef.endInteraction();
-                }
+                onReleased: resizeHandle.finishDrag(true)
+                onCanceled: resizeHandle.finishDrag(false)
             }
 
         }

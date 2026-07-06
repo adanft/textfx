@@ -474,9 +474,9 @@ QtObject {
     QVERIFY(source.contains(
         QStringLiteral("top = Math.min(delta.y, bottom - minimumBoxSize)")));
     const qsizetype perspectiveBranch = resizeSource.indexOf(
-        QStringLiteral("if (resizeHandle.boxRef.perspectiveActive)"));
+        QStringLiteral("if (resizeHandle.dragPerspective)"));
     const qsizetype normalUpdate = resizeSource.indexOf(QStringLiteral(
-        "resizeHandle.rootWindow.updateResizeDrag(point.x, point.y)"));
+        "resizeHandle.dragRootWindow.updateResizeDrag(point.x, point.y)"));
     QVERIFY(perspectiveBranch >= 0);
     QVERIFY(normalUpdate > perspectiveBranch);
     QVERIFY(
@@ -517,14 +517,14 @@ QtObject {
         QStringLiteral("acceptedButtons: Qt.LeftButton")));
     QVERIFY(resizeSource.contains(QStringLiteral("mouse.accepted = true")));
     QVERIFY(resizeSource.contains(
-        QStringLiteral("resizeHandle.rootWindow.beginResizeDrag(resizeHandle."
-                       "boxRef, modelData.name, point.x, point.y)")));
+        QStringLiteral("pressedRootWindow.beginResizeDrag(pressedBoxRef, "
+                       "modelData.name, point.x, point.y)")));
     QVERIFY(resizeSource.contains(QStringLiteral(
-        "resizeHandle.rootWindow.updateResizeDrag(point.x, point.y)")));
+        "resizeHandle.dragRootWindow.updateResizeDrag(point.x, point.y)")));
     QVERIFY(resizeSource.contains(
-        QStringLiteral("resizeHandle.rootWindow.endResizeDrag(true)")));
+        QStringLiteral("dragRootWindow.endResizeDrag(commit)")));
     QVERIFY(resizeSource.contains(
-        QStringLiteral("resizeHandle.rootWindow.endPerspectiveDrag(true)")));
+        QStringLiteral("dragRootWindow.endPerspectiveDrag(commit)")));
     QVERIFY(!resizeSource.contains(QStringLiteral("drag.target")));
   }
 
@@ -792,10 +792,10 @@ QtObject {
         QStringLiteral("rotateHandle.rootWindow.beginRotateDrag(rotateHandle."
                        "boxRef, point.x, point.y)")));
     QVERIFY(resizeSource.contains(QStringLiteral(
-        "resizeHandle.rootWindow.beginPerspectiveDrag(resizeHandle.boxRef, "
+        "pressedRootWindow.beginPerspectiveDrag(pressedBoxRef, "
         "modelData.name, point.x, point.y)")));
     QVERIFY(resizeSource.contains(
-        QStringLiteral("resizeHandle.rootWindow.endPerspectiveDrag(true)")));
+        QStringLiteral("dragRootWindow.endPerspectiveDrag(commit)")));
     QVERIFY(!source.contains(
         QStringLiteral("model: [{name: \"nw\"}, {name: \"n\"}")));
   }
@@ -1604,13 +1604,13 @@ QtObject {
         "boxTextPerspective.width, boxTextPerspective.height, "
         "rootWindow.viewDocScale(), boxRef.perspectiveActive) }")));
     QVERIFY(source.contains(
-        QStringLiteral("readonly property var visualPosition: "
-                       "rootWindow.visualHandlePosition(boxRef.boxModel, "
-                       "modelData.name, boxRef.width, boxRef.height)")));
+        QStringLiteral("readonly property var visualPosition: handleReady ? "
+                       "rootWindow.visualHandlePosition(boxModel, "
+                       "modelData.name, boxRef.width, boxRef.height) : Qt.point(0, 0)")));
     QVERIFY(source.contains(
-        QStringLiteral("if (resizeHandle.boxRef.perspectiveActive)")));
+        QStringLiteral("if (resizeHandle.dragPerspective)")));
     QVERIFY(source.contains(QStringLiteral(
-        "resizeHandle.rootWindow.beginPerspectiveDrag(resizeHandle.boxRef, "
+        "pressedRootWindow.beginPerspectiveDrag(pressedBoxRef, "
         "modelData.name, point.x, point.y)")));
     QVERIFY(source.contains(QStringLiteral(
         "const delta = rotatePoint((canvasX - resizeStartCanvasX) / scale")));
@@ -1695,13 +1695,13 @@ QtObject {
     QVERIFY(resizeSource.contains(QStringLiteral(
         "const point = mapToItem(canvasItem, mouse.x, mouse.y)")));
     const qsizetype perspectiveBranch = resizeSource.indexOf(
-        QStringLiteral("if (resizeHandle.boxRef.perspectiveActive)"));
+        QStringLiteral("if (resizeHandle.dragPerspective)"));
     const qsizetype perspectiveBegin = resizeSource.indexOf(QStringLiteral(
-        "resizeHandle.rootWindow.beginPerspectiveDrag(resizeHandle.boxRef, "
+        "pressedRootWindow.beginPerspectiveDrag(pressedBoxRef, "
         "modelData.name, point.x, point.y)"));
     const qsizetype normalBegin = resizeSource.indexOf(
-        QStringLiteral("resizeHandle.rootWindow.beginResizeDrag(resizeHandle."
-                       "boxRef, modelData.name, point.x, point.y)"));
+        QStringLiteral("pressedRootWindow.beginResizeDrag(pressedBoxRef, "
+                       "modelData.name, point.x, point.y)"));
     QVERIFY(perspectiveBranch >= 0);
     QVERIFY(perspectiveBegin > perspectiveBranch);
     QVERIFY(normalBegin > perspectiveBegin);
@@ -1745,20 +1745,20 @@ QtObject {
         source.mid(resizeStart, rotateUse - resizeStart);
 
     const qsizetype perspectiveBranch = resizeSource.indexOf(
-        QStringLiteral("if (resizeHandle.boxRef.perspectiveActive)"));
+        QStringLiteral("if (resizeHandle.dragPerspective)"));
     const qsizetype perspectiveBegin = resizeSource.indexOf(QStringLiteral(
-        "resizeHandle.rootWindow.beginPerspectiveDrag(resizeHandle.boxRef, "
+        "pressedRootWindow.beginPerspectiveDrag(pressedBoxRef, "
         "modelData.name, point.x, point.y)"));
     const qsizetype normalBegin = resizeSource.indexOf(
-        QStringLiteral("resizeHandle.rootWindow.beginResizeDrag(resizeHandle."
-                       "boxRef, modelData.name, point.x, point.y)"));
+        QStringLiteral("pressedRootWindow.beginResizeDrag(pressedBoxRef, "
+                       "modelData.name, point.x, point.y)"));
     QVERIFY(perspectiveBranch >= 0);
     QVERIFY(perspectiveBegin > perspectiveBranch);
     QVERIFY(normalBegin > perspectiveBegin);
     QVERIFY(resizeSource.contains(QStringLiteral(
-        "resizeHandle.rootWindow.updatePerspectiveDrag(point.x, point.y)")));
+        "resizeHandle.dragRootWindow.updatePerspectiveDrag(point.x, point.y)")));
     QVERIFY(resizeSource.contains(QStringLiteral(
-        "resizeHandle.rootWindow.updateResizeDrag(point.x, point.y)")));
+        "resizeHandle.dragRootWindow.updateResizeDrag(point.x, point.y)")));
     QVERIFY(source.contains(QStringLiteral(
         "function beginResizeDrag(delegate, handle, canvasX, canvasY)")));
     QVERIFY(source.contains(QStringLiteral(
@@ -1790,13 +1790,13 @@ QtObject {
     QVERIFY(rotateUse > resizeStart);
     QVERIFY(source.mid(resizeStart, rotateUse - resizeStart)
                 .contains(QStringLiteral(
-                    "readonly property var visualPosition: "
-                    "rootWindow.visualHandlePosition(boxRef.boxModel, "
-                    "modelData.name, boxRef.width, boxRef.height)")));
+                    "readonly property var visualPosition: handleReady ? "
+                    "rootWindow.visualHandlePosition(boxModel, "
+                    "modelData.name, boxRef.width, boxRef.height) : Qt.point(0, 0)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         source.mid(resizeStart, rotateUse - resizeStart),
-        QStringLiteral("width: rootWindow.handleSize(); height: width; radius: "
-                       "width / 2")));
+        QStringLiteral("width: handleReady ? rootWindow.handleSize() : 0; "
+                       "height: width; radius: width / 2")));
 
     const qsizetype borderStart =
         source.indexOf(QStringLiteral("id: perspectiveBorder"));
