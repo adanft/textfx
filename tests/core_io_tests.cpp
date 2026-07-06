@@ -338,46 +338,58 @@ TEST_CASE("Text preset service reports structured mutation outcomes") {
   std::vector<TextPreset> projectPresets{{"Narration", {.fontSize = 18}}};
   std::vector<TextPreset> presets = projectPresets;
 
-  CHECK(TextPresetService::applySelectedPresetResult(target, presets, -1)
+  CHECK(TextPresetService::applySelectedPresetResult(
+            target, {.availablePresets = presets, .selectedPresetIndex = -1})
             .status == TextPresetStatus::InvalidPresetIndex);
   CHECK(target.style.fontSize != 18);
 
-  auto addBlank = TextPresetService::addPresetResult(projectPresets, source, "  ");
+  auto addBlank = TextPresetService::addPresetResult(
+      {.projectPresets = projectPresets, .sourceBox = source}, "  ");
   CHECK(addBlank.status == TextPresetStatus::InvalidName);
 
-  auto added = TextPresetService::addPresetResult(projectPresets, source, " Caption ");
+  auto added = TextPresetService::addPresetResult(
+      {.projectPresets = projectPresets, .sourceBox = source}, " Caption ");
   CHECK(added.status == TextPresetStatus::Succeeded);
   CHECK(added.preferredName == "Caption");
   REQUIRE(projectPresets.size() == 2);
   CHECK(projectPresets.back().name == "Caption");
   source.style.fontSize = 32;
-  auto duplicateAdd =
-      TextPresetService::addPresetResult(projectPresets, source, "Caption");
+  auto duplicateAdd = TextPresetService::addPresetResult(
+      {.projectPresets = projectPresets, .sourceBox = source}, "Caption");
   CHECK(duplicateAdd.status == TextPresetStatus::Succeeded);
   CHECK(duplicateAdd.preferredName == "Caption");
   REQUIRE(projectPresets.size() == 2);
   CHECK(projectPresets.back().style.fontSize == 32);
 
   presets = projectPresets;
-  auto duplicateRename = TextPresetService::renameSelectedPresetResult(
-      projectPresets, presets, 0, "Caption");
+  ProjectTextPresetContext presetCtx{.projectPresets = projectPresets,
+                                     .availablePresets = presets,
+                                     .selectedPresetIndex = 0};
+  auto duplicateRename =
+      TextPresetService::renameSelectedPresetResult(presetCtx, "Caption");
   CHECK(duplicateRename.status == TextPresetStatus::DuplicateName);
   std::string preferredName = "unchanged";
-  CHECK_FALSE(TextPresetService::renameSelectedPreset(
-      projectPresets, presets, 0, "Caption", preferredName));
+  CHECK_FALSE(TextPresetService::renameSelectedPreset(presetCtx, "Caption",
+                                                      preferredName));
   CHECK(preferredName == "unchanged");
 
   std::vector<TextPreset> documentOnlyPresets{{"DocumentOnly", {.fontSize = 30}}};
-  auto missingUpdate = TextPresetService::updateSelectedPresetResult(
-      projectPresets, documentOnlyPresets, 0, source);
+  ProjectTextPresetContext documentOnlyCtx{
+      .projectPresets = projectPresets,
+      .availablePresets = documentOnlyPresets,
+      .selectedPresetIndex = 0};
+  auto missingUpdate =
+      TextPresetService::updateSelectedPresetResult(documentOnlyCtx, source);
   CHECK(missingUpdate.status == TextPresetStatus::Succeeded);
   CHECK(missingUpdate.preferredName == "DocumentOnly");
   REQUIRE(projectPresets.size() == 3);
   CHECK(projectPresets.back().name == "DocumentOnly");
   CHECK(projectPresets.back().style.fontSize == 32);
   std::vector<TextPreset> deleteOnlyPresets{{"DeleteOnly", {.fontSize = 30}}};
-  auto missingDelete = TextPresetService::deleteSelectedPresetResult(
-      projectPresets, deleteOnlyPresets, 0);
+  ProjectTextPresetContext deleteOnlyCtx{.projectPresets = projectPresets,
+                                         .availablePresets = deleteOnlyPresets,
+                                         .selectedPresetIndex = 0};
+  auto missingDelete = TextPresetService::deleteSelectedPresetResult(deleteOnlyCtx);
   CHECK(missingDelete.status == TextPresetStatus::MissingProjectPreset);
 }
 

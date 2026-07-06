@@ -22,44 +22,46 @@ struct TextPresetResult {
   std::string preferredName;
 };
 
+struct SelectedTextPresetContext {
+  const std::vector<TextPreset> &availablePresets;
+  int selectedPresetIndex;
+};
+
+struct ProjectTextPresetContext {
+  std::vector<TextPreset> &projectPresets;
+  const std::vector<TextPreset> &availablePresets;
+  int selectedPresetIndex;
+};
+
+struct TextPresetSourceContext {
+  std::vector<TextPreset> &projectPresets;
+  const TextBox &sourceBox;
+};
+
 class TextPresetService {
 public:
   static TextPresetResult
-  applySelectedPresetResult(TextBox &box, const std::vector<TextPreset> &presets,
-                            int selectedPresetIndex);
-  static TextPresetResult addPresetResult(std::vector<TextPreset> &projectPresets,
-                                          const TextBox &sourceBox,
+  applySelectedPresetResult(TextBox &box, const SelectedTextPresetContext &ctx);
+  static TextPresetResult addPresetResult(const TextPresetSourceContext &ctx,
                                           const QString &name);
   static TextPresetResult updateSelectedPresetResult(
-      std::vector<TextPreset> &projectPresets,
-      const std::vector<TextPreset> &presets, int selectedPresetIndex,
-      const TextBox &sourceBox);
+      const ProjectTextPresetContext &ctx, const TextBox &sourceBox);
   static TextPresetResult renameSelectedPresetResult(
-      std::vector<TextPreset> &projectPresets,
-      const std::vector<TextPreset> &presets, int selectedPresetIndex,
-      const QString &name);
-  static TextPresetResult deleteSelectedPresetResult(
-      std::vector<TextPreset> &projectPresets,
-      const std::vector<TextPreset> &presets, int selectedPresetIndex);
+      const ProjectTextPresetContext &ctx, const QString &name);
+  static TextPresetResult
+  deleteSelectedPresetResult(const ProjectTextPresetContext &ctx);
 
   static bool applySelectedPreset(TextBox &box,
-                                  const std::vector<TextPreset> &presets,
-                                  int selectedPresetIndex);
-  static bool addPreset(std::vector<TextPreset> &projectPresets,
-                        const TextBox &sourceBox, const QString &name,
+                                  const SelectedTextPresetContext &ctx);
+  static bool addPreset(const TextPresetSourceContext &ctx, const QString &name,
                         std::string &preferredName);
-  static bool updateSelectedPreset(std::vector<TextPreset> &projectPresets,
-                                   const std::vector<TextPreset> &presets,
-                                   int selectedPresetIndex,
+  static bool updateSelectedPreset(const ProjectTextPresetContext &ctx,
                                    const TextBox &sourceBox,
                                    std::string &preferredName);
-  static bool renameSelectedPreset(std::vector<TextPreset> &projectPresets,
-                                   const std::vector<TextPreset> &presets,
-                                   int selectedPresetIndex, const QString &name,
+  static bool renameSelectedPreset(const ProjectTextPresetContext &ctx,
+                                   const QString &name,
                                    std::string &preferredName);
-  static bool deleteSelectedPreset(std::vector<TextPreset> &projectPresets,
-                                   const std::vector<TextPreset> &presets,
-                                   int selectedPresetIndex);
+  static bool deleteSelectedPreset(const ProjectTextPresetContext &ctx);
 };
 
 } // namespace textfx

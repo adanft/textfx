@@ -28,7 +28,8 @@ TextWorkflowService::applySelectedPreset(PresetWorkflowContext &ctx) {
   if (!ctx.selectedBox)
     return missingSelectedBox();
   return toWorkflowResult(TextPresetService::applySelectedPresetResult(
-      *ctx.selectedBox, ctx.presets, ctx.selectedPresetIndex));
+      *ctx.selectedBox, {.availablePresets = ctx.presets,
+                         .selectedPresetIndex = ctx.selectedPresetIndex}));
 }
 
 PresetWorkflowResult TextWorkflowService::addPreset(PresetWorkflowContext &ctx,
@@ -36,7 +37,8 @@ PresetWorkflowResult TextWorkflowService::addPreset(PresetWorkflowContext &ctx,
   if (!ctx.selectedBox)
     return missingSelectedBox();
   return toWorkflowResult(TextPresetService::addPresetResult(
-      ctx.projectPresets, *ctx.selectedBox, name));
+      {.projectPresets = ctx.projectPresets, .sourceBox = *ctx.selectedBox},
+      name));
 }
 
 PresetWorkflowResult
@@ -44,20 +46,28 @@ TextWorkflowService::updateSelectedPreset(PresetWorkflowContext &ctx) {
   if (!ctx.selectedBox)
     return missingSelectedBox();
   return toWorkflowResult(TextPresetService::updateSelectedPresetResult(
-      ctx.projectPresets, ctx.presets, ctx.selectedPresetIndex, *ctx.selectedBox));
+      {.projectPresets = ctx.projectPresets,
+       .availablePresets = ctx.presets,
+       .selectedPresetIndex = ctx.selectedPresetIndex},
+      *ctx.selectedBox));
 }
 
 PresetWorkflowResult
 TextWorkflowService::renameSelectedPreset(PresetWorkflowContext &ctx,
                                           const QString &name) {
   return toWorkflowResult(TextPresetService::renameSelectedPresetResult(
-      ctx.projectPresets, ctx.presets, ctx.selectedPresetIndex, name));
+      {.projectPresets = ctx.projectPresets,
+       .availablePresets = ctx.presets,
+       .selectedPresetIndex = ctx.selectedPresetIndex},
+      name));
 }
 
 PresetWorkflowResult
 TextWorkflowService::deleteSelectedPreset(PresetWorkflowContext &ctx) {
   return toWorkflowResult(TextPresetService::deleteSelectedPresetResult(
-      ctx.projectPresets, ctx.presets, ctx.selectedPresetIndex));
+      {.projectPresets = ctx.projectPresets,
+       .availablePresets = ctx.presets,
+       .selectedPresetIndex = ctx.selectedPresetIndex}));
 }
 
 } // namespace textfx
