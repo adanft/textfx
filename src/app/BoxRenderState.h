@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/DocumentModel.h"
+#include "domain/document/DocumentModel.h"
 
 #include <QString>
 #include <QVariantMap>

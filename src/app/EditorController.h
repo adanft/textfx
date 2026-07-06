@@ -3,7 +3,7 @@
 #include "app/BoxesModel.h"
 #include "application/services/PageTextService.h"
 #include "application/services/TextWorkflowService.h"
-#include "core/DocumentModel.h"
+#include "domain/document/DocumentModel.h"
 #include "core/ProjectStore.h"
 
 #include <QObject>

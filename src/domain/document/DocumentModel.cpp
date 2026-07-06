@@ -1,4 +1,4 @@
-#include "core/DocumentModel.h"
+#include "domain/document/DocumentModel.h"
 
 #include <utility>
 

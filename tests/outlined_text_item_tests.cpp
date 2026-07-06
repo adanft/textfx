@@ -1,4 +1,4 @@
-#include "core/DocumentModel.h"
+#include "domain/document/DocumentModel.h"
 #include "qt_test_helpers.h"
 #include "render/RenderGraph.h"
 #include "ui/OutlinedTextItem.h"
