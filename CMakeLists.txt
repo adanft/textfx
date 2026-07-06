@@ -221,7 +221,10 @@ if(BUILD_TESTING)
     )
 
     target_link_libraries(textfx_render_golden_check PRIVATE textfx_core)
-    target_compile_definitions(textfx_render_golden_check PRIVATE TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+    target_compile_definitions(textfx_render_golden_check PRIVATE
+        TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
+        TEXTFX_ENABLE_TEST_HOOKS=1
+    )
     list(APPEND TEXTFX_TEST_TARGETS textfx_render_golden_check)
 
     add_test(NAME textfx_serialization_check COMMAND textfx_serialization_check)

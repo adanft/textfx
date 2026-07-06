@@ -11,8 +11,10 @@
 #include <QLinearGradient>
 #include <QPainter>
 #include <QPainterPath>
+#include <QImageWriter>
 #include <QPainterPathStroker>
 #include <QPen>
+#include <QSaveFile>
 #include <QString>
 #include <QVector>
 
@@ -20,10 +22,21 @@
 #include <chrono>
 #include <expected>
 #include <filesystem>
+#include <optional>
 #include <system_error>
 
 namespace textfx {
 namespace {
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+std::optional<std::filesystem::path> pngCommitFailurePath;
+
+std::filesystem::path comparablePath(const std::filesystem::path &path) {
+  std::error_code error;
+  const auto canonical = std::filesystem::weakly_canonical(path, error);
+  return error ? path.lexically_normal() : canonical;
+}
+#endif
+
 QColor toQColor(const std::string &color) {
   const auto hexValue = [](char ch) -> int {
     if (ch >= '0' && ch <= '9')
@@ -336,6 +349,16 @@ void drawTextBox(QPainter &painter, const TextBox &box) {
 
 } // namespace
 
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+namespace test_hooks {
+void failPngCommit(std::filesystem::path path) {
+  pngCommitFailurePath = comparablePath(path);
+}
+
+void clearPngCommitFailure() { pngCommitFailurePath.reset(); }
+} // namespace test_hooks
+#endif
+
 std::expected<RenderGraph::ExportResult, std::string>
 RenderGraph::exportPagePngTimed(const DocumentModel &document,
                                 const std::filesystem::path &pageImagePath,
@@ -369,21 +392,26 @@ RenderGraph::exportPagePngTimed(const DocumentModel &document,
     return std::unexpected("Could not write PNG output: " +
                            exportPath.string());
 
-  const auto tempPath = exportPath.string() + ".tmp";
   const QImage exportImage = sourceHasAlpha
                                  ? source
                                  : source.convertToFormat(QImage::Format_RGB888);
-  if (!exportImage.save(QString::fromStdString(tempPath), "PNG")) {
-    return std::unexpected("Could not write PNG output: " +
-                           exportPath.string());
-  }
-  std::filesystem::remove(exportPath, filesystemError);
-  if (filesystemError)
+  QSaveFile exportFile(QString::fromStdString(exportPath.string()));
+  if (!exportFile.open(QIODevice::WriteOnly))
     return std::unexpected("Could not write PNG output: " +
                            exportPath.string());
 
-  std::filesystem::rename(tempPath, exportPath, filesystemError);
-  if (filesystemError)
+  QImageWriter writer(&exportFile, "PNG");
+  if (!writer.write(exportImage))
+    return std::unexpected("Could not write PNG output: " +
+                           exportPath.string());
+
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+  if (pngCommitFailurePath && comparablePath(exportPath) == *pngCommitFailurePath)
+    return std::unexpected("Could not write PNG output: " +
+                           exportPath.string());
+#endif
+
+  if (!exportFile.commit())
     return std::unexpected("Could not write PNG output: " +
                            exportPath.string());
 

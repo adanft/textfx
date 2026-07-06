@@ -19,7 +19,28 @@
 
 using namespace textfx;
 
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+namespace textfx::test_hooks {
+void failPngCommit(std::filesystem::path path);
+void clearPngCommitFailure();
+} // namespace textfx::test_hooks
+#endif
+
 namespace {
+struct PngCommitFailureGuard {
+  explicit PngCommitFailureGuard(const std::filesystem::path &path) {
+    textfx::test_hooks::failPngCommit(path);
+  }
+
+  ~PngCommitFailureGuard() { textfx::test_hooks::clearPngCommitFailure(); }
+};
+
+std::string readBytes(const std::filesystem::path &path) {
+  std::ifstream input(path, std::ios::binary);
+  return {std::istreambuf_iterator<char>(input),
+          std::istreambuf_iterator<char>()};
+}
+
 bool hasPngMagic(const std::filesystem::path &path) {
   std::ifstream input(path, std::ios::binary);
   char magic[8]{};
@@ -328,6 +349,30 @@ int main(int argc, char **argv) {
       !hasPngMagic(timedOutPath)) {
     std::cerr << "Expected timed export to return non-negative timing data and "
                  "write a PNG\n";
+    return 1;
+  }
+
+  const auto preservedOutPath = tempPath / "preserved-export.png";
+  {
+    std::ofstream existing(preservedOutPath, std::ios::binary);
+    existing << "previous export bytes";
+  }
+  const std::string previousExport = readBytes(preservedOutPath);
+  {
+    const PngCommitFailureGuard failCommit(preservedOutPath);
+    const auto failedReplace = graph.exportPagePngResult(
+        DocumentModel{}, pagePath, preservedOutPath);
+    if (failedReplace ||
+        failedReplace.error() !=
+            "Could not write PNG output: " + preservedOutPath.string()) {
+      std::cerr << "Expected forced PNG commit failure to return the write "
+                   "error contract\n";
+      return 1;
+    }
+  }
+  if (readBytes(preservedOutPath) != previousExport) {
+    std::cerr << "Expected failed PNG replacement to preserve the previous "
+                 "export bytes\n";
     return 1;
   }
 
