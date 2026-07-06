@@ -1,5 +1,7 @@
 #include "app/PageTextService.h"
 #include "app/ProjectSessionService.h"
+#include "app/TextPresetService.h"
+#include "app/TextWorkflowService.h"
 #include "core/ProjectStore.h"
 #include "io/JsonSerializer.h"
 
@@ -326,6 +328,88 @@ TEST_CASE("Page text service applies selected texts and advances per-page "
   CHECK(PageTextService::applyText(boxes, -1, pageTexts, positions, "page2.png",
                                    0) == PageTextApplyStatus::NoSelectedBox);
   CHECK_FALSE(positions.contains("page2.png"));
+}
+
+TEST_CASE("Text preset service reports structured mutation outcomes") {
+  TextBox source;
+  source.style.fontFamily = "Inter";
+  source.style.fontSize = 24;
+  TextBox target;
+  std::vector<TextPreset> projectPresets{{"Narration", {.fontSize = 18}}};
+  std::vector<TextPreset> presets = projectPresets;
+
+  CHECK(TextPresetService::applySelectedPresetResult(target, presets, -1)
+            .status == TextPresetStatus::InvalidPresetIndex);
+  CHECK(target.style.fontSize != 18);
+
+  auto addBlank = TextPresetService::addPresetResult(projectPresets, source, "  ");
+  CHECK(addBlank.status == TextPresetStatus::InvalidName);
+
+  auto added = TextPresetService::addPresetResult(projectPresets, source, " Caption ");
+  CHECK(added.status == TextPresetStatus::Succeeded);
+  CHECK(added.preferredName == "Caption");
+  REQUIRE(projectPresets.size() == 2);
+  CHECK(projectPresets.back().name == "Caption");
+  source.style.fontSize = 32;
+  auto duplicateAdd =
+      TextPresetService::addPresetResult(projectPresets, source, "Caption");
+  CHECK(duplicateAdd.status == TextPresetStatus::Succeeded);
+  CHECK(duplicateAdd.preferredName == "Caption");
+  REQUIRE(projectPresets.size() == 2);
+  CHECK(projectPresets.back().style.fontSize == 32);
+
+  presets = projectPresets;
+  auto duplicateRename = TextPresetService::renameSelectedPresetResult(
+      projectPresets, presets, 0, "Caption");
+  CHECK(duplicateRename.status == TextPresetStatus::DuplicateName);
+  std::string preferredName = "unchanged";
+  CHECK_FALSE(TextPresetService::renameSelectedPreset(
+      projectPresets, presets, 0, "Caption", preferredName));
+  CHECK(preferredName == "unchanged");
+
+  std::vector<TextPreset> documentOnlyPresets{{"DocumentOnly", {.fontSize = 30}}};
+  auto missingUpdate = TextPresetService::updateSelectedPresetResult(
+      projectPresets, documentOnlyPresets, 0, source);
+  CHECK(missingUpdate.status == TextPresetStatus::Succeeded);
+  CHECK(missingUpdate.preferredName == "DocumentOnly");
+  REQUIRE(projectPresets.size() == 3);
+  CHECK(projectPresets.back().name == "DocumentOnly");
+  CHECK(projectPresets.back().style.fontSize == 32);
+  std::vector<TextPreset> deleteOnlyPresets{{"DeleteOnly", {.fontSize = 30}}};
+  auto missingDelete = TextPresetService::deleteSelectedPresetResult(
+      projectPresets, deleteOnlyPresets, 0);
+  CHECK(missingDelete.status == TextPresetStatus::MissingProjectPreset);
+}
+
+TEST_CASE("Text workflow service delegates page text and preset orchestration") {
+  PageTextMap pageTexts{{"page1.png", {"First", "Second"}}};
+  PageTextPositionMap positions;
+  std::vector<TextBox> boxes(1);
+  PageTextWorkflowContext pageCtx{boxes, 0, pageTexts, positions, "page1.png"};
+
+  CHECK(TextWorkflowService::nextPageTextIndex(pageCtx) == 0);
+  auto pageResult = TextWorkflowService::applyPageText(pageCtx, 0);
+  CHECK(pageResult.status == PageTextApplyStatus::Applied);
+  CHECK(boxes.front().text == "First");
+  CHECK(positions.at("page1.png") == 1);
+
+  std::vector<TextPreset> projectPresets;
+  std::vector<TextPreset> presets{{"Narration", {.fontSize = 18}}};
+  PresetWorkflowContext missingBoxCtx{nullptr, projectPresets, presets, 0};
+  auto missingBox = TextWorkflowService::applySelectedPreset(missingBoxCtx);
+  CHECK(missingBox.precondition == WorkflowPrecondition::MissingSelectedBox);
+  CHECK_FALSE(missingBox.succeeded());
+
+  TextBox selectedBox;
+  PresetWorkflowContext presetCtx{&selectedBox, projectPresets, presets, 5};
+  auto invalidPreset = TextWorkflowService::applySelectedPreset(presetCtx);
+  CHECK(invalidPreset.precondition == WorkflowPrecondition::None);
+  CHECK(invalidPreset.serviceStatus == TextPresetStatus::InvalidPresetIndex);
+
+  presetCtx.selectedPresetIndex = 0;
+  auto appliedPreset = TextWorkflowService::applySelectedPreset(presetCtx);
+  CHECK(appliedPreset.succeeded());
+  CHECK(selectedBox.style.fontSize == 18);
 }
 
 TEST_CASE("Missing project presets returns no presets without writing a file") {

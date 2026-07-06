@@ -27,82 +27,128 @@ void upsertPreset(std::vector<TextPreset> &projectPresets, TextPreset preset) {
     *found = std::move(preset);
   }
 }
+
+bool succeeded(const TextPresetResult &result) {
+  return result.status == TextPresetStatus::Succeeded;
+}
 } // namespace
+
+TextPresetResult TextPresetService::applySelectedPresetResult(
+    TextBox &box, const std::vector<TextPreset> &presets,
+    int selectedPresetIndex) {
+  if (!isValidPresetIndex(presets, selectedPresetIndex))
+    return {TextPresetStatus::InvalidPresetIndex};
+  box.style = presets.at(static_cast<std::size_t>(selectedPresetIndex)).style;
+  return {TextPresetStatus::Succeeded};
+}
+
+TextPresetResult
+TextPresetService::addPresetResult(std::vector<TextPreset> &projectPresets,
+                                   const TextBox &sourceBox,
+                                   const QString &name) {
+  const auto cleanName = cleanPresetName(name);
+  if (cleanName.empty())
+    return {TextPresetStatus::InvalidName};
+  upsertPreset(projectPresets, TextPreset{cleanName, sourceBox.style});
+  return {TextPresetStatus::Succeeded, cleanName};
+}
+
+TextPresetResult TextPresetService::updateSelectedPresetResult(
+    std::vector<TextPreset> &projectPresets,
+    const std::vector<TextPreset> &presets, int selectedPresetIndex,
+    const TextBox &sourceBox) {
+  if (!isValidPresetIndex(presets, selectedPresetIndex))
+    return {TextPresetStatus::InvalidPresetIndex};
+
+  const auto name = presets.at(static_cast<std::size_t>(selectedPresetIndex)).name;
+  upsertPreset(projectPresets, TextPreset{name, sourceBox.style});
+  return {TextPresetStatus::Succeeded, name};
+}
+
+TextPresetResult TextPresetService::renameSelectedPresetResult(
+    std::vector<TextPreset> &projectPresets,
+    const std::vector<TextPreset> &presets, int selectedPresetIndex,
+    const QString &name) {
+  if (!isValidPresetIndex(presets, selectedPresetIndex))
+    return {TextPresetStatus::InvalidPresetIndex};
+
+  const auto oldName =
+      presets.at(static_cast<std::size_t>(selectedPresetIndex)).name;
+  const auto newName = cleanPresetName(name);
+  if (newName.empty())
+    return {TextPresetStatus::InvalidName};
+  if (std::ranges::any_of(presets, [&](const TextPreset &item) {
+        return item.name == newName;
+      }))
+    return {TextPresetStatus::DuplicateName};
+
+  auto found = findPresetByName(projectPresets, oldName);
+  if (found == projectPresets.end())
+    return {TextPresetStatus::MissingProjectPreset};
+
+  found->name = newName;
+  return {TextPresetStatus::Succeeded, newName};
+}
+
+TextPresetResult TextPresetService::deleteSelectedPresetResult(
+    std::vector<TextPreset> &projectPresets,
+    const std::vector<TextPreset> &presets, int selectedPresetIndex) {
+  if (!isValidPresetIndex(presets, selectedPresetIndex))
+    return {TextPresetStatus::InvalidPresetIndex};
+
+  const auto name = presets.at(static_cast<std::size_t>(selectedPresetIndex)).name;
+
+  const auto oldSize = projectPresets.size();
+  std::erase_if(projectPresets,
+                [&](const TextPreset &item) { return item.name == name; });
+  if (projectPresets.size() == oldSize)
+    return {TextPresetStatus::MissingProjectPreset};
+  return {TextPresetStatus::Succeeded};
+}
 
 bool TextPresetService::applySelectedPreset(
     TextBox &box, const std::vector<TextPreset> &presets,
     int selectedPresetIndex) {
-  if (!isValidPresetIndex(presets, selectedPresetIndex))
-    return false;
-  box.style = presets.at(static_cast<std::size_t>(selectedPresetIndex)).style;
-  return true;
+  return succeeded(
+      applySelectedPresetResult(box, presets, selectedPresetIndex));
 }
 
 bool TextPresetService::addPreset(std::vector<TextPreset> &projectPresets,
                                   const TextBox &sourceBox, const QString &name,
                                   std::string &preferredName) {
-  const auto cleanName = cleanPresetName(name);
-  if (cleanName.empty())
-    return false;
-
-  upsertPreset(projectPresets, TextPreset{cleanName, sourceBox.style});
-  preferredName = cleanName;
-  return true;
+  const auto result = addPresetResult(projectPresets, sourceBox, name);
+  if (succeeded(result))
+    preferredName = result.preferredName;
+  return succeeded(result);
 }
 
 bool TextPresetService::updateSelectedPreset(
     std::vector<TextPreset> &projectPresets,
     const std::vector<TextPreset> &presets, int selectedPresetIndex,
     const TextBox &sourceBox, std::string &preferredName) {
-  if (!isValidPresetIndex(presets, selectedPresetIndex))
-    return false;
-
-  const auto name =
-      presets.at(static_cast<std::size_t>(selectedPresetIndex)).name;
-  upsertPreset(projectPresets, TextPreset{name, sourceBox.style});
-  preferredName = name;
-  return true;
+  const auto result = updateSelectedPresetResult(
+      projectPresets, presets, selectedPresetIndex, sourceBox);
+  if (succeeded(result))
+    preferredName = result.preferredName;
+  return succeeded(result);
 }
 
 bool TextPresetService::renameSelectedPreset(
     std::vector<TextPreset> &projectPresets,
     const std::vector<TextPreset> &presets, int selectedPresetIndex,
     const QString &name, std::string &preferredName) {
-  if (!isValidPresetIndex(presets, selectedPresetIndex))
-    return false;
-
-  const auto oldName =
-      presets.at(static_cast<std::size_t>(selectedPresetIndex)).name;
-  const auto newName = cleanPresetName(name);
-  if (newName.empty())
-    return false;
-  if (std::ranges::any_of(presets, [&](const TextPreset &item) {
-        return item.name == newName;
-      }))
-    return false;
-
-  auto found = findPresetByName(projectPresets, oldName);
-  if (found == projectPresets.end())
-    return false;
-
-  found->name = newName;
-  preferredName = newName;
-  return true;
+  const auto result = renameSelectedPresetResult(projectPresets, presets,
+                                                 selectedPresetIndex, name);
+  if (succeeded(result))
+    preferredName = result.preferredName;
+  return succeeded(result);
 }
 
 bool TextPresetService::deleteSelectedPreset(
     std::vector<TextPreset> &projectPresets,
     const std::vector<TextPreset> &presets, int selectedPresetIndex) {
-  if (!isValidPresetIndex(presets, selectedPresetIndex))
-    return false;
-
-  const auto name =
-      presets.at(static_cast<std::size_t>(selectedPresetIndex)).name;
-
-  const auto oldSize = projectPresets.size();
-  std::erase_if(projectPresets,
-                [&](const TextPreset &item) { return item.name == name; });
-  return projectPresets.size() != oldSize;
+  return succeeded(deleteSelectedPresetResult(projectPresets, presets,
+                                              selectedPresetIndex));
 }
 
 } // namespace textfx

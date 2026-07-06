@@ -59,6 +59,8 @@ set(TEXTFX_CORE_SOURCES
     src/app/TextBoxSelectionService.h
     src/app/TextPresetService.cpp
     src/app/TextPresetService.h
+    src/app/TextWorkflowService.cpp
+    src/app/TextWorkflowService.h
     src/core/AuthoringLimits.h
     src/core/DocumentModel.cpp
     src/core/DocumentModel.h

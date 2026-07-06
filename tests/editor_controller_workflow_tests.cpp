@@ -1696,15 +1696,24 @@ private slots:
     QVERIFY(!editor.applyNextPageText());
     editor.createTextBox(1, 2, 80, 40);
 
+    QSignalSpy documentChanged(&editor, &EditorController::documentChanged);
+    QSignalSpy pageTextsChanged(&editor, &EditorController::pageTextsChanged);
+
     QVERIFY(editor.applyNextPageText());
     QCOMPARE(
         editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
         QStringLiteral("First"));
+    QCOMPARE(documentChanged.count(), 1);
+    QCOMPARE(pageTextsChanged.count(), 1);
     QVERIFY(editor.applyNextPageText());
     QCOMPARE(
         editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
         QStringLiteral("Second"));
+    QCOMPARE(documentChanged.count(), 2);
+    QCOMPARE(pageTextsChanged.count(), 2);
     QVERIFY(!editor.applyNextPageText());
+    QCOMPARE(documentChanged.count(), 2);
+    QCOMPARE(pageTextsChanged.count(), 2);
     editor.nextPage();
     QCOMPARE(editor.pageTexts(), QStringList({QStringLiteral("Other")}));
   }
@@ -1721,6 +1730,15 @@ private slots:
     editor.createTextBox(1, 2, 80, 40);
 
     QVERIFY(!editor.applySelectedPreset());
+    QCOMPARE(editor.notification(), QStringLiteral("Select a text preset first"));
+    EditorController noBoxEditor;
+    noBoxEditor.openProject(dir.path());
+    QVERIFY(!noBoxEditor.addPreset(QStringLiteral("No Box")));
+    QCOMPARE(noBoxEditor.notification(),
+             QStringLiteral("Select a box before saving a preset"));
+    QVERIFY(!noBoxEditor.updateSelectedPreset());
+    QCOMPARE(noBoxEditor.notification(),
+             QStringLiteral("Select a box before updating a preset"));
 
     editor.setSelectedFontFamily(QStringLiteral("Inter"));
     editor.setSelectedFontSize(31);

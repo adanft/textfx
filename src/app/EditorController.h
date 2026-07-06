@@ -2,6 +2,7 @@
 
 #include "app/BoxesModel.h"
 #include "app/PageTextService.h"
+#include "app/TextWorkflowService.h"
 #include "core/DocumentModel.h"
 #include "core/ProjectStore.h"
 
@@ -202,6 +203,8 @@ private:
   bool loadPageAt(int index);
   bool autosaveCurrent();
   std::string currentPageKey() const;
+  PageTextWorkflowContext pageTextWorkflowContext();
+  PresetWorkflowContext presetWorkflowContext();
   bool saveProjectPresets(const std::string &preferredName = {});
   bool reloadPresets(const std::string &preferredName = {});
 

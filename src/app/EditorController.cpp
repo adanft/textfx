@@ -8,7 +8,7 @@
 #include "app/TextBoxClipboardService.h"
 #include "app/TextBoxEditingService.h"
 #include "app/TextBoxSelectionService.h"
-#include "app/TextPresetService.h"
+#include "app/TextWorkflowService.h"
 #include "core/AuthoringLimits.h"
 #include "render/RenderGraph.h"
 
@@ -928,11 +928,9 @@ void EditorController::pasteBox() {
 }
 
 bool EditorController::applyPageText(int index) {
-  const auto key = currentPageKey();
-  const auto result =
-      PageTextService::applyText(document_.textBoxes(), selectedIndex_,
-                                 pageTexts_, pageTextPositions_, key, index);
-  switch (result) {
+  auto ctx = pageTextWorkflowContext();
+  const auto result = TextWorkflowService::applyPageText(ctx, index);
+  switch (result.status) {
   case PageTextApplyStatus::Applied:
     markDocumentChanged({Role::TextRole});
     emit pageTextsChanged();
@@ -947,8 +945,8 @@ bool EditorController::applyPageText(int index) {
 }
 
 bool EditorController::applyNextPageText() {
-  const auto key = currentPageKey();
-  const int index = PageTextService::nextTextIndex(pageTextPositions_, key);
+  auto ctx = pageTextWorkflowContext();
+  const int index = TextWorkflowService::nextPageTextIndex(ctx);
   if (!applyPageText(index))
     return false;
   return true;
@@ -962,59 +960,58 @@ void EditorController::selectPreset(int index) {
 }
 
 bool EditorController::applySelectedPreset() {
-  if (!selectedBox()) {
+  auto ctx = presetWorkflowContext();
+  const auto result = TextWorkflowService::applySelectedPreset(ctx);
+  if (result.precondition == WorkflowPrecondition::MissingSelectedBox) {
     setNotification(QStringLiteral("Select a box before applying a preset"));
     return false;
   }
-  if (selectedPresetIndex_ < 0 ||
-      selectedPresetIndex_ >= static_cast<int>(document_.presets().size())) {
+  if (result.serviceStatus == TextPresetStatus::InvalidPresetIndex) {
     setNotification(QStringLiteral("Select a text preset first"));
     return false;
   }
-  if (!TextPresetService::applySelectedPreset(
-          *selectedBox(), document_.presets(), selectedPresetIndex_))
+  if (!result.succeeded())
     return false;
   markDocumentChanged(allBoxRoles());
   return true;
 }
 
 bool EditorController::addPreset(const QString &name) {
-  if (!selectedBox()) {
+  auto ctx = presetWorkflowContext();
+  const auto result = TextWorkflowService::addPreset(ctx, name);
+  if (result.precondition == WorkflowPrecondition::MissingSelectedBox) {
     setNotification(QStringLiteral("Select a box before saving a preset"));
     return false;
   }
-  std::string preferredName;
-  if (!TextPresetService::addPreset(projectPresets_, *selectedBox(), name,
-                                    preferredName))
+  if (!result.succeeded())
     return false;
-  return saveProjectPresets(preferredName);
+  return saveProjectPresets(result.preferredName);
 }
 
 bool EditorController::updateSelectedPreset() {
-  if (!selectedBox()) {
+  auto ctx = presetWorkflowContext();
+  const auto result = TextWorkflowService::updateSelectedPreset(ctx);
+  if (result.precondition == WorkflowPrecondition::MissingSelectedBox) {
     setNotification(QStringLiteral("Select a box before updating a preset"));
     return false;
   }
-  std::string preferredName;
-  if (!TextPresetService::updateSelectedPreset(
-          projectPresets_, document_.presets(), selectedPresetIndex_,
-          *selectedBox(), preferredName))
+  if (!result.succeeded())
     return false;
-  return saveProjectPresets(preferredName);
+  return saveProjectPresets(result.preferredName);
 }
 
 bool EditorController::renameSelectedPreset(const QString &name) {
-  std::string preferredName;
-  if (!TextPresetService::renameSelectedPreset(
-          projectPresets_, document_.presets(), selectedPresetIndex_, name,
-          preferredName))
+  auto ctx = presetWorkflowContext();
+  const auto result = TextWorkflowService::renameSelectedPreset(ctx, name);
+  if (!result.succeeded())
     return false;
-  return saveProjectPresets(preferredName);
+  return saveProjectPresets(result.preferredName);
 }
 
 bool EditorController::deleteSelectedPreset() {
-  if (!TextPresetService::deleteSelectedPreset(
-          projectPresets_, document_.presets(), selectedPresetIndex_))
+  auto ctx = presetWorkflowContext();
+  const auto result = TextWorkflowService::deleteSelectedPreset(ctx);
+  if (!result.succeeded())
     return false;
   return saveProjectPresets();
 }
@@ -1241,6 +1238,16 @@ bool EditorController::autosaveCurrent() {
 
 std::string EditorController::currentPageKey() const {
   return ProjectSessionService::pageKey(currentPage_);
+}
+
+PageTextWorkflowContext EditorController::pageTextWorkflowContext() {
+  return {document_.textBoxes(), selectedIndex_, pageTexts_, pageTextPositions_,
+          currentPageKey()};
+}
+
+PresetWorkflowContext EditorController::presetWorkflowContext() {
+  return {selectedBox(), projectPresets_, document_.presets(),
+          selectedPresetIndex_};
 }
 
 bool EditorController::saveProjectPresets(const std::string &preferredName) {
