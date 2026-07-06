@@ -81,6 +81,10 @@ target_link_libraries(textfx_core
         Qt6::Quick
 )
 
+if(BUILD_TESTING)
+    target_compile_definitions(textfx_core PRIVATE TEXTFX_ENABLE_TEST_HOOKS=1)
+endif()
+
 set(TEXTFX_ICON_RESOURCES
     assets/icons/flat/align-center.svg
     assets/icons/flat/align-left.svg
@@ -303,6 +307,7 @@ if(BUILD_TESTING)
         target_compile_definitions(textfx_editor_controller_workflow_tests PRIVATE
             TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
             TEXTFX_TESTING=1
+            TEXTFX_ENABLE_TEST_HOOKS=1
         )
 
         add_test(NAME textfx_editor_controller_workflow_tests COMMAND textfx_editor_controller_workflow_tests)

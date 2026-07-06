@@ -23,11 +23,22 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <optional>
 #include <utility>
 
 namespace textfx {
 namespace {
 using Role = BoxesModel::Role;
+
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+std::optional<std::filesystem::path> projectFileReadFailurePath;
+
+std::filesystem::path comparablePath(const std::filesystem::path &path) {
+  std::error_code error;
+  const auto canonical = std::filesystem::weakly_canonical(path, error);
+  return error ? path.lexically_normal() : canonical;
+}
+#endif
 
 QString toQString(const std::string &value) {
   return QString::fromStdString(value);
@@ -134,6 +145,15 @@ bool ensureRegularFile(const std::filesystem::path &path, std::string *error) {
     return false;
   }
 
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+  if (projectFileReadFailurePath &&
+      comparablePath(path) == *projectFileReadFailurePath) {
+    if (error)
+      *error = "could not read " + path.filename().string();
+    return false;
+  }
+#endif
+
   std::ifstream readable(path);
   if (!readable.is_open()) {
     if (error)
@@ -145,6 +165,16 @@ bool ensureRegularFile(const std::filesystem::path &path, std::string *error) {
 }
 
 } // namespace
+
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+namespace test_hooks {
+void failProjectFileRead(std::filesystem::path path) {
+  projectFileReadFailurePath = comparablePath(path);
+}
+
+void clearProjectFileReadFailure() { projectFileReadFailurePath.reset(); }
+} // namespace test_hooks
+#endif
 
 EditorController::EditorController(QObject *parent)
     : QObject(parent), boxesModel_(document_, this) {}

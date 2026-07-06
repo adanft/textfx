@@ -5,11 +5,22 @@
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <optional>
 
 namespace textfx {
 namespace {
 const std::vector<std::string> legacyCleanedFolders{"cleaned", "clean", "pages",
                                                     "images"};
+
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+std::optional<std::filesystem::path> pageTextsOpenFailurePath;
+
+std::filesystem::path comparablePath(const std::filesystem::path &path) {
+  std::error_code error;
+  const auto canonical = std::filesystem::weakly_canonical(path, error);
+  return error ? path.lexically_normal() : canonical;
+}
+#endif
 
 int compareNumbers(std::string_view a, std::string_view b) {
   while (a.size() > 1 && a.front() == '0')
@@ -128,6 +139,16 @@ std::filesystem::path ProjectStore::pageTextsPath() const {
   return folder_ / PageTextsFile;
 }
 
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+namespace test_hooks {
+void failPageTextsOpen(std::filesystem::path path) {
+  pageTextsOpenFailurePath = comparablePath(path);
+}
+
+void clearPageTextsOpenFailure() { pageTextsOpenFailurePath.reset(); }
+} // namespace test_hooks
+#endif
+
 std::unordered_map<std::string, std::vector<std::string>>
 ProjectStore::loadPageTexts(std::string *error) const {
   std::unordered_map<std::string, std::vector<std::string>> result;
@@ -143,6 +164,15 @@ ProjectStore::loadPageTexts(std::string *error) const {
       *error = "Could not open Texts.txt.";
     return result;
   }
+
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+  if (pageTextsOpenFailurePath &&
+      comparablePath(path) == *pageTextsOpenFailurePath) {
+    if (error != nullptr)
+      *error = "Could not open Texts.txt.";
+    return result;
+  }
+#endif
 
   std::ifstream input(path);
   if (!input) {

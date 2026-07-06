@@ -21,10 +21,41 @@
 #include <QTest>
 #include <QUrl>
 
+#include <filesystem>
+
 using namespace textfx;
 using namespace textfx::test;
 
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+namespace textfx::test_hooks {
+void failPageTextsOpen(std::filesystem::path path);
+void clearPageTextsOpenFailure();
+void failProjectFileRead(std::filesystem::path path);
+void clearProjectFileReadFailure();
+} // namespace textfx::test_hooks
+#endif
+
 namespace {
+struct ProjectFileReadFailureGuard {
+  explicit ProjectFileReadFailureGuard(const QString &path) {
+    textfx::test_hooks::failProjectFileRead(path.toStdString());
+  }
+
+  ~ProjectFileReadFailureGuard() {
+    textfx::test_hooks::clearProjectFileReadFailure();
+  }
+};
+
+struct PageTextsOpenFailureGuard {
+  explicit PageTextsOpenFailureGuard(const QString &path) {
+    textfx::test_hooks::failPageTextsOpen(path.toStdString());
+  }
+
+  ~PageTextsOpenFailureGuard() {
+    textfx::test_hooks::clearPageTextsOpenFailure();
+  }
+};
+
 void writeJsonFile(const QString &path, const QJsonObject &object) {
   QFileInfo info(path);
   QDir().mkpath(info.absolutePath());
@@ -804,21 +835,11 @@ private slots:
     QVERIFY(texts.open(QIODevice::WriteOnly | QIODevice::Text));
     texts.write("[page.png]\nExisting text\n");
     texts.close();
-    QVERIFY(QFile::setPermissions(textsPath, QFileDevice::WriteOwner));
-
-    QFile readProbe(textsPath);
-    if (readProbe.open(QIODevice::ReadOnly)) {
-      readProbe.close();
-      QFile::setPermissions(textsPath, QFileDevice::ReadOwner |
-                                           QFileDevice::WriteOwner);
-      QSKIP("Unreadable regular files are still readable in this environment.");
-    }
+    const ProjectFileReadFailureGuard failProjectFileRead(textsPath);
 
     EditorController editor;
     editor.newProject(projectPath);
 
-    QFile::setPermissions(textsPath,
-                          QFileDevice::ReadOwner | QFileDevice::WriteOwner);
     QFile preserved(textsPath);
     QVERIFY(preserved.open(QIODevice::ReadOnly | QIODevice::Text));
     QCOMPARE(QString::fromUtf8(preserved.readAll()),
@@ -836,21 +857,15 @@ private slots:
     QVERIFY(texts.open(QIODevice::WriteOnly | QIODevice::Text));
     texts.write("[page.png]\nExisting text\n");
     texts.close();
-    QVERIFY(QFile::setPermissions(texts.fileName(), QFileDevice::WriteOwner));
-
-    QFile readProbe(texts.fileName());
-    if (readProbe.open(QIODevice::ReadOnly)) {
-      readProbe.close();
-      QFile::setPermissions(texts.fileName(), QFileDevice::ReadOwner |
-                                                  QFileDevice::WriteOwner);
-      QSKIP("Unreadable regular files are still readable in this environment.");
-    }
+    const PageTextsOpenFailureGuard failTextsOpen(texts.fileName());
 
     EditorController editor;
     editor.openProject(dir.path());
 
-    QFile::setPermissions(texts.fileName(),
-                          QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+    QFile preserved(texts.fileName());
+    QVERIFY(preserved.open(QIODevice::ReadOnly | QIODevice::Text));
+    QCOMPARE(QString::fromUtf8(preserved.readAll()),
+             QStringLiteral("[page.png]\nExisting text\n"));
     QVERIFY(!editor.hasProject());
     QCOMPARE(editor.notification(), QStringLiteral("Could not open Texts.txt."));
   }
