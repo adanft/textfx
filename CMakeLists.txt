@@ -45,6 +45,8 @@ set(TEXTFX_CORE_SOURCES
     src/app/EditorLimits.h
     src/app/EditorViewModels.cpp
     src/app/EditorViewModels.h
+    src/app/SelectionQueryService.cpp
+    src/app/SelectionQueryService.h
     src/app/EffectMetadata.cpp
     src/app/EffectMetadata.h
     src/app/PageTextService.cpp

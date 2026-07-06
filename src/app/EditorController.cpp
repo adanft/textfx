@@ -6,6 +6,7 @@
 #include "app/PageTextService.h"
 #include "app/ProjectExportService.h"
 #include "app/ProjectSessionService.h"
+#include "app/SelectionQueryService.h"
 #include "app/TextBoxClipboardService.h"
 #include "app/TextBoxEditingService.h"
 #include "app/TextBoxSelectionService.h"
@@ -200,10 +201,8 @@ int EditorController::boxCount() const {
 QAbstractListModel *EditorController::boxesModel() { return &boxesModel_; }
 
 QVariant EditorController::selectedBoxViewModel() const {
-  const auto *box = selectedBox();
-  if (!box)
-    return {};
-  return EditorViewModels::textBoxMap(*box, selectedIndex_);
+  return SelectionQueryService::selectedBoxViewModel(document_.textBoxes(),
+                                                    selectedIndex_);
 }
 
 QVariantList EditorController::layers() const {
@@ -527,58 +526,8 @@ QVariant EditorController::boxRole(int row, const QString &roleName) const {
 
 bool EditorController::boxRolesAffectSelectedBoxState(
     const QVariantList &roles) const {
-  if (roles.empty())
-    return true;
-
-  const auto knownRoles = boxesModel_.roleNames();
-  for (const QVariant &roleValue : roles) {
-    bool ok = false;
-    const int role = roleValue.toInt(&ok);
-    if (!ok || !knownRoles.contains(role))
-      return true;
-
-    switch (role) {
-    case Role::TextRole:
-    case Role::RotationRole:
-    case Role::FontFamilyRole:
-    case Role::FontSizeRole:
-    case Role::ColorRole:
-    case Role::LineSpacingRole:
-    case Role::LetterSpacingRole:
-    case Role::BoldRole:
-    case Role::ItalicRole:
-    case Role::UppercaseRole:
-    case Role::LowercaseRole:
-    case Role::AlignmentRole:
-    case Role::OutlineRole:
-    case Role::OutlineColorRole:
-    case Role::OutlineSizeRole:
-    case Role::BlurRole:
-    case Role::BlurSizeRole:
-    case Role::ShadowRole:
-    case Role::ShadowColorRole:
-    case Role::ShadowOffsetXRole:
-    case Role::ShadowOffsetYRole:
-    case Role::ShadowBlurSizeRole:
-    case Role::GradientRole:
-    case Role::GradientDirectionRole:
-    case Role::GradientColorARole:
-    case Role::GradientColorBRole:
-    case Role::PerspectiveRole:
-    case Role::PerspectiveNwRole:
-    case Role::PerspectiveNeRole:
-    case Role::PerspectiveSeRole:
-    case Role::PerspectiveSwRole:
-    case Role::PathRole:
-    case Role::PathModeRole:
-    case Role::PathPointsRole:
-    case Role::EffectsRole:
-      return true;
-    default:
-      break;
-    }
-  }
-  return false;
+  return SelectionQueryService::rolesAffectSelectedBoxState(
+      roles, boxesModel_.roleNames());
 }
 
 void EditorController::updateSelectedText(const QString &text) {
@@ -1076,15 +1025,11 @@ void EditorController::setRawVisible(bool visible) {
 }
 
 TextBox *EditorController::selectedBox() {
-  return const_cast<TextBox *>(std::as_const(*this).selectedBox());
+  return SelectionQueryService::selectedBox(document_.textBoxes(), selectedIndex_);
 }
 
 const TextBox *EditorController::selectedBox() const {
-  if (selectedIndex_ < 0 ||
-      selectedIndex_ >= static_cast<int>(document_.textBoxes().size())) {
-    return nullptr;
-  }
-  return &document_.textBoxes()[static_cast<std::size_t>(selectedIndex_)];
+  return SelectionQueryService::selectedBox(document_.textBoxes(), selectedIndex_);
 }
 
 bool EditorController::editSelectedBoxIf(

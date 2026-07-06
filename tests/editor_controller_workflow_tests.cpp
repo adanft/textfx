@@ -1,5 +1,7 @@
 #include "app/EditorController.h"
 #include "app/BoxesModel.h"
+#include "app/EditorViewModels.h"
+#include "app/SelectionQueryService.h"
 #include "app/BoxRenderState.h"
 #include "app/CommandAvailability.h"
 #include "app/EffectMetadata.h"
@@ -547,6 +549,55 @@ private slots:
     QVERIFY(allEffectRoles().contains(effectsRole));
   }
 
+  void selectionQueryServiceSelectedBoxLookupPreservesInvalidIndexes() {
+    std::vector<TextBox> boxes;
+    int selectedIndex = -1;
+
+    QVERIFY(SelectionQueryService::selectedBox(boxes, selectedIndex) == nullptr);
+    QCOMPARE(selectedIndex, -1);
+
+    TextBox first;
+    first.text = "first";
+    TextBox second;
+    second.text = "second";
+    boxes = {first, second};
+
+    selectedIndex = -2;
+    QVERIFY(SelectionQueryService::selectedBox(boxes, selectedIndex) == nullptr);
+    QCOMPARE(selectedIndex, -2);
+
+    selectedIndex = 1;
+    const TextBox *selected = SelectionQueryService::selectedBox(boxes, selectedIndex);
+    QVERIFY(selected != nullptr);
+    QCOMPARE(QString::fromStdString(selected->text), QStringLiteral("second"));
+    QCOMPARE(selectedIndex, 1);
+
+    selectedIndex = 2;
+    QVERIFY(SelectionQueryService::selectedBox(boxes, selectedIndex) == nullptr);
+    QCOMPARE(selectedIndex, 2);
+  }
+
+  void selectionQueryServiceSelectedBoxViewModelMatchesEditorProjection() {
+    std::vector<TextBox> boxes;
+    TextBox box;
+    box.text = "Projected box";
+    box.bounds = {12.0, 34.0, 156.0, 78.0};
+    box.style.fontSize = 29;
+    boxes.push_back(box);
+
+    const QVariant invalid = SelectionQueryService::selectedBoxViewModel(boxes, -1);
+    QVERIFY(!invalid.isValid());
+
+    const QVariant outOfRange = SelectionQueryService::selectedBoxViewModel(boxes, 1);
+    QVERIFY(!outOfRange.isValid());
+
+    const QVariantMap actual = SelectionQueryService::selectedBoxViewModel(boxes, 0).toMap();
+    const QVariantMap expected = EditorViewModels::textBoxMap(boxes.at(0), 0);
+    QCOMPARE(actual.value(QStringLiteral("index")), expected.value(QStringLiteral("index")));
+    QCOMPARE(actual.value(QStringLiteral("text")), expected.value(QStringLiteral("text")));
+    QCOMPARE(actual.value(QStringLiteral("fontSize")), expected.value(QStringLiteral("fontSize")));
+  }
+
   void boxRolesAffectSelectedBoxStateClassifiesProductionRoles() {
     EditorController editor;
     auto *model = qobject_cast<QAbstractItemModel *>(editor.boxesModel());
@@ -559,22 +610,51 @@ private slots:
       return value;
     };
 
+    const auto knownRoles = model->roleNames();
+
     QVERIFY(editor.boxRolesAffectSelectedBoxState({}));
-
-    QVERIFY(editor.boxRolesAffectSelectedBoxState(
-        {role("boxEffects"), role("boxPath"), role("boxPerspective"),
-         role("boxText")}));
-    QVERIFY(editor.boxRolesAffectSelectedBoxState({role("boxPathMode")}));
-    QVERIFY(editor.boxRolesAffectSelectedBoxState({role("boxPathPoints")}));
-    QVERIFY(editor.boxRolesAffectSelectedBoxState({role("boxPerspectiveNw")}));
-
-    QVERIFY(!editor.boxRolesAffectSelectedBoxState({role("boxIndex")}));
-    QVERIFY(!editor.boxRolesAffectSelectedBoxState(
-        {role("boxX"), role("boxY"), role("boxWidth"), role("boxHeight")}));
+    QVERIFY(SelectionQueryService::rolesAffectSelectedBoxState({}, knownRoles));
 
     QVERIFY(editor.boxRolesAffectSelectedBoxState({Qt::UserRole + 10000}));
+    QVERIFY(SelectionQueryService::rolesAffectSelectedBoxState({Qt::UserRole + 10000}, knownRoles));
     QVERIFY(editor.boxRolesAffectSelectedBoxState(
         {QVariant(QStringLiteral("not-a-role-id"))}));
+    QVERIFY(SelectionQueryService::rolesAffectSelectedBoxState(
+        {QVariant(QStringLiteral("not-a-role-id"))}, knownRoles));
+
+    const QList<int> affectingRoles{
+        role("boxText"), role("boxRotation"), role("boxFontFamily"),
+        role("boxFontSize"), role("boxColor"), role("boxLineSpacing"),
+        role("boxLetterSpacing"), role("boxBold"), role("boxItalic"),
+        role("boxUppercase"), role("boxLowercase"), role("boxAlignment"),
+        role("boxEffects"), role("boxOutline"), role("boxOutlineColor"),
+        role("boxOutlineSize"), role("boxBlur"), role("boxBlurSize"),
+        role("boxShadow"), role("boxShadowColor"), role("boxShadowOffsetX"),
+        role("boxShadowOffsetY"), role("boxShadowBlurSize"), role("boxGradient"),
+        role("boxGradientDirection"), role("boxGradientColorA"),
+        role("boxGradientColorB"), role("boxPath"), role("boxPathMode"),
+        role("boxPathPoints"), role("boxPerspective"), role("boxPerspectiveNw"),
+        role("boxPerspectiveNe"), role("boxPerspectiveSe"), role("boxPerspectiveSw")};
+    for (const int affectingRole : affectingRoles) {
+      QVERIFY(editor.boxRolesAffectSelectedBoxState({affectingRole}));
+      QVERIFY(SelectionQueryService::roleAffectsSelectedBoxState(affectingRole));
+      QVERIFY(SelectionQueryService::rolesAffectSelectedBoxState({affectingRole}, knownRoles));
+    }
+
+    const QList<int> nonAffectingRoles{role("boxIndex"), role("boxX"), role("boxY"),
+                                       role("boxWidth"), role("boxHeight"),
+                                       role("boxResolvedFontFamily")};
+    for (const int nonAffectingRole : nonAffectingRoles) {
+      QVERIFY(!editor.boxRolesAffectSelectedBoxState({nonAffectingRole}));
+      QVERIFY(!SelectionQueryService::roleAffectsSelectedBoxState(nonAffectingRole));
+      QVERIFY(SelectionQueryService::rolesAffectSelectedBoxState({nonAffectingRole}, knownRoles) == false);
+    }
+
+    QVERIFY(editor.boxRolesAffectSelectedBoxState({role("boxX"), role("boxText")}));
+    QVERIFY(SelectionQueryService::rolesAffectSelectedBoxState(
+        {role("boxX"), role("boxText")}, knownRoles));
+    QVERIFY(!SelectionQueryService::rolesAffectSelectedBoxState(
+        {role("boxX"), role("boxY")}, knownRoles));
   }
 
   void boxesModelEmitsPreciseLiveRoleChangesAndStructuralSignals() {
