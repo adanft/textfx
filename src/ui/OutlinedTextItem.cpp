@@ -1,6 +1,6 @@
 #include "ui/OutlinedTextItem.h"
 
-#include "core/EffectLimits.h"
+#include "core/AuthoringLimits.h"
 #include "core/GaussianBlur.h"
 #include "fonts/FontResolver.h"
 #include "render/RenderTextLayout.h"

@@ -5,6 +5,7 @@
 #include <qqml.h>
 
 #include "app/EditorController.h"
+#include "app/EditorLimits.h"
 #include "ui/OutlinedTextItem.h"
 
 int main(int argc, char *argv[]) {
@@ -15,6 +16,11 @@ int main(int argc, char *argv[]) {
   textfx::EditorController editor;
   qmlRegisterType<textfx::OutlinedTextItem>("TextFX.Ui", 1, 0,
                                             "OutlinedTextItem");
+  qmlRegisterSingletonType<textfx::EditorLimits>(
+      "TextFX.Ui", 1, 0, "EditorLimits",
+      [](QQmlEngine *, QJSEngine *) -> QObject * {
+        return new textfx::EditorLimits;
+      });
   QQmlApplicationEngine engine;
   engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
   QObject::connect(

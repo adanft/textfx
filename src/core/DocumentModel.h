@@ -1,5 +1,7 @@
 #pragma once
 
+#include "core/AuthoringLimits.h"
+
 #include <string>
 #include <vector>
 
@@ -35,13 +37,13 @@ struct TextStyle {
 struct OutlineLayer {
   bool enabled = true;
   std::string color = "ffffffff";
-  int size = 2;
+  int size = DefaultOutlineSize;
 };
 
 struct TextEffects {
   bool outlineEnabled = false;
   std::string outlineColor = "ffffffff";
-  int outlineSize = 2;
+  int outlineSize = DefaultOutlineSize;
   std::vector<OutlineLayer> outlineLayers;
   bool outlineLayersSet = false;
   bool blurEnabled = false;

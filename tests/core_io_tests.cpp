@@ -250,13 +250,14 @@ TEST_CASE("Unsupported fields are ignored on import and omitted on save") {
   REQUIRE(ProjectStore(folder).loadPage(page, document));
   REQUIRE(document.textBoxes().size() == 1);
   CHECK(document.textBoxes().front().text == "Kept");
-  CHECK(document.textBoxes().front().effects.shadowBlurSize == 36);
+  CHECK(document.textBoxes().front().effects.shadowBlurSize == 128);
   REQUIRE(ProjectStore(folder).savePage(page, document));
 
   const std::string text = readText(savePath);
   CHECK(text.find("mask_brush") == std::string::npos);
   CHECK(text.find("typebubblex_only") == std::string::npos);
   CHECK(text.find("Kept") != std::string::npos);
+  CHECK(text.find("\"shadow_blur_size\": 128") != std::string::npos);
   std::filesystem::remove_all(folder);
 }
 

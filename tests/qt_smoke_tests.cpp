@@ -1,6 +1,6 @@
 #include "app/EditorController.h"
 #include "app/TextBoxSelectionService.h"
-#include "core/EffectLimits.h"
+#include "core/AuthoringLimits.h"
 #include "fonts/FontResolver.h"
 #include "fonts/SfntNames.h"
 #include "qt_test_helpers.h"
@@ -10,6 +10,7 @@
 #include <QFontDatabase>
 #include <QFontInfo>
 #include <QQmlApplicationEngine>
+#include <QQmlComponent>
 #include <QQmlContext>
 #include <QQuickItem>
 #include <QQuickWindow>
@@ -19,6 +20,7 @@
 #include <QUrl>
 
 #include <cmath>
+#include <memory>
 
 using namespace textfx;
 using namespace textfx::test;
@@ -374,6 +376,37 @@ private slots:
   }
 
   void qmlEditorNamedConstantsKeepLegacyValues() {
+    registerQmlTypes();
+    QQmlEngine engine;
+    QQmlComponent component(&engine);
+    component.setData(R"QML(
+import QtQuick
+import TextFX.Ui 1.0
+QtObject {
+    property real minimumBoxSizeValue: EditorLimits.minimumBoxSize
+    property int minimumFontSizeValue: EditorLimits.minimumFontSize
+    property int maximumFontSizeValue: EditorLimits.maximumFontSize
+    property int minimumTextSpacingValue: EditorLimits.minimumTextSpacing
+    property int maximumTextSpacingValue: EditorLimits.maximumTextSpacing
+    property int minimumEffectSizeValue: EditorLimits.minimumEffectSize
+    property int maximumEffectSizeValue: EditorLimits.maximumEffectSize
+    property int minimumShadowOffsetValue: EditorLimits.minimumShadowOffset
+    property int maximumShadowOffsetValue: EditorLimits.maximumShadowOffset
+}
+)QML",
+                      QUrl());
+    std::unique_ptr<QObject> limits(component.create());
+    QVERIFY2(limits != nullptr, qPrintable(component.errorString()));
+    QCOMPARE(limits->property("minimumBoxSizeValue").toDouble(), MinBoxSize);
+    QCOMPARE(limits->property("minimumFontSizeValue").toInt(), MinFontSize);
+    QCOMPARE(limits->property("maximumFontSizeValue").toInt(), MaxFontSize);
+    QCOMPARE(limits->property("minimumTextSpacingValue").toInt(), MinTextSpacing);
+    QCOMPARE(limits->property("maximumTextSpacingValue").toInt(), MaxTextSpacing);
+    QCOMPARE(limits->property("minimumEffectSizeValue").toInt(), MinEffectSize);
+    QCOMPARE(limits->property("maximumEffectSizeValue").toInt(), MaxEffectSize);
+    QCOMPARE(limits->property("minimumShadowOffsetValue").toInt(), MinShadowOffset);
+    QCOMPARE(limits->property("maximumShadowOffsetValue").toInt(), MaxShadowOffset);
+
     const QString source = readQmlFile(QStringLiteral("Main.qml"));
 
     QVERIFY(source.contains(
@@ -392,24 +425,24 @@ private slots:
         QStringLiteral("readonly property int dragModeMove: 7")));
     QVERIFY(source.contains(
         QStringLiteral("readonly property int dragModePathHandle: 8")));
-    QVERIFY(source.contains(
-        QStringLiteral("readonly property real minimumBoxSize: 12")));
-    QVERIFY(source.contains(
-        QStringLiteral("readonly property int minimumFontSize: 1")));
-    QVERIFY(source.contains(
-        QStringLiteral("readonly property int maximumFontSize: 512")));
-    QVERIFY(source.contains(
-        QStringLiteral("readonly property int minimumTextSpacing: -100")));
-    QVERIFY(source.contains(
-        QStringLiteral("readonly property int maximumTextSpacing: 300")));
-    QVERIFY(source.contains(
-        QStringLiteral("readonly property int minimumEffectSize: 0")));
-    QVERIFY(source.contains(
-        QStringLiteral("readonly property int maximumEffectSize: 128")));
-    QVERIFY(source.contains(
-        QStringLiteral("readonly property int minimumShadowOffset: -512")));
-    QVERIFY(source.contains(
-        QStringLiteral("readonly property int maximumShadowOffset: 512")));
+    QVERIFY(source.contains(QStringLiteral(
+        "readonly property real minimumBoxSize: EditorLimits.minimumBoxSize")));
+    QVERIFY(source.contains(QStringLiteral(
+        "readonly property int minimumFontSize: EditorLimits.minimumFontSize")));
+    QVERIFY(source.contains(QStringLiteral(
+        "readonly property int maximumFontSize: EditorLimits.maximumFontSize")));
+    QVERIFY(source.contains(QStringLiteral(
+        "readonly property int minimumTextSpacing: EditorLimits.minimumTextSpacing")));
+    QVERIFY(source.contains(QStringLiteral(
+        "readonly property int maximumTextSpacing: EditorLimits.maximumTextSpacing")));
+    QVERIFY(source.contains(QStringLiteral(
+        "readonly property int minimumEffectSize: EditorLimits.minimumEffectSize")));
+    QVERIFY(source.contains(QStringLiteral(
+        "readonly property int maximumEffectSize: EditorLimits.maximumEffectSize")));
+    QVERIFY(source.contains(QStringLiteral(
+        "readonly property int minimumShadowOffset: EditorLimits.minimumShadowOffset")));
+    QVERIFY(source.contains(QStringLiteral(
+        "readonly property int maximumShadowOffset: EditorLimits.maximumShadowOffset")));
   }
 
   void qmlNormalResizeUsesPressSnapshotSeparateFromPerspective() {

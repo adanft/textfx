@@ -551,15 +551,15 @@ ApplicationWindow {
     QtObject {
         id: editorLimits
 
-        readonly property real minimumBoxSize: 12
-        readonly property int minimumFontSize: 1
-        readonly property int maximumFontSize: 512
-        readonly property int minimumTextSpacing: -100
-        readonly property int maximumTextSpacing: 300
-        readonly property int minimumEffectSize: 0
-        readonly property int maximumEffectSize: 128
-        readonly property int minimumShadowOffset: -512
-        readonly property int maximumShadowOffset: 512
+        readonly property real minimumBoxSize: EditorLimits.minimumBoxSize
+        readonly property int minimumFontSize: EditorLimits.minimumFontSize
+        readonly property int maximumFontSize: EditorLimits.maximumFontSize
+        readonly property int minimumTextSpacing: EditorLimits.minimumTextSpacing
+        readonly property int maximumTextSpacing: EditorLimits.maximumTextSpacing
+        readonly property int minimumEffectSize: EditorLimits.minimumEffectSize
+        readonly property int maximumEffectSize: EditorLimits.maximumEffectSize
+        readonly property int minimumShadowOffset: EditorLimits.minimumShadowOffset
+        readonly property int maximumShadowOffset: EditorLimits.maximumShadowOffset
     }
 
     ViewportMetrics {

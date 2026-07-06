@@ -9,6 +9,7 @@
 #include "app/TextBoxEditingService.h"
 #include "app/TextBoxSelectionService.h"
 #include "app/TextPresetService.h"
+#include "core/AuthoringLimits.h"
 #include "render/RenderGraph.h"
 
 #include <QClipboard>
@@ -473,7 +474,7 @@ void EditorController::createTextBox(double x, double y, double w, double h) {
     setNotification(QStringLiteral("Open a project before creating text"));
     return;
   }
-  if (w < 12.0 || h < 12.0)
+  if (w < MinBoxSize || h < MinBoxSize)
     return;
   TextBox box;
   box.bounds = {x, y, w, h};

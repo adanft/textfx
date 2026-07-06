@@ -39,6 +39,8 @@ set(TEXTFX_CORE_SOURCES
     src/app/BoxesModel.h
     src/app/EditorController.cpp
     src/app/EditorController.h
+    src/app/EditorLimits.cpp
+    src/app/EditorLimits.h
     src/app/EditorViewModels.cpp
     src/app/EditorViewModels.h
     src/app/EffectMetadata.cpp
@@ -57,6 +59,7 @@ set(TEXTFX_CORE_SOURCES
     src/app/TextBoxSelectionService.h
     src/app/TextPresetService.cpp
     src/app/TextPresetService.h
+    src/core/AuthoringLimits.h
     src/core/DocumentModel.cpp
     src/core/DocumentModel.h
     src/fonts/FontResolver.cpp

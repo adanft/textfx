@@ -1,10 +1,11 @@
 import QtQuick
+import TextFX.Ui 1.0
 
 QtObject {
     id: resizeState
 
     property real documentScale: 1
-    property real minimumBoxSize: 12
+    property real minimumBoxSize: EditorLimits.minimumBoxSize
     property var activeResizeDelegate: null
     property string activeResizeHandle: ""
     property real resizeStartX: 0

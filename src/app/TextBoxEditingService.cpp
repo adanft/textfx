@@ -1,21 +1,12 @@
 #include "app/TextBoxEditingService.h"
 
+#include "core/AuthoringLimits.h"
+
 #include <algorithm>
 #include <cctype>
 
 namespace textfx {
 namespace {
-constexpr int MinFontSize = 1;
-constexpr int MaxFontSize = 512;
-constexpr int MinTextSpacing = -100;
-constexpr int MaxTextSpacing = 300;
-constexpr double MinBoxSize = 12.0;
-constexpr int MinEffectSize = 0;
-constexpr int MaxEffectSize = 128;
-constexpr int DefaultOutlineLayerStep = 2;
-constexpr int MinShadowOffset = -512;
-constexpr int MaxShadowOffset = 512;
-
 std::string toStdString(const QString &value) { return value.toStdString(); }
 
 std::string normalizeHexColor(QString color, const std::string &fallback) {
@@ -64,10 +55,6 @@ void ensureDefaultPath(TextBox &box) {
   }
 }
 
-int clampedEffectSize(int size) {
-  return std::clamp(size, MinEffectSize, MaxEffectSize);
-}
-
 void syncLegacyOutlineFields(TextBox &box) {
   if (box.effects.outlineLayers.empty()) {
     box.effects.outlineEnabled = false;
@@ -92,7 +79,7 @@ int defaultAddedOutlineLayerSize(const TextBox &box) {
   int maxSize = clampedEffectSize(box.effects.outlineSize);
   for (const auto &layer : box.effects.outlineLayers)
     maxSize = std::max(maxSize, clampedEffectSize(layer.size));
-  return clampedEffectSize(maxSize + DefaultOutlineLayerStep);
+  return clampedEffectSize(maxSize + AddedOutlineLayerSizeStep);
 }
 } // namespace
 
@@ -228,7 +215,7 @@ void TextBoxEditingService::setBlurEnabled(TextBox &box, bool enabled) {
   box.effects.blurEnabled = enabled;
 }
 void TextBoxEditingService::setBlurSize(TextBox &box, int size) {
-  box.effects.blurSize = std::clamp(size, MinEffectSize, MaxEffectSize);
+  box.effects.blurSize = clampedEffectSize(size);
 }
 void TextBoxEditingService::setShadowEnabled(TextBox &box, bool enabled) {
   box.effects.shadowEnabled = enabled;
@@ -237,15 +224,13 @@ void TextBoxEditingService::setShadowColor(TextBox &box, const QString &color) {
   box.effects.shadowColor = normalizeHexColor(color, box.effects.shadowColor);
 }
 void TextBoxEditingService::setShadowOffsetX(TextBox &box, int offset) {
-  box.effects.shadowOffsetX =
-      std::clamp(offset, MinShadowOffset, MaxShadowOffset);
+  box.effects.shadowOffsetX = clampedShadowOffset(offset);
 }
 void TextBoxEditingService::setShadowOffsetY(TextBox &box, int offset) {
-  box.effects.shadowOffsetY =
-      std::clamp(offset, MinShadowOffset, MaxShadowOffset);
+  box.effects.shadowOffsetY = clampedShadowOffset(offset);
 }
 void TextBoxEditingService::setShadowBlurSize(TextBox &box, int size) {
-  box.effects.shadowBlurSize = std::clamp(size, MinEffectSize, MaxEffectSize);
+  box.effects.shadowBlurSize = clampedEffectSize(size);
 }
 void TextBoxEditingService::setGradientEnabled(TextBox &box, bool enabled) {
   box.effects.gradientEnabled = enabled;

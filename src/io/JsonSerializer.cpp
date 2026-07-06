@@ -1,5 +1,7 @@
 #include "io/JsonSerializer.h"
 
+#include "core/AuthoringLimits.h"
+
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -11,8 +13,6 @@
 
 namespace textfx {
 namespace {
-constexpr int MaxShadowBlurSize = 36;
-
 void setError(std::string *error, std::string message) {
   if (error != nullptr)
     *error = std::move(message);
@@ -273,9 +273,8 @@ TextBox boxFromJson(const QJsonObject &object) {
       object.value("shadow_offset_x").toInt(effects.shadowOffsetX);
   effects.shadowOffsetY =
       object.value("shadow_offset_y").toInt(effects.shadowOffsetY);
-  effects.shadowBlurSize =
-      std::clamp(object.value("shadow_blur_size").toInt(effects.shadowBlurSize),
-                 0, MaxShadowBlurSize);
+  effects.shadowBlurSize = clampedEffectSize(
+      object.value("shadow_blur_size").toInt(effects.shadowBlurSize));
   effects.gradientEnabled =
       object.value("gradient_enabled").toBool(effects.gradientEnabled);
   effects.gradientDirection = std::clamp(
@@ -328,8 +327,7 @@ QJsonObject boxToJson(const TextBox &box) {
                 QString::fromStdString(box.effects.shadowColor));
   object.insert("shadow_offset_x", box.effects.shadowOffsetX);
   object.insert("shadow_offset_y", box.effects.shadowOffsetY);
-  object.insert("shadow_blur_size",
-                std::clamp(box.effects.shadowBlurSize, 0, MaxShadowBlurSize));
+  object.insert("shadow_blur_size", clampedEffectSize(box.effects.shadowBlurSize));
   object.insert("gradient_enabled", box.effects.gradientEnabled);
   object.insert("gradient_direction",
                 std::clamp(box.effects.gradientDirection, 0, 1));

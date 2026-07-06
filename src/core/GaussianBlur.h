@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/EffectLimits.h"
+#include "core/AuthoringLimits.h"
 
 #include <QImage>
 #include <QVector>
