@@ -52,8 +52,8 @@ set(TEXTFX_CORE_SOURCES
     src/app/SelectionQueryService.h
     src/app/EffectMetadata.cpp
     src/app/EffectMetadata.h
-    src/app/PageTextService.cpp
-    src/app/PageTextService.h
+    src/application/services/PageTextService.cpp
+    src/application/services/PageTextService.h
     src/app/ProjectExportService.cpp
     src/app/ProjectExportService.h
     src/app/ProjectSessionService.cpp
@@ -64,10 +64,10 @@ set(TEXTFX_CORE_SOURCES
     src/app/TextBoxEditingService.h
     src/app/TextBoxSelectionService.cpp
     src/app/TextBoxSelectionService.h
-    src/app/TextPresetService.cpp
-    src/app/TextPresetService.h
-    src/app/TextWorkflowService.cpp
-    src/app/TextWorkflowService.h
+    src/application/services/TextPresetService.cpp
+    src/application/services/TextPresetService.h
+    src/application/services/TextWorkflowService.cpp
+    src/application/services/TextWorkflowService.h
     src/core/AuthoringLimits.h
     src/core/DocumentModel.cpp
     src/core/DocumentModel.h

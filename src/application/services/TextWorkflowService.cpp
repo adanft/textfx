@@ -1,4 +1,4 @@
-#include "app/TextWorkflowService.h"
+#include "application/services/TextWorkflowService.h"
 
 namespace textfx {
 namespace {

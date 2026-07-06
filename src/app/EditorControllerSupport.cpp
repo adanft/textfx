@@ -4,7 +4,7 @@
 #include "app/EffectMetadata.h"
 #include "app/ProjectSessionService.h"
 #include "app/SelectionQueryService.h"
-#include "app/TextWorkflowService.h"
+#include "application/services/TextWorkflowService.h"
 
 #include <QGuiApplication>
 #include <QQuickTextDocument>

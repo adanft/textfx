@@ -1,7 +1,7 @@
-#include "app/PageTextService.h"
+#include "application/services/PageTextService.h"
 #include "app/ProjectSessionService.h"
-#include "app/TextPresetService.h"
-#include "app/TextWorkflowService.h"
+#include "application/services/TextPresetService.h"
+#include "application/services/TextWorkflowService.h"
 #include "core/ProjectStore.h"
 #include "io/JsonSerializer.h"
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "app/PageTextService.h"
-#include "app/TextPresetService.h"
+#include "application/services/PageTextService.h"
+#include "application/services/TextPresetService.h"
 
 #include <QString>
 

@@ -4,12 +4,12 @@
 #include "app/EditorControllerStringUtils.h"
 #include "app/EditorViewModels.h"
 #include "app/EffectMetadata.h"
-#include "app/PageTextService.h"
+#include "application/services/PageTextService.h"
 #include "app/ProjectSessionService.h"
 #include "app/TextBoxClipboardService.h"
 #include "app/TextBoxEditingService.h"
 #include "app/TextBoxSelectionService.h"
-#include "app/TextWorkflowService.h"
+#include "application/services/TextWorkflowService.h"
 
 #include <QClipboard>
 #include <QGuiApplication>

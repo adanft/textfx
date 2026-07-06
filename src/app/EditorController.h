@@ -1,8 +1,8 @@
 #pragma once
 
 #include "app/BoxesModel.h"
-#include "app/PageTextService.h"
-#include "app/TextWorkflowService.h"
+#include "application/services/PageTextService.h"
+#include "application/services/TextWorkflowService.h"
 #include "core/DocumentModel.h"
 #include "core/ProjectStore.h"
 
