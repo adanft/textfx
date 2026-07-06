@@ -1,5 +1,5 @@
 #include "app/EditorController.h"
-#include "app/TextBoxSelectionService.h"
+#include "application/services/TextBoxSelectionService.h"
 #include "core/AuthoringLimits.h"
 #include "fonts/FontResolver.h"
 #include "fonts/SfntNames.h"

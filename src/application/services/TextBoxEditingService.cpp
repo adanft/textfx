@@ -1,4 +1,4 @@
-#include "app/TextBoxEditingService.h"
+#include "application/services/TextBoxEditingService.h"
 
 #include "core/AuthoringLimits.h"
 

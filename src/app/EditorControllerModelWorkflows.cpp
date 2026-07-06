@@ -7,8 +7,8 @@
 #include "application/services/PageTextService.h"
 #include "app/ProjectSessionService.h"
 #include "app/TextBoxClipboardService.h"
-#include "app/TextBoxEditingService.h"
-#include "app/TextBoxSelectionService.h"
+#include "application/services/TextBoxEditingService.h"
+#include "application/services/TextBoxSelectionService.h"
 #include "application/services/TextWorkflowService.h"
 
 #include <QClipboard>

@@ -60,10 +60,10 @@ set(TEXTFX_CORE_SOURCES
     src/app/ProjectSessionService.h
     src/app/TextBoxClipboardService.cpp
     src/app/TextBoxClipboardService.h
-    src/app/TextBoxEditingService.cpp
-    src/app/TextBoxEditingService.h
-    src/app/TextBoxSelectionService.cpp
-    src/app/TextBoxSelectionService.h
+    src/application/services/TextBoxEditingService.cpp
+    src/application/services/TextBoxEditingService.h
+    src/application/services/TextBoxSelectionService.cpp
+    src/application/services/TextBoxSelectionService.h
     src/application/services/TextPresetService.cpp
     src/application/services/TextPresetService.h
     src/application/services/TextWorkflowService.cpp
