@@ -1165,20 +1165,22 @@ bool EditorController::loadPageAt(int index) {
   if (!autosaveCurrent())
     return false;
 
+  const auto nextPage = pagePaths_.at(static_cast<std::size_t>(index));
+  DocumentModel nextDocument;
+  std::string error;
+  if (!store_->loadPage(nextPage, nextDocument, &error)) {
+    setNotification(toQString(error));
+    return false;
+  }
+
   currentPageIndex_ = index;
-  currentPage_ = pagePaths_.at(static_cast<std::size_t>(index));
+  currentPage_ = nextPage;
   boxesModel_.beginResetBoxes();
-  document_.clear();
+  document_ = std::move(nextDocument);
   projectPresets_.clear();
   selectedIndex_ = -1;
   editingText_ = false;
   pendingDocumentChanged_ = false;
-  std::string error;
-  if (!store_->loadPage(currentPage_, document_, &error)) {
-    boxesModel_.endResetBoxes();
-    setNotification(toQString(error));
-    return false;
-  }
   boxesModel_.endResetBoxes();
   reloadPresets();
   emit selectionChanged();
@@ -1195,9 +1197,13 @@ bool EditorController::loadPageAt(int index) {
 bool EditorController::autosaveCurrent() {
   if (!store_ || currentPage_.empty())
     return true;
+  const bool wasDirty = document_.dirty();
   std::string error;
-  if (store_->autosave(currentPage_, document_, &error))
+  if (store_->autosave(currentPage_, document_, &error)) {
+    if (wasDirty && !document_.dirty())
+      emit stateChanged();
     return true;
+  }
   setNotification(toQString(error));
   return false;
 }

@@ -958,6 +958,61 @@ private slots:
              1);
   }
 
+  void failedPageNavigationPreservesCurrentDocument() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    touch(dir.filePath(QStringLiteral("page1.png")));
+    touch(dir.filePath(QStringLiteral("page2.png")));
+
+    EditorController editor;
+    editor.openProject(dir.path());
+    editor.createTextBox(10, 20, 100, 50);
+    editor.updateSelectedText(QStringLiteral("Preserved page"));
+    QVERIFY(editor.dirty());
+    const auto selectedBox = editor.selectedBoxViewModel();
+
+    QVERIFY(QDir(dir.path()).mkpath(QStringLiteral(".textfx")));
+    QFile corruptPage(dir.filePath(QStringLiteral(".textfx/page2.json")));
+    QVERIFY(corruptPage.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    corruptPage.write("not json");
+    corruptPage.close();
+
+    QSignalSpy stateChanged(&editor, &EditorController::stateChanged);
+    QSignalSpy documentChanged(&editor, &EditorController::documentChanged);
+    QSignalSpy selectionChanged(&editor, &EditorController::selectionChanged);
+    QSignalSpy selectedBoxChanged(&editor,
+                                  &EditorController::selectedBoxChanged);
+    QSignalSpy pageTextsChanged(&editor, &EditorController::pageTextsChanged);
+    QSignalSpy notificationChanged(&editor,
+                                   &EditorController::notificationChanged);
+
+    editor.goToPage(1);
+
+    QCOMPARE(editor.currentPageIndex(), 0);
+    QCOMPARE(editor.currentPageName(), QStringLiteral("page1.png"));
+    QCOMPARE(editor.boxes().size(), 1);
+    QCOMPARE(
+        editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
+        QStringLiteral("Preserved page"));
+    QCOMPARE(editor.selectedIndex(), 0);
+    QCOMPARE(editor.selectedBoxViewModel(), selectedBox);
+    QVERIFY(QFile::exists(dir.filePath(QStringLiteral(".textfx/page1.json"))));
+    QCOMPARE(readJson(dir.filePath(QStringLiteral(".textfx/page1.json")))
+                 .value(QStringLiteral("boxes"))
+                 .toArray()
+                 .size(),
+             1);
+    QVERIFY(!editor.dirty());
+    QCOMPARE(editor.notification(),
+             QStringLiteral("Save file is not valid JSON."));
+    QCOMPARE(notificationChanged.count(), 1);
+    QCOMPARE(stateChanged.count(), 1);
+    QCOMPARE(documentChanged.count(), 0);
+    QCOMPARE(selectionChanged.count(), 0);
+    QCOMPARE(selectedBoxChanged.count(), 0);
+    QCOMPARE(pageTextsChanged.count(), 0);
+  }
+
   void openingProjectAbortsWhenCurrentAutosaveFails() {
     QTemporaryDir first;
     QTemporaryDir second;
