@@ -64,7 +64,7 @@ Some advanced rendering details are still evolving, especially around perfect pa
   - Quick
   - QuickControls2
   - QuickDialogs2
-- Optional for tests: Qt Test and Catch2 3
+- Required for `./run.sh test`: Qt Test and Catch2 3
 
 ### Daily development
 
@@ -74,11 +74,13 @@ From the repository root:
 ./run.sh
 ```
 
-Run tests:
+Run the full local test gate:
 
 ```bash
 ./run.sh test
 ```
+
+This configures CMake with `TEXTFX_REQUIRE_TEST_DEPS=ON`, so missing Qt Test or Catch2 3 fails configuration instead of silently skipping test suites.
 
 Or use CMake presets directly:
 
@@ -96,8 +98,9 @@ cmake --build build/test --target check
 
 Expected notes:
 
-- If Catch2 3 is missing, core tests may not be registered.
-- If Qt Test is missing, Qt smoke tests may not be registered.
+- Use `-DTEXTFX_REQUIRE_TEST_DEPS=ON` for verification builds that must fail when Qt Test or Catch2 3 is unavailable.
+- Without `TEXTFX_REQUIRE_TEST_DEPS`, CMake keeps the optional local-development behavior and reports missing test-only dependencies at configure time.
+- The `check` target uses `ctest --no-tests=error` so an empty test registry is a failure.
 - Render checks cover deterministic render seams and all-effects PNG export behavior.
 
 ### Release package

@@ -72,7 +72,7 @@ case "${1:-run}" in
     "$BUILD_DIR/textfx"
     ;;
   test)
-    run_cmake_configure "$BUILD_DIR"
+    run_cmake_configure "$BUILD_DIR" -DTEXTFX_REQUIRE_TEST_DEPS=ON
     cmake --build "$BUILD_DIR" --target check
     ;;
   package)

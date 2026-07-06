@@ -14,9 +14,14 @@ include(CTest)
 include(GNUInstallDirs)
 
 option(TEXTFX_ENABLE_QT_DEPLOY "Run Qt QML deployment during install/package" OFF)
+option(TEXTFX_REQUIRE_TEST_DEPS "Fail configuration when test-only dependencies are unavailable" OFF)
 
 find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Quick Qml QuickControls2 QuickDialogs2)
-find_package(Qt6 6.8 QUIET COMPONENTS Test)
+if(TEXTFX_REQUIRE_TEST_DEPS)
+    find_package(Qt6 6.8 REQUIRED COMPONENTS Test)
+else()
+    find_package(Qt6 6.8 QUIET COMPONENTS Test)
+endif()
 
 qt_standard_project_setup(REQUIRES 6.8)
 qt_policy(SET QTP0004 NEW)
@@ -180,7 +185,11 @@ set(CPACK_GENERATOR "TGZ")
 include(CPack)
 
 if(BUILD_TESTING)
-    find_package(Catch2 3 QUIET)
+    if(TEXTFX_REQUIRE_TEST_DEPS)
+        find_package(Catch2 3 REQUIRED)
+    else()
+        find_package(Catch2 3 QUIET)
+    endif()
 
     set(TEXTFX_QT_TEST_ENVIRONMENT
         QT_QPA_PLATFORM=offscreen
@@ -443,7 +452,7 @@ if(BUILD_TESTING)
     )
 
     add_custom_target(check
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure --no-tests=error
         DEPENDS verify_all
         USES_TERMINAL
     )
