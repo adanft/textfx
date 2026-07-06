@@ -7,6 +7,7 @@
 #include <QImage>
 #include <QMetaObject>
 #include <QQmlApplicationEngine>
+#include <QQmlComponent>
 #include <QQmlContext>
 #include <QQuickItem>
 #include <QQuickWindow>
@@ -19,11 +20,48 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <memory>
 
 using namespace textfx;
 using namespace textfx::test;
 
 namespace {
+class CanvasCreateSpyEditor final : public QObject {
+  Q_OBJECT
+  Q_PROPERTY(bool editingText READ editingText CONSTANT)
+  Q_PROPERTY(QVariant boxesModel READ boxesModel CONSTANT)
+  Q_PROPERTY(QVariantList paintBehindText READ paintBehindText CONSTANT)
+  Q_PROPERTY(QVariantList paintAboveText READ paintAboveText CONSTANT)
+  Q_PROPERTY(QUrl currentPageUrl READ currentPageUrl CONSTANT)
+  Q_PROPERTY(QUrl rawPageUrl READ rawPageUrl CONSTANT)
+  Q_PROPERTY(bool rawVisible READ rawVisible CONSTANT)
+
+public:
+  bool editingText() const { return false; }
+  QVariant boxesModel() const { return {}; }
+  QVariantList paintBehindText() const { return {}; }
+  QVariantList paintAboveText() const { return {}; }
+  QUrl currentPageUrl() const { return {}; }
+  QUrl rawPageUrl() const { return {}; }
+  bool rawVisible() const { return false; }
+
+  Q_INVOKABLE bool actionEnabled(const QString &) const { return false; }
+  Q_INVOKABLE void endTextEdit() {}
+  Q_INVOKABLE void copySelected() {}
+  Q_INVOKABLE void pasteBox() {}
+  Q_INVOKABLE void deleteSelected() {}
+  Q_INVOKABLE void createTextBox(double x, double y, double w, double h) {
+    ++createTextBoxCallCount;
+    lastCreateTextBox = QVariantMap{{QStringLiteral("x"), x},
+                                    {QStringLiteral("y"), y},
+                                    {QStringLiteral("w"), w},
+                                    {QStringLiteral("h"), h}};
+  }
+
+  int createTextBoxCallCount = 0;
+  QVariantMap lastCreateTextBox;
+};
+
 void scrollRightInspectorItemIntoView(QQuickWindow *window, QQuickItem *item) {
   QObject *scrollObject = findVisualChildByName(
       window->contentItem(), QStringLiteral("rightPanelScroll"));
@@ -57,6 +95,90 @@ class QmlInteractionSmokeTests final : public QObject {
   Q_OBJECT
 
 private slots:
+  void canvasCreateReleaseForwardsUndersizedGeometryToEditorAndCleansUp() {
+    registerQmlTypes();
+
+    CanvasCreateSpyEditor editor;
+    QQmlApplicationEngine engine;
+    engine.addImportPath(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/features/canvas"));
+    engine.rootContext()->setContextProperty(QStringLiteral("testEditor"), &editor);
+
+    QQmlComponent component(&engine);
+    QString qml = QStringLiteral(R"QML(
+import QtQuick
+import "%1" as Canvas
+Canvas.CanvasView {
+    id: root
+    width: 320
+    height: 240
+    appWindow: QtObject {
+        property var palette: ({ "base": "white", "highlight": "steelblue" })
+        property real zoom: 1.0
+        property real panX: 0.0
+        property real panY: 0.0
+        property real pageBaseScale: 1.0
+        property int dragMode: root.canvasInteraction.dragMode
+        property real createStartX: root.canvasInteraction.createStartX
+        property real createStartY: root.canvasInteraction.createStartY
+        property real createCurrentX: root.canvasInteraction.createCurrentX
+        property real createCurrentY: root.canvasInteraction.createCurrentY
+        property bool pathHandleInteractionActive: false
+        function viewDocScale() { return 2.0 }
+        function viewToDocumentX(x) { return x / viewDocScale() }
+        function viewToDocumentY(y) { return y / viewDocScale() }
+        function documentToViewX(x) { return x * viewDocScale() }
+        function documentToViewY(y) { return y * viewDocScale() }
+        function pageDisplayWidth() { return 0 }
+        function pageDisplayHeight() { return 0 }
+        function fitPageScale() { return 1.0 }
+        function zoomAt(x, y, amount) { return true }
+        function handleEscape() {}
+        function activePaintStroke(layer) { return [] }
+        function beginPaintDrag(x, y) {}
+        function updatePaintDrag(x, y) {}
+        function endPaintDrag() {}
+        function cancelPaintDrag() {}
+        function updatePathHandleDragFromCanvas(x, y) {}
+        function endPathHandleDrag() {}
+    }
+    editor: testEditor
+    rightPanel: QtObject { property bool paintMode: false }
+    editorInteraction: QtObject { property int dragModeCreate: 3; property int dragModePathHandle: 20 }
+    canvasInteraction: Canvas.CanvasInteractionState { idleMode: 0; panMode: 2; createMode: 3 }
+}
+)QML").arg(QUrl::fromLocalFile(QStringLiteral(
+                      TEXTFX_FIXTURE_DIR "/../../qml/features/canvas"))
+                         .toString());
+    component.setData(qml.toUtf8(),
+                      QUrl::fromLocalFile(QStringLiteral(
+                          TEXTFX_FIXTURE_DIR "/../../tests/canvas_view_create_release_test.qml")));
+    QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+    std::unique_ptr<QObject> object(component.create());
+    QVERIFY2(object, qPrintable(component.errorString()));
+
+    QMetaObject::invokeMethod(object.get(), "canvasPressed", Q_ARG(double, 20.0),
+                              Q_ARG(double, 30.0),
+                              Q_ARG(int, int(Qt::LeftButton)),
+                              Q_ARG(int, int(Qt::ControlModifier)));
+    QMetaObject::invokeMethod(object.get(), "canvasPositionChanged",
+                              Q_ARG(double, 38.0), Q_ARG(double, 46.0),
+                              Q_ARG(bool, true));
+    QMetaObject::invokeMethod(object.get(), "canvasReleased", Q_ARG(double, 38.0),
+                              Q_ARG(double, 46.0),
+                              Q_ARG(int, int(Qt::LeftButton)),
+                              Q_ARG(int, int(Qt::ControlModifier)));
+
+    QCOMPARE(editor.createTextBoxCallCount, 1);
+    QCOMPARE(editor.lastCreateTextBox.value(QStringLiteral("x")).toDouble(), 10.0);
+    QCOMPARE(editor.lastCreateTextBox.value(QStringLiteral("y")).toDouble(), 15.0);
+    QCOMPARE(editor.lastCreateTextBox.value(QStringLiteral("w")).toDouble(), 9.0);
+    QCOMPARE(editor.lastCreateTextBox.value(QStringLiteral("h")).toDouble(), 8.0);
+
+    QObject *state = object->property("canvasInteraction").value<QObject *>();
+    QVERIFY(state);
+    QCOMPARE(state->property("dragMode").toInt(), 0);
+  }
+
   void qmlCentralCanvasShellForwardsViewportInteractions() {
     registerQmlTypes();
 

@@ -2,6 +2,7 @@
 #include "app/BoxesModel.h"
 #include "app/BoxRenderState.h"
 #include "app/EffectMetadata.h"
+#include "core/AuthoringLimits.h"
 #include "fonts/FontResolver.h"
 #include "qt_test_helpers.h"
 
@@ -217,6 +218,52 @@ private slots:
     QCOMPARE(editor.boxes().size(), 1);
     QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
              QStringLiteral("Keep me"));
+  }
+
+  void undersizedTextBoxCreateWithoutProjectIsSilent() {
+    EditorController editor;
+    QSignalSpy notificationChanged(&editor,
+                                   &EditorController::notificationChanged);
+
+    editor.createTextBox(10, 20, MinBoxSize - 1.0, MinBoxSize);
+
+    QVERIFY(!editor.hasProject());
+    QCOMPARE(editor.boxes().size(), 0);
+    QCOMPARE(editor.notification(), QString());
+    QCOMPARE(notificationChanged.count(), 0);
+  }
+
+  void validTextBoxCreateWithoutProjectStillNotifies() {
+    EditorController editor;
+    QSignalSpy notificationChanged(&editor,
+                                   &EditorController::notificationChanged);
+
+    editor.createTextBox(10, 20, MinBoxSize, MinBoxSize);
+
+    QVERIFY(!editor.hasProject());
+    QCOMPARE(editor.boxes().size(), 0);
+    QCOMPARE(editor.notification(),
+             QStringLiteral("Open a project before creating text"));
+    QCOMPARE(notificationChanged.count(), 1);
+  }
+
+  void undersizedTextBoxCreateWithProjectDoesNotMutateDocument() {
+    EditorController editor;
+    editor.newDocument();
+    QSignalSpy documentChanged(&editor, &EditorController::documentChanged);
+    QSignalSpy selectionChanged(&editor, &EditorController::selectionChanged);
+    QSignalSpy stateChanged(&editor, &EditorController::stateChanged);
+
+    editor.createTextBox(10, 20, MinBoxSize - 1.0, MinBoxSize);
+    editor.createTextBox(10, 20, MinBoxSize, MinBoxSize - 1.0);
+
+    QVERIFY(editor.hasProject());
+    QCOMPARE(editor.boxes().size(), 0);
+    QCOMPARE(editor.selectedIndex(), -1);
+    QVERIFY(!editor.dirty());
+    QCOMPARE(documentChanged.count(), 0);
+    QCOMPARE(selectionChanged.count(), 0);
+    QCOMPARE(stateChanged.count(), 0);
   }
 
   void createdBoxesAreEmptyExactDragWithTypeXMinimum() {

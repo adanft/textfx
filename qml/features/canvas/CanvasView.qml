@@ -9,7 +9,6 @@ CentralCanvasShell {
     property var appWindow
     property var editor
     property var rightPanel
-    property var editorLimits
     property var editorInteraction
     property var canvasInteraction
     readonly property Item canvas: canvasView.canvasItem
@@ -54,8 +53,9 @@ CentralCanvasShell {
             const rectangle = release.rectangle;
             const w = rectangle.width / canvasView.appWindow.viewDocScale();
             const h = rectangle.height / canvasView.appWindow.viewDocScale();
-            if (w >= canvasView.editorLimits.minimumBoxSize && h >= canvasView.editorLimits.minimumBoxSize)
-                canvasView.editor.createTextBox(canvasView.appWindow.viewToDocumentX(rectangle.x), canvasView.appWindow.viewToDocumentY(rectangle.y), w, h);
+            // Controller owns authoring minimum-size validation; QML only converts
+            // the completed gesture rectangle and settles transient interaction state.
+            canvasView.editor.createTextBox(canvasView.appWindow.viewToDocumentX(rectangle.x), canvasView.appWindow.viewToDocumentY(rectangle.y), w, h);
 
         }
     }

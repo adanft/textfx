@@ -470,12 +470,12 @@ void EditorController::selectBox(int index) {
 }
 
 void EditorController::createTextBox(double x, double y, double w, double h) {
+  if (w < MinBoxSize || h < MinBoxSize)
+    return;
   if (!hasProject()) {
     setNotification(QStringLiteral("Open a project before creating text"));
     return;
   }
-  if (w < MinBoxSize || h < MinBoxSize)
-    return;
   TextBox box;
   box.bounds = {x, y, w, h};
   const int row = static_cast<int>(document_.textBoxes().size());

@@ -706,7 +706,6 @@ ApplicationWindow {
                     appWindow: window
                     editor: window.editor
                     rightPanel: rightPanel
-                    editorLimits: editorLimits
                     editorInteraction: editorInteraction
                     canvasInteraction: canvasInteraction
                 }

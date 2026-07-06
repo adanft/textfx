@@ -1,0 +1,37 @@
+project:
+  name: textfx
+  root: .
+  summary: >-
+    TextFX is a Qt 6 / C++23 desktop editor for placing styled text on image pages.
+    The current responsibility split should keep Main.qml focused on UI composition,
+    layout, and event wiring, while EditorController owns document state, mutation
+    rules, persistence, and command behavior.
+  stack:
+    - C++23
+    - Qt 6.8+
+    - QML / Qt Quick
+    - CMake + Ninja
+  responsibility_split:
+    main_qml: >-
+      Presentation shell only: navigation, layout, bindings, transient view state,
+      and forwarding user actions to the controller.
+    editor_controller: >-
+      Source of truth for project/document state, commands, validation, persistence,
+      and mutation logic.
+    duplication_rule: >-
+      No business logic or state mutation rules should be duplicated in QML when a
+      controller API already exists.
+strict_tdd: true
+phase_rules:
+  - Keep initialization minimal and non-destructive.
+  - Prefer behavior changes to flow through EditorController rather than Main.qml.
+  - Add or update tests before changing user-visible behavior.
+  - Preserve current UI and data contracts unless a change is explicitly required.
+testing:
+  runner: ./run.sh test
+  configure: cmake --preset test -DTEXTFX_REQUIRE_TEST_DEPS=ON
+  build_check: cmake --build build/test --target check
+  notes:
+    - CTest is enabled through CMake.
+    - Qt Test and Catch2 3 are required for verification builds.
+    - check uses ctest --no-tests=error.
