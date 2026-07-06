@@ -3,7 +3,7 @@
 #include "app/EditorViewModels.h"
 #include "app/SelectionQueryService.h"
 #include "app/BoxRenderState.h"
-#include "app/CommandAvailability.h"
+#include "application/queries/CommandAvailability.h"
 #include "app/EffectMetadata.h"
 #include "core/AuthoringLimits.h"
 #include "fonts/FontResolver.h"

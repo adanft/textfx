@@ -1,4 +1,4 @@
-#include "app/CommandAvailability.h"
+#include "application/queries/CommandAvailability.h"
 
 namespace textfx {
 

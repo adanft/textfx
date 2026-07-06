@@ -1,6 +1,6 @@
 #include "app/EditorController.h"
 
-#include "app/CommandAvailability.h"
+#include "application/queries/CommandAvailability.h"
 #include "app/EditorControllerStringUtils.h"
 #include "app/EditorViewModels.h"
 #include "app/EffectMetadata.h"
