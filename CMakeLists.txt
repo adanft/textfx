@@ -32,7 +32,7 @@ qt_add_executable(textfx
     src/ui/OutlinedTextItem.h
 )
 
-add_library(textfx_core
+set(TEXTFX_CORE_SOURCES
     src/app/BoxRenderState.cpp
     src/app/BoxRenderState.h
     src/app/BoxesModel.cpp
@@ -72,18 +72,18 @@ add_library(textfx_core
     src/render/RenderTextLayout.h
 )
 
-target_include_directories(textfx_core PUBLIC src)
+function(textfx_configure_core target)
+    target_include_directories(${target} PUBLIC src)
+    target_link_libraries(${target}
+        PUBLIC
+            Qt6::Core
+            Qt6::Gui
+            Qt6::Quick
+    )
+endfunction()
 
-target_link_libraries(textfx_core
-    PUBLIC
-        Qt6::Core
-        Qt6::Gui
-        Qt6::Quick
-)
-
-if(BUILD_TESTING)
-    target_compile_definitions(textfx_core PRIVATE TEXTFX_ENABLE_TEST_HOOKS=1)
-endif()
+add_library(textfx_core ${TEXTFX_CORE_SOURCES})
+textfx_configure_core(textfx_core)
 
 set(TEXTFX_ICON_RESOURCES
     assets/icons/flat/align-center.svg
@@ -201,6 +201,24 @@ if(BUILD_TESTING)
         QSG_RHI_BACKEND=software
     )
 
+    add_library(textfx_core_test ${TEXTFX_CORE_SOURCES})
+    textfx_configure_core(textfx_core_test)
+    target_compile_definitions(textfx_core_test PUBLIC TEXTFX_ENABLE_TEST_HOOKS=1)
+
+    function(textfx_assert_no_test_hooks target)
+        get_target_property(compile_definitions ${target} COMPILE_DEFINITIONS)
+        get_target_property(interface_definitions ${target} INTERFACE_COMPILE_DEFINITIONS)
+        get_target_property(link_libraries ${target} LINK_LIBRARIES)
+        foreach(values IN ITEMS compile_definitions interface_definitions link_libraries)
+            if(${values} MATCHES "TEXTFX_ENABLE_TEST_HOOKS|textfx_core_test")
+                message(FATAL_ERROR "${target} must not depend on test hooks")
+            endif()
+        endforeach()
+    endfunction()
+
+    textfx_assert_no_test_hooks(textfx_core)
+    textfx_assert_no_test_hooks(textfx)
+
     function(textfx_add_test_icon_resources target)
         qt_add_resources(${target} "${target}_icon_resources"
             PREFIX "/qt/qml/TextFX"
@@ -220,10 +238,9 @@ if(BUILD_TESTING)
         tests/render_golden_check.cpp
     )
 
-    target_link_libraries(textfx_render_golden_check PRIVATE textfx_core)
+    target_link_libraries(textfx_render_golden_check PRIVATE textfx_core_test)
     target_compile_definitions(textfx_render_golden_check PRIVATE
         TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
-        TEXTFX_ENABLE_TEST_HOOKS=1
     )
     list(APPEND TEXTFX_TEST_TARGETS textfx_render_golden_check)
 
@@ -304,13 +321,12 @@ if(BUILD_TESTING)
 
         target_link_libraries(textfx_editor_controller_workflow_tests
             PRIVATE
-                textfx_core
+                textfx_core_test
                 Qt6::Test
         )
         target_compile_definitions(textfx_editor_controller_workflow_tests PRIVATE
             TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
             TEXTFX_TESTING=1
-            TEXTFX_ENABLE_TEST_HOOKS=1
         )
 
         add_test(NAME textfx_editor_controller_workflow_tests COMMAND textfx_editor_controller_workflow_tests)
