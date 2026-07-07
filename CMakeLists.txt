@@ -28,8 +28,8 @@ qt_policy(SET QTP0004 NEW)
 
 qt_add_executable(textfx
     src/app/main.cpp
-    src/ui/OutlinedTextItem.cpp
-    src/ui/OutlinedTextItem.h
+    src/app/qt/OutlinedTextItem.cpp
+    src/app/qt/OutlinedTextItem.h
 )
 
 set(TEXTFX_CORE_SOURCES
@@ -296,8 +296,8 @@ if(BUILD_TESTING)
             tests/qt_smoke_tests.cpp
             tests/qt_test_helpers.cpp
             tests/qt_test_helpers.h
-            src/ui/OutlinedTextItem.cpp
-            src/ui/OutlinedTextItem.h
+            src/app/qt/OutlinedTextItem.cpp
+            src/app/qt/OutlinedTextItem.h
         )
 
         target_link_libraries(textfx_qt_smoke_tests
@@ -327,8 +327,8 @@ if(BUILD_TESTING)
             tests/editor_controller_workflow_tests.cpp
             tests/qt_test_helpers.cpp
             tests/qt_test_helpers.h
-            src/ui/OutlinedTextItem.cpp
-            src/ui/OutlinedTextItem.h
+            src/app/qt/OutlinedTextItem.cpp
+            src/app/qt/OutlinedTextItem.h
         )
 
         target_link_libraries(textfx_editor_controller_workflow_tests
@@ -353,8 +353,8 @@ if(BUILD_TESTING)
             tests/qml_shell_smoke_tests.cpp
             tests/qt_test_helpers.cpp
             tests/qt_test_helpers.h
-            src/ui/OutlinedTextItem.cpp
-            src/ui/OutlinedTextItem.h
+            src/app/qt/OutlinedTextItem.cpp
+            src/app/qt/OutlinedTextItem.h
         )
 
         target_link_libraries(textfx_qml_shell_smoke_tests
@@ -384,8 +384,8 @@ if(BUILD_TESTING)
             tests/qml_interaction_smoke_tests.cpp
             tests/qt_test_helpers.cpp
             tests/qt_test_helpers.h
-            src/ui/OutlinedTextItem.cpp
-            src/ui/OutlinedTextItem.h
+            src/app/qt/OutlinedTextItem.cpp
+            src/app/qt/OutlinedTextItem.h
         )
 
         target_link_libraries(textfx_qml_interaction_smoke_tests
@@ -415,8 +415,8 @@ if(BUILD_TESTING)
             tests/qml_text_box_delegate_smoke_tests.cpp
             tests/qt_test_helpers.cpp
             tests/qt_test_helpers.h
-            src/ui/OutlinedTextItem.cpp
-            src/ui/OutlinedTextItem.h
+            src/app/qt/OutlinedTextItem.cpp
+            src/app/qt/OutlinedTextItem.h
         )
 
         target_link_libraries(textfx_qml_text_box_delegate_smoke_tests
@@ -446,8 +446,8 @@ if(BUILD_TESTING)
             tests/outlined_text_item_tests.cpp
             tests/qt_test_helpers.cpp
             tests/qt_test_helpers.h
-            src/ui/OutlinedTextItem.cpp
-            src/ui/OutlinedTextItem.h
+            src/app/qt/OutlinedTextItem.cpp
+            src/app/qt/OutlinedTextItem.h
         )
 
         target_link_libraries(textfx_outlined_text_item_tests

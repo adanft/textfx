@@ -1,7 +1,7 @@
 #include "domain/document/DocumentModel.h"
 #include "qt_test_helpers.h"
 #include "render/RenderGraph.h"
-#include "ui/OutlinedTextItem.h"
+#include "app/qt/OutlinedTextItem.h"
 
 #include <QColor>
 #include <QFile>
@@ -1086,7 +1086,7 @@ private slots:
 
   void wrapsWithinOutlineInset() {
     QFile source(QStringLiteral(TEXTFX_FIXTURE_DIR
-                                "/../../src/ui/OutlinedTextItem.cpp"));
+                                "/../../src/app/qt/OutlinedTextItem.cpp"));
     QVERIFY(source.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString code = QString::fromUtf8(source.readAll());
     QFile layoutSource(QStringLiteral(
@@ -1166,7 +1166,7 @@ private slots:
 
   void fitsStrokeBoundsBeforePainting() {
     QFile source(QStringLiteral(TEXTFX_FIXTURE_DIR
-                                "/../../src/ui/OutlinedTextItem.cpp"));
+                                "/../../src/app/qt/OutlinedTextItem.cpp"));
     QVERIFY(source.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString code = QString::fromUtf8(source.readAll());
 

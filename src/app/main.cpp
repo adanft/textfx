@@ -6,7 +6,7 @@
 
 #include "app/EditorController.h"
 #include "app/EditorLimits.h"
-#include "ui/OutlinedTextItem.h"
+#include "app/qt/OutlinedTextItem.h"
 
 int main(int argc, char *argv[]) {
   QGuiApplication app(argc, argv);

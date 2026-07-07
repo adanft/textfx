@@ -1,4 +1,4 @@
-#include "ui/OutlinedTextItem.h"
+#include "app/qt/OutlinedTextItem.h"
 
 #include "domain/AuthoringLimits.h"
 #include "render/GaussianBlur.h"
