@@ -1,6 +1,7 @@
 #include "app/controllers/EditorController.h"
 
 #include "app/controllers/EditorControllerStringUtils.h"
+#include "app/project/ProjectPageLoadWorkflow.h"
 #include "application/queries/EffectMetadata.h"
 #include "application/services/ProjectSessionService.h"
 #include "application/queries/SelectionQueryService.h"
@@ -211,20 +212,20 @@ void EditorController::clearProjectState() {
 
 bool EditorController::loadPageAt(int index) {
   if (!store_ ||
-      ProjectSessionService::normalizePageIndex(index, pagePaths_.size()) < 0)
+      ProjectPageLoadWorkflow::normalizeRequestedIndex(index, pagePaths_) < 0)
     return false;
   if (!autosaveCurrent())
     return false;
 
-  const auto nextPage = pagePaths_.at(static_cast<std::size_t>(index));
-  DocumentModel nextDocument;
-  std::string error;
-  if (!store_->loadPage(nextPage, nextDocument, &error)) {
-    setNotification(toQString(error));
+  auto result = ProjectPageLoadWorkflow::load(store_.get(), index, pagePaths_);
+  if (!result.success) {
+    if (!result.error.isEmpty())
+      setNotification(result.error);
     return false;
   }
 
-  applyLoadedPageDocument(index, nextPage, std::move(nextDocument));
+  applyLoadedPageDocument(result.index, std::move(result.page),
+                          std::move(result.document));
   reloadPresets();
   emit selectionChanged();
   emit selectedBoxChanged();
