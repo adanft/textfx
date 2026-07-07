@@ -1,6 +1,6 @@
 #include "domain/document/DocumentModel.h"
 #include "qt_test_helpers.h"
-#include "render/RenderGraph.h"
+#include "infrastructure/rendering/RenderGraph.h"
 #include "app/qt/OutlinedTextItem.h"
 
 #include <QColor>
@@ -1090,7 +1090,7 @@ private slots:
     QVERIFY(source.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString code = QString::fromUtf8(source.readAll());
     QFile layoutSource(QStringLiteral(
-        TEXTFX_FIXTURE_DIR "/../../src/render/RenderTextLayout.cpp"));
+        TEXTFX_FIXTURE_DIR "/../../src/infrastructure/rendering/RenderTextLayout.cpp"));
     QVERIFY(layoutSource.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString layoutCode = QString::fromUtf8(layoutSource.readAll());
 

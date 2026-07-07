@@ -1,9 +1,9 @@
-#include "render/RenderGraph.h"
+#include "infrastructure/rendering/RenderGraph.h"
 
 #include "domain/AuthoringLimits.h"
-#include "render/GaussianBlur.h"
+#include "infrastructure/rendering/GaussianBlur.h"
 #include "infrastructure/fonts/FontResolver.h"
-#include "render/RenderTextLayout.h"
+#include "infrastructure/rendering/RenderTextLayout.h"
 
 #include <QColor>
 #include <QFont>

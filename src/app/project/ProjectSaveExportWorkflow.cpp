@@ -3,7 +3,7 @@
 #include "app/project/ProjectSession.h"
 #include "application/services/ProjectExportService.h"
 #include "domain/document/DocumentModel.h"
-#include "render/RenderGraph.h"
+#include "infrastructure/rendering/RenderGraph.h"
 
 namespace textfx {
 namespace {

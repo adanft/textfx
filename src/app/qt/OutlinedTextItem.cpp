@@ -1,9 +1,9 @@
 #include "app/qt/OutlinedTextItem.h"
 
 #include "domain/AuthoringLimits.h"
-#include "render/GaussianBlur.h"
+#include "infrastructure/rendering/GaussianBlur.h"
 #include "infrastructure/fonts/FontResolver.h"
-#include "render/RenderTextLayout.h"
+#include "infrastructure/rendering/RenderTextLayout.h"
 
 #include <QFont>
 #include <QJsonDocument>

@@ -4,7 +4,7 @@
 #include "application/services/ProjectExportService.h"
 #include "app/viewmodels/EditorViewModels.h"
 #include "infrastructure/persistence/ProjectStore.h"
-#include "render/RenderGraph.h"
+#include "infrastructure/rendering/RenderGraph.h"
 
 #include <array>
 #include <filesystem>

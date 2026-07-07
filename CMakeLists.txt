@@ -76,11 +76,11 @@ set(TEXTFX_INFRASTRUCTURE_SOURCES
 )
 
 set(TEXTFX_RENDER_SOURCES
-    src/render/GaussianBlur.h
-    src/render/RenderGraph.cpp
-    src/render/RenderGraph.h
-    src/render/RenderTextLayout.cpp
-    src/render/RenderTextLayout.h
+    src/infrastructure/rendering/GaussianBlur.h
+    src/infrastructure/rendering/RenderGraph.cpp
+    src/infrastructure/rendering/RenderGraph.h
+    src/infrastructure/rendering/RenderTextLayout.cpp
+    src/infrastructure/rendering/RenderTextLayout.h
 )
 
 set(TEXTFX_APP_SOURCES

@@ -1934,7 +1934,7 @@ QtObject {
         "visible: !canvas.effectsPreviewDisplayable || Editor.editingText")));
 
     QFile render(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../src/render/RenderGraph.cpp"));
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../src/infrastructure/rendering/RenderGraph.cpp"));
     QVERIFY(render.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString renderSource = QString::fromUtf8(render.readAll());
     QVERIFY(renderSource.contains(
