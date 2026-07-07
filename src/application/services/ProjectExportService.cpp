@@ -1,10 +1,8 @@
 #include "application/services/ProjectExportService.h"
 
-#include "infrastructure/persistence/ProjectStore.h"
-
 namespace textfx {
 
-ProjectExportService::ProjectExportService(const ProjectStore &store,
+ProjectExportService::ProjectExportService(const IProjectExportStore &store,
                                            const IPageExportRenderer &renderer)
     : store_(store), renderer_(renderer) {}
 

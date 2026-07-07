@@ -53,6 +53,7 @@ set(TEXTFX_CORE_SOURCES
     src/application/queries/EffectMetadata.cpp
     src/application/queries/EffectMetadata.h
     src/application/ports/IPageExportRenderer.h
+    src/application/ports/IProjectExportStore.h
     src/application/ports/IProjectPageSource.h
     src/application/services/PageTextService.cpp
     src/application/services/PageTextService.h

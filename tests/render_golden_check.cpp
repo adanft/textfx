@@ -1,5 +1,6 @@
 #include "app/viewmodels/BoxRenderState.h"
 #include "application/ports/IPageExportRenderer.h"
+#include "application/ports/IProjectExportStore.h"
 #include "application/services/ProjectExportService.h"
 #include "app/viewmodels/EditorViewModels.h"
 #include "infrastructure/persistence/ProjectStore.h"
@@ -10,6 +11,9 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 #include <QColor>
 #include <QGuiApplication>
@@ -41,6 +45,51 @@ struct FailingPageExportRenderer final : IPageExportRenderer {
     ++calls;
     return std::unexpected("renderer-port-failure");
   }
+};
+
+struct RecordingPageExportRenderer final : IPageExportRenderer {
+  mutable std::vector<std::filesystem::path> renderedPages;
+  mutable std::vector<std::filesystem::path> renderedExports;
+
+  std::expected<ExportResult, std::string>
+  exportPagePngTimed(const DocumentModel &document,
+                     const std::filesystem::path &pageImagePath,
+                     const std::filesystem::path &exportPath) const override {
+    (void)document;
+    renderedPages.push_back(pageImagePath);
+    renderedExports.push_back(exportPath);
+    return ExportResult{};
+  }
+};
+
+struct RecordingProjectExportStore final : IProjectExportStore {
+  explicit RecordingProjectExportStore(std::filesystem::path exportRoot)
+      : exportRoot(std::move(exportRoot)) {}
+
+  std::filesystem::path
+  pageExportPathFor(const std::filesystem::path &pagePath) const override {
+    pathRequests.push_back(pagePath);
+    return exportRoot / (pagePath.stem().string() + ".png");
+  }
+
+  bool loadPage(const std::filesystem::path &pagePath, DocumentModel &document,
+                std::string *error = nullptr) const override {
+    loadRequests.push_back(pagePath);
+    if (pagePath == failingPage) {
+      if (error != nullptr)
+        *error = loadError;
+      return false;
+    }
+    document = loadedDocument;
+    return true;
+  }
+
+  std::filesystem::path exportRoot;
+  std::filesystem::path failingPage;
+  std::string loadError = "store-load-failure";
+  DocumentModel loadedDocument;
+  mutable std::vector<std::filesystem::path> pathRequests;
+  mutable std::vector<std::filesystem::path> loadRequests;
 };
 
 struct PngCommitFailureGuard {
@@ -426,7 +475,50 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  static_assert(std::is_base_of_v<IProjectExportStore, ProjectStore>);
+
   DocumentModel serviceDocument;
+  const auto fakeCurrentPage = tempPath / "fake-current.png";
+  const auto fakeSavedPage = tempPath / "fake-saved.png";
+  const auto fakeLoadFailurePage = tempPath / "fake-load-failure.png";
+  RecordingProjectExportStore recordingStore(tempPath / "fake-typeset");
+  recordingStore.failingPage = fakeLoadFailurePage;
+  recordingStore.loadError = "fake-store-load-failure";
+  RecordingPageExportRenderer recordingRenderer;
+  const auto portStoreResult =
+      ProjectExportService(recordingStore, recordingRenderer)
+          .exportPages(ExportJob{
+              .pagePaths = {fakeCurrentPage, fakeSavedPage, fakeLoadFailurePage},
+              .currentPage = fakeCurrentPage,
+              .currentDocument = &serviceDocument,
+          });
+  if (portStoreResult.total != 3 || portStoreResult.completed != 2 ||
+      portStoreResult.failed != 1 || portStoreResult.pages.size() != 3 ||
+      recordingStore.pathRequests !=
+          std::vector<std::filesystem::path>{fakeCurrentPage, fakeSavedPage,
+                                             fakeLoadFailurePage} ||
+      recordingStore.loadRequests !=
+          std::vector<std::filesystem::path>{fakeSavedPage, fakeLoadFailurePage} ||
+      recordingRenderer.renderedPages !=
+          std::vector<std::filesystem::path>{fakeCurrentPage, fakeSavedPage} ||
+      recordingRenderer.renderedExports !=
+          std::vector<std::filesystem::path>{recordingStore.exportRoot /
+                                                 "fake-current.png",
+                                             recordingStore.exportRoot /
+                                                 "fake-saved.png"} ||
+      portStoreResult.pages[0].exportPath !=
+          recordingStore.exportRoot / "fake-current.png" ||
+      portStoreResult.pages[1].exportPath !=
+          recordingStore.exportRoot / "fake-saved.png" ||
+      portStoreResult.pages[2].exportPath !=
+          recordingStore.exportRoot / "fake-load-failure.png" ||
+      portStoreResult.pages[2].completed ||
+      portStoreResult.pages[2].error != "fake-store-load-failure") {
+    std::cerr << "Expected project export service to use the injected export "
+                 "store port for paths, saved-page loading, and load errors\n";
+    return 1;
+  }
+
   ProjectStore exportStore(tempPath);
   FailingPageExportRenderer failingRenderer;
   const auto injectedFailureResult =

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "application/ports/IPageExportRenderer.h"
+#include "application/ports/IProjectExportStore.h"
 #include "domain/document/DocumentModel.h"
 
 #include <chrono>
@@ -9,8 +10,6 @@
 #include <vector>
 
 namespace textfx {
-
-class ProjectStore;
 
 struct ExportPageResult {
   std::filesystem::path pagePath;
@@ -36,13 +35,13 @@ struct ExportJob {
 
 class ProjectExportService {
 public:
-  ProjectExportService(const ProjectStore &store,
+  ProjectExportService(const IProjectExportStore &store,
                        const IPageExportRenderer &renderer);
 
   ExportJobResult exportPages(const ExportJob &job) const;
 
 private:
-  const ProjectStore &store_;
+  const IProjectExportStore &store_;
   const IPageExportRenderer &renderer_;
 };
 

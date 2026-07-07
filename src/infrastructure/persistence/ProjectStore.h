@@ -1,5 +1,6 @@
 #pragma once
 
+#include "application/ports/IProjectExportStore.h"
 #include "application/ports/IProjectPageSource.h"
 #include "domain/document/DocumentModel.h"
 
@@ -10,7 +11,7 @@
 
 namespace textfx {
 
-class ProjectStore : public IProjectPageSource {
+class ProjectStore : public IProjectPageSource, public IProjectExportStore {
 public:
   static constexpr auto SaveFolder = ".textfx";
   static constexpr auto CleanedFolder = "Cleaned";
@@ -27,7 +28,7 @@ public:
   std::filesystem::path
   pageSavePathFor(const std::filesystem::path &pagePath) const;
   std::filesystem::path
-  pageExportPathFor(const std::filesystem::path &pagePath) const;
+  pageExportPathFor(const std::filesystem::path &pagePath) const override;
   std::filesystem::path presetsPath() const;
   std::filesystem::path pageTextsPath() const;
   std::unordered_map<std::string, std::vector<std::string>>
@@ -39,7 +40,7 @@ public:
                    std::string *error = nullptr) const;
 
   bool loadPage(const std::filesystem::path &pagePath, DocumentModel &document,
-                std::string *error = nullptr) const;
+                std::string *error = nullptr) const override;
   bool savePage(const std::filesystem::path &pagePath,
                 const DocumentModel &document,
                 std::string *error = nullptr) const;

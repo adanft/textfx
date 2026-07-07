@@ -1,3 +1,4 @@
+#include "application/ports/IProjectExportStore.h"
 #include "application/ports/IProjectPageSource.h"
 #include "application/services/PageTextService.h"
 #include "application/services/ProjectSessionService.h"
@@ -96,6 +97,7 @@ TEST_CASE("Project store uses canonical project folders") {
 
 TEST_CASE("Project session service exposes page names labels and keys") {
   static_assert(std::is_base_of_v<IProjectPageSource, ProjectStore>);
+  static_assert(std::is_base_of_v<IProjectExportStore, ProjectStore>);
 
   const auto fakePages = ProjectSessionService::discoverPages(
       FakeProjectPageSource({"/tmp/page3.png", "/tmp/page11.png"}));
