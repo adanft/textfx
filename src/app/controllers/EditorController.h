@@ -20,7 +20,7 @@
 
 namespace textfx {
 
-class ProjectStore;
+class ProjectSession;
 
 class EditorController final : public QObject {
   Q_OBJECT
@@ -59,7 +59,7 @@ public:
   explicit EditorController(QObject *parent = nullptr);
   ~EditorController() override;
 
-  bool hasProject() const { return static_cast<bool>(store_); }
+  bool hasProject() const { return static_cast<bool>(session_); }
   bool dirty() const { return document_.dirty(); }
   bool rawVisible() const { return rawVisible_; }
   bool editingText() const { return editingText_; }
@@ -219,7 +219,7 @@ private:
   DocumentModel document_;
   BoxesModel boxesModel_;
   std::vector<TextPreset> projectPresets_;
-  std::unique_ptr<ProjectStore> store_;
+  std::unique_ptr<ProjectSession> session_;
   std::filesystem::path currentPage_;
   std::vector<std::filesystem::path> pagePaths_;
   QStringList pages_;

@@ -1,7 +1,7 @@
 #include "app/project/ProjectPageLoadWorkflow.h"
 
 #include "application/services/ProjectSessionService.h"
-#include "infrastructure/persistence/ProjectStore.h"
+#include "app/project/ProjectSession.h"
 
 namespace textfx {
 
@@ -12,10 +12,10 @@ int ProjectPageLoadWorkflow::normalizeRequestedIndex(
 }
 
 ProjectPageLoadResult ProjectPageLoadWorkflow::load(
-    ProjectStore *store, int requestedIndex,
+    ProjectSession *session, int requestedIndex,
     const std::vector<std::filesystem::path> &pagePaths) {
   ProjectPageLoadResult result;
-  if (!store)
+  if (!session)
     return result;
 
   const int normalizedIndex = normalizeRequestedIndex(requestedIndex, pagePaths);
@@ -26,7 +26,7 @@ ProjectPageLoadResult ProjectPageLoadWorkflow::load(
   result.page = pagePaths.at(static_cast<std::size_t>(normalizedIndex));
 
   std::string error;
-  if (!store->loadPage(result.page, result.document, &error)) {
+  if (!session->loadPage(result.page, result.document, &error)) {
     result.error = QString::fromStdString(error);
     return result;
   }

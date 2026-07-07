@@ -2,11 +2,11 @@
 
 #include "app/project/ProjectPageLoadWorkflow.h"
 #include "app/project/ProjectPersistenceWorkflow.h"
+#include "app/project/ProjectSession.h"
 #include "application/queries/EffectMetadata.h"
 #include "application/services/ProjectSessionService.h"
 #include "application/queries/SelectionQueryService.h"
 #include "application/services/TextWorkflowService.h"
-#include "infrastructure/persistence/ProjectStore.h"
 
 #include <QGuiApplication>
 #include <QQuickTextDocument>
@@ -158,7 +158,7 @@ void EditorController::setNotification(QString message) {
 }
 
 void EditorController::clearLoadedProjectState() {
-  store_.reset();
+  session_.reset();
   currentPage_.clear();
   currentPageIndex_ = -1;
   pagePaths_.clear();
@@ -211,13 +211,13 @@ void EditorController::clearProjectState() {
 }
 
 bool EditorController::loadPageAt(int index) {
-  if (!store_ ||
+  if (!session_ ||
       ProjectPageLoadWorkflow::normalizeRequestedIndex(index, pagePaths_) < 0)
     return false;
   if (!autosaveCurrent())
     return false;
 
-  auto result = ProjectPageLoadWorkflow::load(store_.get(), index, pagePaths_);
+  auto result = ProjectPageLoadWorkflow::load(session_.get(), index, pagePaths_);
   if (!result.success) {
     if (!result.error.isEmpty())
       setNotification(result.error);
@@ -239,11 +239,11 @@ bool EditorController::loadPageAt(int index) {
 }
 
 bool EditorController::autosaveCurrent() {
-  if (!store_ || currentPage_.empty())
+  if (!session_ || currentPage_.empty())
     return true;
   const bool wasDirty = document_.dirty();
   const auto result =
-      ProjectPersistenceWorkflow::autosave(store_.get(), currentPage_, document_);
+      ProjectPersistenceWorkflow::autosave(session_.get(), currentPage_, document_);
   if (!result.success) {
     setNotification(result.error);
     return false;
@@ -268,10 +268,10 @@ PresetWorkflowContext EditorController::presetWorkflowContext() {
 }
 
 bool EditorController::saveProjectPresets(const std::string &preferredName) {
-  if (!store_)
+  if (!session_)
     return false;
   const auto result =
-      ProjectPersistenceWorkflow::savePresets(store_.get(), projectPresets_);
+      ProjectPersistenceWorkflow::savePresets(session_.get(), projectPresets_);
   if (!result.success) {
     setNotification(result.error);
     return false;
@@ -289,9 +289,9 @@ bool EditorController::reloadPresets(const std::string &preferredName) {
                       .name;
   }
   document_.presets().clear();
-  if (store_) {
+  if (session_) {
     const auto result = ProjectPersistenceWorkflow::loadPresets(
-        store_.get(), document_, projectPresets_);
+        session_.get(), document_, projectPresets_);
     if (!result.success) {
       setNotification(result.error);
       return false;

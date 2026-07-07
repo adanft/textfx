@@ -1,6 +1,6 @@
 #include "app/project/ProjectPersistenceWorkflow.h"
 
-#include "infrastructure/persistence/ProjectStore.h"
+#include "app/project/ProjectSession.h"
 
 namespace textfx {
 namespace {
@@ -8,14 +8,14 @@ QString toQString(const std::string &value) { return QString::fromStdString(valu
 } // namespace
 
 ProjectPersistenceResult ProjectPersistenceWorkflow::autosave(
-    ProjectStore *store, const std::filesystem::path &pagePath,
+    ProjectSession *session, const std::filesystem::path &pagePath,
     DocumentModel &document) {
   ProjectPersistenceResult result;
-  if (!store)
+  if (!session)
     return result;
 
   std::string error;
-  if (!store->autosave(pagePath, document, &error)) {
+  if (!session->autosave(pagePath, document, &error)) {
     result.error = toQString(error);
     return result;
   }
@@ -25,13 +25,13 @@ ProjectPersistenceResult ProjectPersistenceWorkflow::autosave(
 }
 
 ProjectPersistenceResult ProjectPersistenceWorkflow::savePresets(
-    ProjectStore *store, const std::vector<TextPreset> &projectPresets) {
+    ProjectSession *session, const std::vector<TextPreset> &projectPresets) {
   ProjectPersistenceResult result;
-  if (!store)
+  if (!session)
     return result;
 
   std::string error;
-  if (!store->savePresets(projectPresets, &error)) {
+  if (!session->savePresets(projectPresets, &error)) {
     result.error = toQString(error);
     return result;
   }
@@ -41,14 +41,14 @@ ProjectPersistenceResult ProjectPersistenceWorkflow::savePresets(
 }
 
 ProjectPersistenceResult ProjectPersistenceWorkflow::loadPresets(
-    ProjectStore *store, DocumentModel &document,
+    ProjectSession *session, DocumentModel &document,
     std::vector<TextPreset> &projectPresets) {
   ProjectPersistenceResult result;
-  if (!store)
+  if (!session)
     return result;
 
   std::string error;
-  if (!store->loadPresets(document, projectPresets, &error)) {
+  if (!session->loadPresets(document, projectPresets, &error)) {
     result.error = toQString(error);
     return result;
   }

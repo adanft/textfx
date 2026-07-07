@@ -103,6 +103,8 @@ set(TEXTFX_APP_SOURCES
     src/app/project/ProjectPersistenceWorkflow.h
     src/app/project/ProjectSaveExportWorkflow.cpp
     src/app/project/ProjectSaveExportWorkflow.h
+    src/app/project/ProjectSession.cpp
+    src/app/project/ProjectSession.h
     src/app/qt/EditorLimits.cpp
     src/app/qt/EditorLimits.h
     src/app/viewmodels/EditorViewModels.cpp

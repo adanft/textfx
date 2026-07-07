@@ -2,6 +2,7 @@
 
 #include "application/queries/CommandAvailability.h"
 #include "app/controllers/EditorControllerStringUtils.h"
+#include "app/project/ProjectSession.h"
 #include "app/viewmodels/EditorViewModels.h"
 #include "application/queries/EffectMetadata.h"
 #include "application/services/PageTextService.h"
@@ -10,7 +11,6 @@
 #include "application/services/TextBoxEditingService.h"
 #include "application/services/TextBoxSelectionService.h"
 #include "application/services/TextWorkflowService.h"
-#include "infrastructure/persistence/ProjectStore.h"
 
 #include <QClipboard>
 #include <QGuiApplication>
@@ -32,9 +32,9 @@ QUrl EditorController::currentPageUrl() const {
 }
 
 QUrl EditorController::rawPageUrl() const {
-  if (!store_ || currentPage_.empty())
+  if (!session_ || currentPage_.empty())
     return {};
-  const auto raw = store_->rawPagePathFor(currentPage_);
+  const auto raw = session_->rawPagePathFor(currentPage_);
   return raw.empty() ? QUrl{} : QUrl::fromLocalFile(toQString(raw.string()));
 }
 

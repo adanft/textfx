@@ -1,22 +1,20 @@
 #include "app/project/ProjectOpenWorkflow.h"
 
-#include "application/services/ProjectSessionService.h"
-
 namespace textfx {
 
 ProjectOpenResult ProjectOpenWorkflow::open(const std::filesystem::path &folder) {
   ProjectOpenResult result;
-  result.store = std::make_unique<ProjectStore>(folder);
+  result.session = std::make_unique<ProjectSession>(folder);
 
   std::string error;
-  result.pageTexts = result.store->loadPageTexts(&error);
+  result.pageTexts = result.session->loadPageTexts(&error);
   if (!error.empty()) {
     result.error = QString::fromStdString(error);
-    result.store.reset();
+    result.session.reset();
     return result;
   }
 
-  const auto pages = ProjectSessionService::discoverPages(*result.store);
+  const auto pages = result.session->discoverPages();
   result.pagePaths = pages.paths;
   result.pageNames = pages.names;
   result.success = true;

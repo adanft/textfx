@@ -1,7 +1,7 @@
 #pragma once
 
+#include "app/project/ProjectSession.h"
 #include "application/services/PageTextService.h"
-#include "infrastructure/persistence/ProjectStore.h"
 
 #include <QString>
 #include <QStringList>
@@ -15,7 +15,7 @@ namespace textfx {
 struct ProjectOpenResult {
   bool success = false;
   QString error;
-  std::unique_ptr<ProjectStore> store;
+  std::unique_ptr<ProjectSession> session;
   PageTextMap pageTexts;
   std::vector<std::filesystem::path> pagePaths;
   QStringList pageNames;

@@ -4,11 +4,11 @@
 #include "app/project/ProjectCreationWorkflow.h"
 #include "app/project/ProjectOpenWorkflow.h"
 #include "app/project/ProjectSaveExportWorkflow.h"
+#include "app/project/ProjectSession.h"
 #include "application/queries/SelectionQueryService.h"
 #include "application/services/TextBoxSelectionService.h"
 #include "app/controllers/EditorControllerStringUtils.h"
 #include "domain/AuthoringLimits.h"
-#include "infrastructure/persistence/ProjectStore.h"
 
 #include <QUrl>
 
@@ -150,7 +150,7 @@ bool EditorController::openProjectInternal(const QString &folder,
     return false;
   }
 
-  store_ = std::move(result.store);
+  session_ = std::move(result.session);
   pageTexts_ = std::move(result.pageTexts);
   pageTextPositions_.clear();
   pagePaths_ = std::move(result.pagePaths);
@@ -217,9 +217,9 @@ void EditorController::newProject(const QString &folder) {
 void EditorController::newDocument() {
   if (!autosaveCurrent())
     return;
-  auto newStore = std::make_unique<ProjectStore>(std::filesystem::current_path());
+  auto newSession = std::make_unique<ProjectSession>(std::filesystem::current_path());
   clearLoadedProjectState();
-  store_ = std::move(newStore);
+  session_ = std::move(newSession);
   resetToEmptyDocumentState();
   reloadPresets();
   selectedIndex_ = -1;
@@ -245,7 +245,7 @@ void EditorController::applySaveExportResult(QString notification,
 
 void EditorController::save() {
   const auto result = ProjectSaveExportWorkflow::saveCurrent(
-      store_.get(), document_, currentPage_);
+      session_.get(), document_, currentPage_);
   applySaveExportResult(
       result.notification, result.stateChanged,
       result.notificationOrder == SaveNotificationOrder::BeforeStateChanged);
@@ -253,7 +253,7 @@ void EditorController::save() {
 
 void EditorController::saveAll() {
   const auto result = ProjectSaveExportWorkflow::saveAll(
-      store_.get(), document_, currentPage_, pagePaths_);
+      session_.get(), document_, currentPage_, pagePaths_);
   applySaveExportResult(
       result.notification, result.stateChanged,
       result.notificationOrder == SaveNotificationOrder::BeforeStateChanged);

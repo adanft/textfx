@@ -8,7 +8,7 @@
 namespace textfx {
 
 class DocumentModel;
-class ProjectStore;
+class ProjectSession;
 
 enum class SaveNotificationOrder {
   BeforeStateChanged,
@@ -28,11 +28,11 @@ using SaveAllProjectResult = ProjectSaveExportResult;
 class ProjectSaveExportWorkflow {
 public:
   static SaveCurrentProjectResult saveCurrent(
-      ProjectStore *store, DocumentModel &document,
+      ProjectSession *session, DocumentModel &document,
       const std::filesystem::path &currentPage);
 
   static SaveAllProjectResult saveAll(
-      ProjectStore *store, DocumentModel &document,
+      ProjectSession *session, DocumentModel &document,
       const std::filesystem::path &currentPage,
       const std::vector<std::filesystem::path> &pagePaths);
 };

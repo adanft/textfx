@@ -1,8 +1,8 @@
 #include "app/project/ProjectSaveExportWorkflow.h"
 
+#include "app/project/ProjectSession.h"
 #include "application/services/ProjectExportService.h"
 #include "domain/document/DocumentModel.h"
-#include "infrastructure/persistence/ProjectStore.h"
 #include "render/RenderGraph.h"
 
 namespace textfx {
@@ -13,9 +13,9 @@ QString toQString(const std::string &value) {
 } // namespace
 
 SaveCurrentProjectResult ProjectSaveExportWorkflow::saveCurrent(
-    ProjectStore *store, DocumentModel &document,
+    ProjectSession *session, DocumentModel &document,
     const std::filesystem::path &currentPage) {
-  if (store == nullptr) {
+  if (session == nullptr) {
     return {.notification = QStringLiteral("Open a project before saving")};
   }
   if (currentPage.empty()) {
@@ -26,7 +26,7 @@ SaveCurrentProjectResult ProjectSaveExportWorkflow::saveCurrent(
   }
 
   std::string error;
-  if (!store->savePage(currentPage, document, &error)) {
+  if (!session->savePage(currentPage, document, &error)) {
     return {.notification = QStringLiteral("Could not save boxes: %1")
                             .arg(toQString(error)),
             .stateChanged = true};
@@ -34,7 +34,7 @@ SaveCurrentProjectResult ProjectSaveExportWorkflow::saveCurrent(
 
   document.markSaved();
   const RenderGraph graph;
-  const auto exportPath = store->pageExportPathFor(currentPage);
+  const auto exportPath = session->pageExportPathFor(currentPage);
   if (graph.exportPagePng(document, currentPage, exportPath, &error)) {
     return {.notification = QStringLiteral("Saved boxes and exported PNG to %1.")
                             .arg(QString::fromStdString(exportPath.string())),
@@ -47,19 +47,19 @@ SaveCurrentProjectResult ProjectSaveExportWorkflow::saveCurrent(
 }
 
 SaveAllProjectResult ProjectSaveExportWorkflow::saveAll(
-    ProjectStore *store, DocumentModel &document,
+    ProjectSession *session, DocumentModel &document,
     const std::filesystem::path &currentPage,
     const std::vector<std::filesystem::path> &pagePaths) {
-  if (store == nullptr) {
+  if (session == nullptr) {
     return {.notification = QStringLiteral("Open a project before saving")};
   }
   if (currentPage.empty()) {
-    const auto saveResult = saveCurrent(store, document, currentPage);
+    const auto saveResult = saveCurrent(session, document, currentPage);
     return saveResult;
   }
 
   std::string error;
-  if (store->savePage(currentPage, document, &error)) {
+  if (session->savePage(currentPage, document, &error)) {
     document.markSaved();
   } else {
     return {.notification = QStringLiteral(
@@ -69,7 +69,7 @@ SaveAllProjectResult ProjectSaveExportWorkflow::saveAll(
   }
 
   const RenderGraph graph;
-  const ProjectExportService exportService(*store, graph);
+  const ProjectExportService exportService(session->exportStore(), graph);
   const auto exportResult = exportService.exportPages(ExportJob{
       .pagePaths = pagePaths,
       .currentPage = currentPage,
