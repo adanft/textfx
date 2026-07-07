@@ -487,6 +487,17 @@ if(BUILD_TESTING)
             Qt6::Gui
     )
 
+    add_test(
+        NAME textfx_architecture_layer_check
+        COMMAND ${CMAKE_COMMAND}
+                -DTEXTFX_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/architecture_layer_check.cmake
+    )
+    set_tests_properties(textfx_architecture_layer_check PROPERTIES
+        LABELS architecture
+        TIMEOUT 10
+    )
+
     add_custom_target(verify_all
         DEPENDS ${TEXTFX_TEST_TARGETS}
     )
