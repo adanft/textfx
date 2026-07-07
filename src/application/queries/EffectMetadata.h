@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/models/BoxesModel.h"
+#include "application/queries/BoxRoles.h"
 
 #include <QByteArray>
 #include <QHash>
@@ -19,14 +19,14 @@ enum class EffectId {
 };
 
 struct RoleMetadata {
-  BoxesModel::Role role;
+  BoxRole role;
   QByteArray name;
 };
 
 struct EffectDescriptor {
   EffectId id;
   QStringView name;
-  BoxesModel::Role enabledRole;
+  BoxRole enabledRole;
   QList<int> roles;
 };
 

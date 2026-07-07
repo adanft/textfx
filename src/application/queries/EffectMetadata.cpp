@@ -4,7 +4,7 @@
 
 namespace textfx {
 namespace {
-using Role = BoxesModel::Role;
+using Role = BoxRole;
 
 constexpr QStringView outlineName() { return u"outline"; }
 constexpr QStringView blurName() { return u"blur"; }

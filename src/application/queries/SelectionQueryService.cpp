@@ -7,7 +7,7 @@
 
 namespace textfx::SelectionQueryService {
 namespace {
-using Role = BoxesModel::Role;
+using Role = BoxRole;
 }
 
 const TextBox *selectedBox(const std::vector<TextBox> &boxes, int selectedIndex) {

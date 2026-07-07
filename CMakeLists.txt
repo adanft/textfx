@@ -50,6 +50,7 @@ set(TEXTFX_CORE_SOURCES
     src/app/viewmodels/EditorViewModels.h
     src/application/queries/SelectionQueryService.cpp
     src/application/queries/SelectionQueryService.h
+    src/application/queries/BoxRoles.h
     src/application/queries/EffectMetadata.cpp
     src/application/queries/EffectMetadata.h
     src/application/ports/IPageExportRenderer.h

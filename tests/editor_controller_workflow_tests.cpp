@@ -3,6 +3,7 @@
 #include "app/viewmodels/EditorViewModels.h"
 #include "application/queries/SelectionQueryService.h"
 #include "app/viewmodels/BoxRenderState.h"
+#include "application/queries/BoxRoles.h"
 #include "application/queries/CommandAvailability.h"
 #include "application/queries/EffectMetadata.h"
 #include "domain/AuthoringLimits.h"
@@ -25,6 +26,7 @@
 #include <QTest>
 #include <QUrl>
 
+#include <array>
 #include <filesystem>
 
 using namespace textfx;
@@ -611,6 +613,29 @@ private slots:
     };
 
     const auto knownRoles = model->roleNames();
+    static_assert(BoxesModel::TextRole == TextRole);
+    static_assert(BoxesModel::RotationRole == RotationRole);
+    static_assert(BoxesModel::OutlineRole == OutlineRole);
+    static_assert(BoxesModel::ShadowBlurSizeRole == ShadowBlurSizeRole);
+    static_assert(BoxesModel::EffectsRole == EffectsRole);
+
+    const std::array<QByteArrayView, 41> roleContract{
+        "boxIndex",       "boxText",          "boxX",
+        "boxY",           "boxWidth",         "boxHeight",
+        "boxRotation",    "boxFontFamily",    "boxResolvedFontFamily",
+        "boxFontSize",    "boxColor",         "boxLineSpacing",
+        "boxLetterSpacing", "boxBold",        "boxItalic",
+        "boxUppercase",   "boxLowercase",     "boxAlignment",
+        "boxOutline",     "boxOutlineColor",  "boxOutlineSize",
+        "boxBlur",        "boxBlurSize",      "boxShadow",
+        "boxShadowColor", "boxShadowOffsetX", "boxShadowOffsetY",
+        "boxShadowBlurSize", "boxGradient",   "boxGradientDirection",
+        "boxGradientColorA", "boxGradientColorB", "boxPerspective",
+        "boxPerspectiveNw", "boxPerspectiveNe", "boxPerspectiveSe",
+        "boxPerspectiveSw", "boxPath",        "boxPathMode",
+        "boxPathPoints",  "boxEffects"};
+    for (std::size_t i = 0; i < roleContract.size(); ++i)
+      QCOMPARE(role(roleContract[i]), Qt::UserRole + 1 + static_cast<int>(i));
 
     QVERIFY(editor.boxRolesAffectSelectedBoxState({}));
     QVERIFY(SelectionQueryService::rolesAffectSelectedBoxState({}, knownRoles));
