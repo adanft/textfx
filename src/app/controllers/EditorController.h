@@ -197,6 +197,8 @@ private:
   void markDocumentChanged();
   void markDocumentChanged(const QList<int> &roles);
   bool flushPendingDocumentChanged();
+  void applySaveExportResult(QString notification, bool shouldEmitStateChanged,
+                             bool notifyBeforeStateChanged);
   void setNotification(QString message);
   void clearProjectState();
   bool openProjectInternal(const QString &folder,

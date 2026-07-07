@@ -93,6 +93,8 @@ set(TEXTFX_APP_SOURCES
     src/app/controllers/EditorControllerSupport.cpp
     src/app/controllers/EditorController.h
     src/app/controllers/EditorControllerStringUtils.h
+    src/app/project/ProjectSaveExportWorkflow.cpp
+    src/app/project/ProjectSaveExportWorkflow.h
     src/app/qt/EditorLimits.cpp
     src/app/qt/EditorLimits.h
     src/app/viewmodels/EditorViewModels.cpp

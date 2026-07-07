@@ -1,14 +1,13 @@
 #include "app/controllers/EditorController.h"
 
 #include "app/viewmodels/EditorViewModels.h"
-#include "application/services/ProjectExportService.h"
+#include "app/project/ProjectSaveExportWorkflow.h"
 #include "application/services/ProjectSessionService.h"
 #include "application/queries/SelectionQueryService.h"
 #include "application/services/TextBoxSelectionService.h"
 #include "app/controllers/EditorControllerStringUtils.h"
 #include "domain/AuthoringLimits.h"
 #include "infrastructure/persistence/ProjectStore.h"
-#include "render/RenderGraph.h"
 
 #include <QUrl>
 
@@ -315,76 +314,31 @@ void EditorController::newDocument() {
   setNotification(QStringLiteral("New document"));
 }
 
-void EditorController::save() {
-  if (!hasProject()) {
-    setNotification(QStringLiteral("Open a project before saving"));
-    return;
-  }
-  if (currentPage_.empty()) {
-    document_.markSaved();
+void EditorController::applySaveExportResult(QString notification,
+                                             bool shouldEmitStateChanged,
+                                             bool notifyBeforeStateChanged) {
+  if (notifyBeforeStateChanged)
+    setNotification(notification);
+  if (shouldEmitStateChanged)
     emit stateChanged();
-    setNotification(QStringLiteral("Document marked saved"));
-    return;
-  }
-  std::string error;
-  if (!store_->savePage(currentPage_, document_, &error)) {
-    setNotification(
-        QStringLiteral("Could not save boxes: %1").arg(toQString(error)));
-    emit stateChanged();
-    return;
-  }
+  if (!notifyBeforeStateChanged)
+    setNotification(notification);
+}
 
-  document_.markSaved();
-  const RenderGraph graph;
-  const auto exportPath = store_->pageExportPathFor(currentPage_);
-  if (graph.exportPagePng(document_, currentPage_, exportPath, &error)) {
-    setNotification(QStringLiteral("Saved boxes and exported PNG to %1.")
-                        .arg(QString::fromStdString(exportPath.string())));
-  } else {
-    setNotification(QStringLiteral("Saved boxes, but could not export PNG: %1")
-                        .arg(toQString(error)));
-  }
-  emit stateChanged();
+void EditorController::save() {
+  const auto result = ProjectSaveExportWorkflow::saveCurrent(
+      store_.get(), document_, currentPage_);
+  applySaveExportResult(
+      result.notification, result.stateChanged,
+      result.notificationOrder == SaveNotificationOrder::BeforeStateChanged);
 }
 
 void EditorController::saveAll() {
-  if (!hasProject()) {
-    setNotification(QStringLiteral("Open a project before saving"));
-    return;
-  }
-  if (currentPage_.empty()) {
-    save();
-    return;
-  }
-
-  std::string error;
-  if (store_->savePage(currentPage_, document_, &error)) {
-    document_.markSaved();
-  } else {
-    setNotification(
-        QStringLiteral("Could not save current page; Save All stopped: %1")
-            .arg(toQString(error)));
-    emit stateChanged();
-    return;
-  }
-
-  const RenderGraph graph;
-  const ProjectExportService exportService(*store_, graph);
-  const auto exportResult = exportService.exportPages(ExportJob{
-      .pagePaths = pagePaths_,
-      .currentPage = currentPage_,
-      .currentDocument = &document_,
-  });
-
-  if (exportResult.failed > 0) {
-    setNotification(QStringLiteral("Exported %1 page(s), %2 failed.")
-                        .arg(exportResult.completed)
-                        .arg(exportResult.failed));
-  } else {
-    setNotification(
-        QStringLiteral("Exported %1 page(s).").arg(exportResult.completed));
-  }
-  emit stateChanged();
+  const auto result = ProjectSaveExportWorkflow::saveAll(
+      store_.get(), document_, currentPage_, pagePaths_);
+  applySaveExportResult(
+      result.notification, result.stateChanged,
+      result.notificationOrder == SaveNotificationOrder::BeforeStateChanged);
 }
 
 void EditorController::previousPage() {
