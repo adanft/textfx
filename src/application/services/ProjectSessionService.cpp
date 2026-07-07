@@ -1,6 +1,6 @@
 #include "application/services/ProjectSessionService.h"
 
-#include "core/ProjectStore.h"
+#include "infrastructure/persistence/ProjectStore.h"
 
 namespace textfx {
 

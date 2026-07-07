@@ -1,4 +1,4 @@
-#include "core/ProjectStore.h"
+#include "infrastructure/persistence/ProjectStore.h"
 
 #include "infrastructure/persistence/JsonSerializer.h"
 

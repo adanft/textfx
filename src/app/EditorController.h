@@ -4,7 +4,7 @@
 #include "application/services/PageTextService.h"
 #include "application/services/TextWorkflowService.h"
 #include "domain/document/DocumentModel.h"
-#include "core/ProjectStore.h"
+#include "infrastructure/persistence/ProjectStore.h"
 
 #include <QObject>
 #include <QAbstractListModel>

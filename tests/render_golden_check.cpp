@@ -1,7 +1,7 @@
 #include "app/BoxRenderState.h"
 #include "app/ProjectExportService.h"
 #include "app/EditorViewModels.h"
-#include "core/ProjectStore.h"
+#include "infrastructure/persistence/ProjectStore.h"
 #include "render/RenderGraph.h"
 
 #include <array>

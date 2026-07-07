@@ -2,7 +2,7 @@
 #include "application/services/ProjectSessionService.h"
 #include "application/services/TextPresetService.h"
 #include "application/services/TextWorkflowService.h"
-#include "core/ProjectStore.h"
+#include "infrastructure/persistence/ProjectStore.h"
 #include "infrastructure/persistence/JsonSerializer.h"
 
 #include <catch2/catch_test_macros.hpp>

@@ -1,6 +1,6 @@
 #include "app/ProjectExportService.h"
 
-#include "core/ProjectStore.h"
+#include "infrastructure/persistence/ProjectStore.h"
 
 namespace textfx {
 
