@@ -1,7 +1,7 @@
 #include "render/RenderGraph.h"
 
 #include "domain/AuthoringLimits.h"
-#include "core/GaussianBlur.h"
+#include "render/GaussianBlur.h"
 #include "fonts/FontResolver.h"
 #include "render/RenderTextLayout.h"
 
