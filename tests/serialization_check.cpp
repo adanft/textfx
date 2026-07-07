@@ -1,4 +1,4 @@
-#include "io/JsonSerializer.h"
+#include "infrastructure/persistence/JsonSerializer.h"
 #include "application/services/TextBoxEditingService.h"
 
 #include <filesystem>

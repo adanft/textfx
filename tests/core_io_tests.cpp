@@ -3,7 +3,7 @@
 #include "application/services/TextPresetService.h"
 #include "application/services/TextWorkflowService.h"
 #include "core/ProjectStore.h"
-#include "io/JsonSerializer.h"
+#include "infrastructure/persistence/JsonSerializer.h"
 
 #include <catch2/catch_test_macros.hpp>
 

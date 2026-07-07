@@ -76,8 +76,8 @@ set(TEXTFX_CORE_SOURCES
     src/fonts/SfntNames.h
     src/core/ProjectStore.cpp
     src/core/ProjectStore.h
-    src/io/JsonSerializer.cpp
-    src/io/JsonSerializer.h
+    src/infrastructure/persistence/JsonSerializer.cpp
+    src/infrastructure/persistence/JsonSerializer.h
     src/render/RenderGraph.cpp
     src/render/RenderGraph.h
     src/render/RenderTextLayout.cpp

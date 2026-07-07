@@ -1,6 +1,6 @@
 #include "core/ProjectStore.h"
 
-#include "io/JsonSerializer.h"
+#include "infrastructure/persistence/JsonSerializer.h"
 
 #include <algorithm>
 #include <cctype>
