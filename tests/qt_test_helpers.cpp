@@ -1,6 +1,6 @@
 #include "qt_test_helpers.h"
 
-#include "app/EditorLimits.h"
+#include "app/qt/EditorLimits.h"
 #include "app/qt/OutlinedTextItem.h"
 
 #include <QFile>

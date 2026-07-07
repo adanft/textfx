@@ -44,8 +44,8 @@ set(TEXTFX_CORE_SOURCES
     src/app/controllers/EditorControllerSupport.cpp
     src/app/EditorController.h
     src/app/controllers/EditorControllerStringUtils.h
-    src/app/EditorLimits.cpp
-    src/app/EditorLimits.h
+    src/app/qt/EditorLimits.cpp
+    src/app/qt/EditorLimits.h
     src/app/viewmodels/EditorViewModels.cpp
     src/app/viewmodels/EditorViewModels.h
     src/app/SelectionQueryService.cpp

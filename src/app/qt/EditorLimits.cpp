@@ -1,4 +1,4 @@
-#include "app/EditorLimits.h"
+#include "app/qt/EditorLimits.h"
 
 #include "domain/AuthoringLimits.h"
 

@@ -5,7 +5,7 @@
 #include <qqml.h>
 
 #include "app/EditorController.h"
-#include "app/EditorLimits.h"
+#include "app/qt/EditorLimits.h"
 #include "app/qt/OutlinedTextItem.h"
 
 int main(int argc, char *argv[]) {
