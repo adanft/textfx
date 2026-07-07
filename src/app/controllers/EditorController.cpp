@@ -7,6 +7,7 @@
 #include "application/services/TextBoxSelectionService.h"
 #include "app/controllers/EditorControllerStringUtils.h"
 #include "domain/AuthoringLimits.h"
+#include "infrastructure/persistence/ProjectStore.h"
 #include "render/RenderGraph.h"
 
 #include <QUrl>
@@ -164,6 +165,8 @@ void clearProjectFileReadFailure() { projectFileReadFailurePath.reset(); }
 
 EditorController::EditorController(QObject *parent)
     : QObject(parent), boxesModel_(document_, this) {}
+
+EditorController::~EditorController() = default;
 
 QVariantList EditorController::boxes() const {
   return EditorViewModels::textBoxList(document_.textBoxes());

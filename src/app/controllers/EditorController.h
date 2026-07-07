@@ -4,7 +4,6 @@
 #include "application/services/PageTextService.h"
 #include "application/services/TextWorkflowService.h"
 #include "domain/document/DocumentModel.h"
-#include "infrastructure/persistence/ProjectStore.h"
 
 #include <QObject>
 #include <QAbstractListModel>
@@ -20,6 +19,8 @@
 #include <memory>
 
 namespace textfx {
+
+class ProjectStore;
 
 class EditorController final : public QObject {
   Q_OBJECT
@@ -56,6 +57,7 @@ class EditorController final : public QObject {
 
 public:
   explicit EditorController(QObject *parent = nullptr);
+  ~EditorController() override;
 
   bool hasProject() const { return static_cast<bool>(store_); }
   bool dirty() const { return document_.dirty(); }

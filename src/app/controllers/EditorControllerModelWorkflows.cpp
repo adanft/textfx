@@ -10,6 +10,7 @@
 #include "application/services/TextBoxEditingService.h"
 #include "application/services/TextBoxSelectionService.h"
 #include "application/services/TextWorkflowService.h"
+#include "infrastructure/persistence/ProjectStore.h"
 
 #include <QClipboard>
 #include <QGuiApplication>

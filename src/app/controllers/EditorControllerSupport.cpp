@@ -5,6 +5,7 @@
 #include "application/services/ProjectSessionService.h"
 #include "application/queries/SelectionQueryService.h"
 #include "application/services/TextWorkflowService.h"
+#include "infrastructure/persistence/ProjectStore.h"
 
 #include <QGuiApplication>
 #include <QQuickTextDocument>
