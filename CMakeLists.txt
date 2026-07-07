@@ -99,6 +99,8 @@ set(TEXTFX_APP_SOURCES
     src/app/project/ProjectOpenWorkflow.h
     src/app/project/ProjectPageLoadWorkflow.cpp
     src/app/project/ProjectPageLoadWorkflow.h
+    src/app/project/ProjectPersistenceWorkflow.cpp
+    src/app/project/ProjectPersistenceWorkflow.h
     src/app/project/ProjectSaveExportWorkflow.cpp
     src/app/project/ProjectSaveExportWorkflow.h
     src/app/qt/EditorLimits.cpp

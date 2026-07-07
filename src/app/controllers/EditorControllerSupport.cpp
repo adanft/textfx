@@ -1,7 +1,7 @@
 #include "app/controllers/EditorController.h"
 
-#include "app/controllers/EditorControllerStringUtils.h"
 #include "app/project/ProjectPageLoadWorkflow.h"
+#include "app/project/ProjectPersistenceWorkflow.h"
 #include "application/queries/EffectMetadata.h"
 #include "application/services/ProjectSessionService.h"
 #include "application/queries/SelectionQueryService.h"
@@ -242,14 +242,15 @@ bool EditorController::autosaveCurrent() {
   if (!store_ || currentPage_.empty())
     return true;
   const bool wasDirty = document_.dirty();
-  std::string error;
-  if (store_->autosave(currentPage_, document_, &error)) {
-    if (wasDirty && !document_.dirty())
-      emit stateChanged();
-    return true;
+  const auto result =
+      ProjectPersistenceWorkflow::autosave(store_.get(), currentPage_, document_);
+  if (!result.success) {
+    setNotification(result.error);
+    return false;
   }
-  setNotification(toQString(error));
-  return false;
+  if (wasDirty && !document_.dirty())
+    emit stateChanged();
+  return true;
 }
 
 std::string EditorController::currentPageKey() const {
@@ -269,9 +270,10 @@ PresetWorkflowContext EditorController::presetWorkflowContext() {
 bool EditorController::saveProjectPresets(const std::string &preferredName) {
   if (!store_)
     return false;
-  std::string error;
-  if (!store_->savePresets(projectPresets_, &error)) {
-    setNotification(toQString(error));
+  const auto result =
+      ProjectPersistenceWorkflow::savePresets(store_.get(), projectPresets_);
+  if (!result.success) {
+    setNotification(result.error);
     return false;
   }
   reloadPresets(preferredName);
@@ -288,9 +290,10 @@ bool EditorController::reloadPresets(const std::string &preferredName) {
   }
   document_.presets().clear();
   if (store_) {
-    std::string error;
-    if (!store_->loadPresets(document_, projectPresets_, &error)) {
-      setNotification(toQString(error));
+    const auto result = ProjectPersistenceWorkflow::loadPresets(
+        store_.get(), document_, projectPresets_);
+    if (!result.success) {
+      setNotification(result.error);
       return false;
     }
   }
