@@ -48,10 +48,10 @@ set(TEXTFX_CORE_SOURCES
     src/app/qt/EditorLimits.h
     src/app/viewmodels/EditorViewModels.cpp
     src/app/viewmodels/EditorViewModels.h
-    src/app/SelectionQueryService.cpp
-    src/app/SelectionQueryService.h
-    src/app/EffectMetadata.cpp
-    src/app/EffectMetadata.h
+    src/application/queries/SelectionQueryService.cpp
+    src/application/queries/SelectionQueryService.h
+    src/application/queries/EffectMetadata.cpp
+    src/application/queries/EffectMetadata.h
     src/application/services/PageTextService.cpp
     src/application/services/PageTextService.h
     src/application/services/ProjectExportService.cpp

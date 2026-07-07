@@ -3,7 +3,7 @@
 #include "app/viewmodels/EditorViewModels.h"
 #include "application/services/ProjectExportService.h"
 #include "application/services/ProjectSessionService.h"
-#include "app/SelectionQueryService.h"
+#include "application/queries/SelectionQueryService.h"
 #include "application/services/TextBoxSelectionService.h"
 #include "app/controllers/EditorControllerStringUtils.h"
 #include "domain/AuthoringLimits.h"

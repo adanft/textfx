@@ -1,7 +1,7 @@
 #include "app/models/BoxesModel.h"
 
 #include "app/viewmodels/BoxRenderState.h"
-#include "app/EffectMetadata.h"
+#include "application/queries/EffectMetadata.h"
 
 namespace textfx {
 

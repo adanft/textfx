@@ -1,7 +1,7 @@
-#include "app/SelectionQueryService.h"
+#include "application/queries/SelectionQueryService.h"
 
 #include "app/viewmodels/EditorViewModels.h"
-#include "app/EffectMetadata.h"
+#include "application/queries/EffectMetadata.h"
 
 #include <utility>
 

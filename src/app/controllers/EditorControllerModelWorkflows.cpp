@@ -3,7 +3,7 @@
 #include "application/queries/CommandAvailability.h"
 #include "app/controllers/EditorControllerStringUtils.h"
 #include "app/viewmodels/EditorViewModels.h"
-#include "app/EffectMetadata.h"
+#include "application/queries/EffectMetadata.h"
 #include "application/services/PageTextService.h"
 #include "application/services/ProjectSessionService.h"
 #include "application/services/TextBoxClipboardService.h"

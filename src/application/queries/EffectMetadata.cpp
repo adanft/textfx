@@ -1,4 +1,4 @@
-#include "app/EffectMetadata.h"
+#include "application/queries/EffectMetadata.h"
 
 #include <algorithm>
 

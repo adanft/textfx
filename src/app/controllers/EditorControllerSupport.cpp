@@ -1,9 +1,9 @@
 #include "app/EditorController.h"
 
 #include "app/controllers/EditorControllerStringUtils.h"
-#include "app/EffectMetadata.h"
+#include "application/queries/EffectMetadata.h"
 #include "application/services/ProjectSessionService.h"
-#include "app/SelectionQueryService.h"
+#include "application/queries/SelectionQueryService.h"
 #include "application/services/TextWorkflowService.h"
 
 #include <QGuiApplication>
