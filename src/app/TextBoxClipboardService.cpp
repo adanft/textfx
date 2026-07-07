@@ -1,6 +1,6 @@
 #include "app/TextBoxClipboardService.h"
 
-#include "app/EditorViewModels.h"
+#include "app/viewmodels/EditorViewModels.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>

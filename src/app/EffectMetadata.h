@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/BoxesModel.h"
+#include "app/models/BoxesModel.h"
 
 #include <QByteArray>
 #include <QHash>

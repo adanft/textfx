@@ -1,4 +1,4 @@
-#include "app/BoxRenderState.h"
+#include "app/viewmodels/BoxRenderState.h"
 
 #include "infrastructure/fonts/FontResolver.h"
 

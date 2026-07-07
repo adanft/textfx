@@ -2,7 +2,7 @@
 
 #include "application/queries/CommandAvailability.h"
 #include "app/EditorControllerStringUtils.h"
-#include "app/EditorViewModels.h"
+#include "app/viewmodels/EditorViewModels.h"
 #include "app/EffectMetadata.h"
 #include "application/services/PageTextService.h"
 #include "application/services/ProjectSessionService.h"

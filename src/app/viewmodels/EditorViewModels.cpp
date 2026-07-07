@@ -1,6 +1,6 @@
-#include "app/EditorViewModels.h"
+#include "app/viewmodels/EditorViewModels.h"
 
-#include "app/BoxRenderState.h"
+#include "app/viewmodels/BoxRenderState.h"
 namespace textfx::EditorViewModels {
 namespace {
 QString toQString(const std::string &value) { return QString::fromStdString(value); }

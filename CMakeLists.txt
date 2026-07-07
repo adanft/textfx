@@ -33,10 +33,10 @@ qt_add_executable(textfx
 )
 
 set(TEXTFX_CORE_SOURCES
-    src/app/BoxRenderState.cpp
-    src/app/BoxRenderState.h
-    src/app/BoxesModel.cpp
-    src/app/BoxesModel.h
+    src/app/viewmodels/BoxRenderState.cpp
+    src/app/viewmodels/BoxRenderState.h
+    src/app/models/BoxesModel.cpp
+    src/app/models/BoxesModel.h
     src/application/queries/CommandAvailability.cpp
     src/application/queries/CommandAvailability.h
     src/app/EditorController.cpp
@@ -46,8 +46,8 @@ set(TEXTFX_CORE_SOURCES
     src/app/EditorControllerStringUtils.h
     src/app/EditorLimits.cpp
     src/app/EditorLimits.h
-    src/app/EditorViewModels.cpp
-    src/app/EditorViewModels.h
+    src/app/viewmodels/EditorViewModels.cpp
+    src/app/viewmodels/EditorViewModels.h
     src/app/SelectionQueryService.cpp
     src/app/SelectionQueryService.h
     src/app/EffectMetadata.cpp

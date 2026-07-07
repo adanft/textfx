@@ -1,6 +1,6 @@
 #include "app/EditorController.h"
 
-#include "app/EditorViewModels.h"
+#include "app/viewmodels/EditorViewModels.h"
 #include "app/ProjectExportService.h"
 #include "application/services/ProjectSessionService.h"
 #include "app/SelectionQueryService.h"

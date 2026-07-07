@@ -1,6 +1,6 @@
-#include "app/BoxRenderState.h"
+#include "app/viewmodels/BoxRenderState.h"
 #include "app/ProjectExportService.h"
-#include "app/EditorViewModels.h"
+#include "app/viewmodels/EditorViewModels.h"
 #include "infrastructure/persistence/ProjectStore.h"
 #include "render/RenderGraph.h"
 

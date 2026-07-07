@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/BoxesModel.h"
+#include "app/models/BoxesModel.h"
 #include "application/services/PageTextService.h"
 #include "application/services/TextWorkflowService.h"
 #include "domain/document/DocumentModel.h"
