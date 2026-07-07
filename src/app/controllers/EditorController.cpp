@@ -215,13 +215,7 @@ bool EditorController::openProjectInternal(const QString &folder,
     return false;
   }
   refreshPages();
-  boxesModel_.beginResetBoxes();
-  document_.clear();
-  boxesModel_.endResetBoxes();
-  selectedIndex_ = -1;
-  selectedPresetIndex_ = -1;
-  currentPage_.clear();
-  currentPageIndex_ = -1;
+  prepareProjectDocumentState();
   if (!pagePaths_.empty()) {
     if (!loadPageAt(0)) {
       const QString loadError = notification_;
@@ -292,17 +286,10 @@ void EditorController::newProject(const QString &folder) {
 void EditorController::newDocument() {
   if (!autosaveCurrent())
     return;
-  store_ = std::make_unique<ProjectStore>(std::filesystem::current_path());
-  currentPage_.clear();
-  currentPageIndex_ = -1;
-  pagePaths_.clear();
-  pages_.clear();
-  pageTexts_.clear();
-  pageTextPositions_.clear();
-  boxesModel_.beginResetBoxes();
-  document_.clear();
-  boxesModel_.endResetBoxes();
-  projectPresets_.clear();
+  auto newStore = std::make_unique<ProjectStore>(std::filesystem::current_path());
+  clearLoadedProjectState();
+  store_ = std::move(newStore);
+  resetToEmptyDocumentState();
   reloadPresets();
   selectedIndex_ = -1;
   selectedPresetIndex_ = document_.presets().empty() ? -1 : 0;

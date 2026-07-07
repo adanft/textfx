@@ -167,7 +167,7 @@ void EditorController::refreshPages() {
   pages_ = pages.names;
 }
 
-void EditorController::clearProjectState() {
+void EditorController::clearLoadedProjectState() {
   store_.reset();
   currentPage_.clear();
   currentPageIndex_ = -1;
@@ -175,12 +175,44 @@ void EditorController::clearProjectState() {
   pages_.clear();
   pageTexts_.clear();
   pageTextPositions_.clear();
+}
+
+void EditorController::resetToEmptyDocumentState() {
   boxesModel_.beginResetBoxes();
   document_.clear();
   boxesModel_.endResetBoxes();
   projectPresets_.clear();
   selectedIndex_ = -1;
   selectedPresetIndex_ = -1;
+}
+
+void EditorController::prepareProjectDocumentState() {
+  boxesModel_.beginResetBoxes();
+  document_.clear();
+  boxesModel_.endResetBoxes();
+  selectedIndex_ = -1;
+  selectedPresetIndex_ = -1;
+  currentPage_.clear();
+  currentPageIndex_ = -1;
+}
+
+void EditorController::applyLoadedPageDocument(int index,
+                                               std::filesystem::path page,
+                                               DocumentModel document) {
+  currentPageIndex_ = index;
+  currentPage_ = std::move(page);
+  boxesModel_.beginResetBoxes();
+  document_ = std::move(document);
+  projectPresets_.clear();
+  selectedIndex_ = -1;
+  editingText_ = false;
+  pendingDocumentChanged_ = false;
+  boxesModel_.endResetBoxes();
+}
+
+void EditorController::clearProjectState() {
+  clearLoadedProjectState();
+  resetToEmptyDocumentState();
   emit selectionChanged();
   emit selectedBoxChanged();
   emit pageTextsChanged();
@@ -203,15 +235,7 @@ bool EditorController::loadPageAt(int index) {
     return false;
   }
 
-  currentPageIndex_ = index;
-  currentPage_ = nextPage;
-  boxesModel_.beginResetBoxes();
-  document_ = std::move(nextDocument);
-  projectPresets_.clear();
-  selectedIndex_ = -1;
-  editingText_ = false;
-  pendingDocumentChanged_ = false;
-  boxesModel_.endResetBoxes();
+  applyLoadedPageDocument(index, nextPage, std::move(nextDocument));
   reloadPresets();
   emit selectionChanged();
   emit selectedBoxChanged();

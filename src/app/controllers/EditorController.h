@@ -200,6 +200,11 @@ private:
   void applySaveExportResult(QString notification, bool shouldEmitStateChanged,
                              bool notifyBeforeStateChanged);
   void setNotification(QString message);
+  void clearLoadedProjectState();
+  void resetToEmptyDocumentState();
+  void prepareProjectDocumentState();
+  void applyLoadedPageDocument(int index, std::filesystem::path page,
+                               DocumentModel document);
   void clearProjectState();
   bool openProjectInternal(const QString &folder,
                            const QString &successNotification);
