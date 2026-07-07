@@ -362,7 +362,8 @@ void EditorController::saveAll() {
     return;
   }
 
-  const ProjectExportService exportService(*store_);
+  const RenderGraph graph;
+  const ProjectExportService exportService(*store_, graph);
   const auto exportResult = exportService.exportPages(ExportJob{
       .pagePaths = pagePaths_,
       .currentPage = currentPage_,

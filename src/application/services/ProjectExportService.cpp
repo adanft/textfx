@@ -4,8 +4,9 @@
 
 namespace textfx {
 
-ProjectExportService::ProjectExportService(const ProjectStore &store)
-    : store_(store) {}
+ProjectExportService::ProjectExportService(const ProjectStore &store,
+                                           const IPageExportRenderer &renderer)
+    : store_(store), renderer_(renderer) {}
 
 ExportJobResult ProjectExportService::exportPages(const ExportJob &job) const {
   const auto startTime = std::chrono::steady_clock::now();
@@ -14,7 +15,6 @@ ExportJobResult ProjectExportService::exportPages(const ExportJob &job) const {
   result.total = static_cast<int>(job.pagePaths.size());
   result.pages.reserve(job.pagePaths.size());
 
-  const RenderGraph graph;
   for (const auto &pagePath : job.pagePaths) {
     ExportPageResult pageResult;
     pageResult.pagePath = pagePath;
@@ -42,7 +42,7 @@ ExportJobResult ProjectExportService::exportPages(const ExportJob &job) const {
     }
 
     const auto exportResult =
-        graph.exportPagePngTimed(*document, pagePath, pageResult.exportPath);
+        renderer_.exportPagePngTimed(*document, pagePath, pageResult.exportPath);
     if (exportResult) {
       pageResult.completed = true;
       pageResult.timing = exportResult->timing;

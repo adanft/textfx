@@ -1,4 +1,5 @@
 #include "app/viewmodels/BoxRenderState.h"
+#include "application/ports/IPageExportRenderer.h"
 #include "application/services/ProjectExportService.h"
 #include "app/viewmodels/EditorViewModels.h"
 #include "infrastructure/persistence/ProjectStore.h"
@@ -27,6 +28,21 @@ void clearPngCommitFailure();
 #endif
 
 namespace {
+struct FailingPageExportRenderer final : IPageExportRenderer {
+  mutable int calls = 0;
+
+  std::expected<ExportResult, std::string>
+  exportPagePngTimed(const DocumentModel &document,
+                     const std::filesystem::path &pageImagePath,
+                     const std::filesystem::path &exportPath) const override {
+    (void)document;
+    (void)pageImagePath;
+    (void)exportPath;
+    ++calls;
+    return std::unexpected("renderer-port-failure");
+  }
+};
+
 struct PngCommitFailureGuard {
   explicit PngCommitFailureGuard(const std::filesystem::path &path) {
     textfx::test_hooks::failPngCommit(path);
@@ -412,8 +428,27 @@ int main(int argc, char **argv) {
 
   DocumentModel serviceDocument;
   ProjectStore exportStore(tempPath);
+  FailingPageExportRenderer failingRenderer;
+  const auto injectedFailureResult =
+      ProjectExportService(exportStore, failingRenderer)
+          .exportPages(ExportJob{
+              .pagePaths = {pagePath},
+              .currentPage = pagePath,
+              .currentDocument = &serviceDocument,
+          });
+  if (failingRenderer.calls != 1 || injectedFailureResult.total != 1 ||
+      injectedFailureResult.completed != 0 ||
+      injectedFailureResult.failed != 1 ||
+      injectedFailureResult.pages.size() != 1 ||
+      injectedFailureResult.pages[0].completed ||
+      injectedFailureResult.pages[0].error != "renderer-port-failure") {
+    std::cerr << "Expected project export service to use the injected renderer "
+                 "port and propagate its error\n";
+    return 1;
+  }
+
   const auto serviceResult =
-      ProjectExportService(exportStore)
+      ProjectExportService(exportStore, graph)
           .exportPages(ExportJob{
               .pagePaths = {pagePath, tempPath / "missing-service-page.png"},
               .currentPage = pagePath,
@@ -453,7 +488,7 @@ int main(int argc, char **argv) {
     corruptSave << "not-json";
   }
   const auto corruptSaveResult =
-      ProjectExportService(exportStore)
+      ProjectExportService(exportStore, graph)
           .exportPages(ExportJob{
               .pagePaths = {pagePath, corruptSavedPagePath},
               .currentPage = pagePath,

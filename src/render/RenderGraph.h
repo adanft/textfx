@@ -1,5 +1,6 @@
 #pragma once
 
+#include "application/ports/IPageExportRenderer.h"
 #include "domain/document/DocumentModel.h"
 
 #include <chrono>
@@ -10,22 +11,15 @@
 
 namespace textfx {
 
-class RenderGraph {
+class RenderGraph : public IPageExportRenderer {
 public:
-  struct ExportTiming {
-    using Duration = std::chrono::steady_clock::duration;
-
-    Duration elapsed{};
-  };
-
-  struct ExportResult {
-    ExportTiming timing{};
-  };
+  using ExportTiming = textfx::ExportTiming;
+  using ExportResult = textfx::ExportResult;
 
   std::expected<ExportResult, std::string>
   exportPagePngTimed(const DocumentModel &document,
                      const std::filesystem::path &pageImagePath,
-                     const std::filesystem::path &exportPath) const;
+                     const std::filesystem::path &exportPath) const override;
   std::expected<void, std::string>
   exportPagePngResult(const DocumentModel &document,
                       const std::filesystem::path &pageImagePath,

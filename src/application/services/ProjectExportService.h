@@ -1,7 +1,7 @@
 #pragma once
 
+#include "application/ports/IPageExportRenderer.h"
 #include "domain/document/DocumentModel.h"
-#include "render/RenderGraph.h"
 
 #include <chrono>
 #include <filesystem>
@@ -17,7 +17,7 @@ struct ExportPageResult {
   std::filesystem::path exportPath;
   bool completed = false;
   std::string error;
-  RenderGraph::ExportTiming timing{};
+  ExportTiming timing{};
 };
 
 struct ExportJobResult {
@@ -36,12 +36,14 @@ struct ExportJob {
 
 class ProjectExportService {
 public:
-  explicit ProjectExportService(const ProjectStore &store);
+  ProjectExportService(const ProjectStore &store,
+                       const IPageExportRenderer &renderer);
 
   ExportJobResult exportPages(const ExportJob &job) const;
 
 private:
   const ProjectStore &store_;
+  const IPageExportRenderer &renderer_;
 };
 
 } // namespace textfx
