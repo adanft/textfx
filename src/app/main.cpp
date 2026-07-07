@@ -4,7 +4,7 @@
 #include <QQmlContext>
 #include <qqml.h>
 
-#include "app/EditorController.h"
+#include "app/controllers/EditorController.h"
 #include "app/qt/EditorLimits.h"
 #include "app/qt/OutlinedTextItem.h"
 

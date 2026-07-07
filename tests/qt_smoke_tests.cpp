@@ -1,4 +1,4 @@
-#include "app/EditorController.h"
+#include "app/controllers/EditorController.h"
 #include "application/services/TextBoxSelectionService.h"
 #include "domain/AuthoringLimits.h"
 #include "infrastructure/fonts/FontResolver.h"

@@ -42,7 +42,7 @@ set(TEXTFX_CORE_SOURCES
     src/app/controllers/EditorController.cpp
     src/app/controllers/EditorControllerModelWorkflows.cpp
     src/app/controllers/EditorControllerSupport.cpp
-    src/app/EditorController.h
+    src/app/controllers/EditorController.h
     src/app/controllers/EditorControllerStringUtils.h
     src/app/qt/EditorLimits.cpp
     src/app/qt/EditorLimits.h

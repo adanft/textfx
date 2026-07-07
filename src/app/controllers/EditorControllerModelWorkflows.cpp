@@ -1,4 +1,4 @@
-#include "app/EditorController.h"
+#include "app/controllers/EditorController.h"
 
 #include "application/queries/CommandAvailability.h"
 #include "app/controllers/EditorControllerStringUtils.h"

@@ -1,4 +1,4 @@
-#include "app/EditorController.h"
+#include "app/controllers/EditorController.h"
 #include "qt_test_helpers.h"
 
 #include <QCoreApplication>

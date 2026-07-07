@@ -1,4 +1,4 @@
-#include "app/EditorController.h"
+#include "app/controllers/EditorController.h"
 #include "app/models/BoxesModel.h"
 #include "app/viewmodels/EditorViewModels.h"
 #include "application/queries/SelectionQueryService.h"
