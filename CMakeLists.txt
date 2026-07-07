@@ -54,8 +54,8 @@ set(TEXTFX_CORE_SOURCES
     src/app/EffectMetadata.h
     src/application/services/PageTextService.cpp
     src/application/services/PageTextService.h
-    src/app/ProjectExportService.cpp
-    src/app/ProjectExportService.h
+    src/application/services/ProjectExportService.cpp
+    src/application/services/ProjectExportService.h
     src/application/services/ProjectSessionService.cpp
     src/application/services/ProjectSessionService.h
     src/app/TextBoxClipboardService.cpp
