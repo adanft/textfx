@@ -9,7 +9,7 @@
 
 namespace textfx {
 
-class ProjectStore;
+class IProjectPageSource;
 
 struct ProjectPages {
   std::vector<std::filesystem::path> paths;
@@ -18,7 +18,7 @@ struct ProjectPages {
 
 class ProjectSessionService {
 public:
-  static ProjectPages discoverPages(const ProjectStore &store);
+  static ProjectPages discoverPages(const IProjectPageSource &pageSource);
   static QString pageName(const QStringList &pages, int index);
   static QStringList pageLabels(const QStringList &pages);
   static int normalizePageIndex(int index, std::size_t pageCount);

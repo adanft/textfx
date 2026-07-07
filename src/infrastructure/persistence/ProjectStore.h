@@ -1,5 +1,6 @@
 #pragma once
 
+#include "application/ports/IProjectPageSource.h"
 #include "domain/document/DocumentModel.h"
 
 #include <filesystem>
@@ -9,7 +10,7 @@
 
 namespace textfx {
 
-class ProjectStore {
+class ProjectStore : public IProjectPageSource {
 public:
   static constexpr auto SaveFolder = ".textfx";
   static constexpr auto CleanedFolder = "Cleaned";
@@ -20,7 +21,7 @@ public:
   explicit ProjectStore(std::filesystem::path folder);
 
   const std::filesystem::path &folder() const { return folder_; }
-  std::vector<std::filesystem::path> listPagePaths() const;
+  std::vector<std::filesystem::path> listPagePaths() const override;
   std::filesystem::path
   rawPagePathFor(const std::filesystem::path &cleanPagePath) const;
   std::filesystem::path

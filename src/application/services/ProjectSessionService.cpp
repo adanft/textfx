@@ -1,12 +1,13 @@
 #include "application/services/ProjectSessionService.h"
 
-#include "infrastructure/persistence/ProjectStore.h"
+#include "application/ports/IProjectPageSource.h"
 
 namespace textfx {
 
-ProjectPages ProjectSessionService::discoverPages(const ProjectStore &store) {
+ProjectPages
+ProjectSessionService::discoverPages(const IProjectPageSource &pageSource) {
   ProjectPages pages;
-  for (const auto &page : store.listPagePaths()) {
+  for (const auto &page : pageSource.listPagePaths()) {
     pages.paths.push_back(page);
     pages.names.push_back(QString::fromStdString(page.filename().string()));
   }

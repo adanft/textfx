@@ -1,3 +1,4 @@
+#include "application/ports/IProjectPageSource.h"
 #include "application/services/PageTextService.h"
 #include "application/services/ProjectSessionService.h"
 #include "application/services/TextPresetService.h"
@@ -12,6 +13,7 @@
 #include <fstream>
 #include <random>
 #include <sstream>
+#include <type_traits>
 
 using namespace textfx;
 
@@ -39,6 +41,19 @@ void writeText(const std::filesystem::path &path, const std::string &text) {
   std::filesystem::create_directories(path.parent_path());
   std::ofstream(path) << text;
 }
+
+class FakeProjectPageSource final : public IProjectPageSource {
+public:
+  explicit FakeProjectPageSource(std::vector<std::filesystem::path> pages)
+      : pages_(std::move(pages)) {}
+
+  std::vector<std::filesystem::path> listPagePaths() const override {
+    return pages_;
+  }
+
+private:
+  std::vector<std::filesystem::path> pages_;
+};
 } // namespace
 
 TEST_CASE("Project pages are naturally sorted") {
@@ -80,6 +95,16 @@ TEST_CASE("Project store uses canonical project folders") {
 }
 
 TEST_CASE("Project session service exposes page names labels and keys") {
+  static_assert(std::is_base_of_v<IProjectPageSource, ProjectStore>);
+
+  const auto fakePages = ProjectSessionService::discoverPages(
+      FakeProjectPageSource({"/tmp/page3.png", "/tmp/page11.png"}));
+  CHECK(fakePages.names == QStringList({QStringLiteral("page3.png"),
+                                        QStringLiteral("page11.png")}));
+  CHECK(ProjectSessionService::pageLabels(fakePages.names) ==
+        QStringList({QStringLiteral("1 - page3.png"),
+                     QStringLiteral("2 - page11.png")}));
+
   const auto folder = makeTempDir("textfx-project-session-pages-");
   for (const auto &name : {"page10.png", "page2.png"}) {
     touch(folder / name);
