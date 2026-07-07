@@ -32,22 +32,15 @@ qt_add_executable(textfx
     src/app/qt/OutlinedTextItem.h
 )
 
-set(TEXTFX_CORE_SOURCES
-    src/app/viewmodels/BoxRenderState.cpp
-    src/app/viewmodels/BoxRenderState.h
-    src/app/models/BoxesModel.cpp
-    src/app/models/BoxesModel.h
+set(TEXTFX_DOMAIN_SOURCES
+    src/domain/AuthoringLimits.h
+    src/domain/document/DocumentModel.cpp
+    src/domain/document/DocumentModel.h
+)
+
+set(TEXTFX_APPLICATION_SOURCES
     src/application/queries/CommandAvailability.cpp
     src/application/queries/CommandAvailability.h
-    src/app/controllers/EditorController.cpp
-    src/app/controllers/EditorControllerModelWorkflows.cpp
-    src/app/controllers/EditorControllerSupport.cpp
-    src/app/controllers/EditorController.h
-    src/app/controllers/EditorControllerStringUtils.h
-    src/app/qt/EditorLimits.cpp
-    src/app/qt/EditorLimits.h
-    src/app/viewmodels/EditorViewModels.cpp
-    src/app/viewmodels/EditorViewModels.h
     src/application/queries/SelectionQueryService.cpp
     src/application/queries/SelectionQueryService.h
     src/application/queries/BoxRoles.h
@@ -62,8 +55,6 @@ set(TEXTFX_CORE_SOURCES
     src/application/services/ProjectExportService.h
     src/application/services/ProjectSessionService.cpp
     src/application/services/ProjectSessionService.h
-    src/app/services/TextBoxClipboardService.cpp
-    src/app/services/TextBoxClipboardService.h
     src/application/services/TextBoxEditingService.cpp
     src/application/services/TextBoxEditingService.h
     src/application/services/TextBoxSelectionService.cpp
@@ -72,9 +63,9 @@ set(TEXTFX_CORE_SOURCES
     src/application/services/TextPresetService.h
     src/application/services/TextWorkflowService.cpp
     src/application/services/TextWorkflowService.h
-    src/domain/AuthoringLimits.h
-    src/domain/document/DocumentModel.cpp
-    src/domain/document/DocumentModel.h
+)
+
+set(TEXTFX_INFRASTRUCTURE_SOURCES
     src/infrastructure/fonts/FontResolver.cpp
     src/infrastructure/fonts/FontResolver.h
     src/infrastructure/fonts/SfntNames.h
@@ -82,24 +73,92 @@ set(TEXTFX_CORE_SOURCES
     src/infrastructure/persistence/ProjectStore.h
     src/infrastructure/persistence/JsonSerializer.cpp
     src/infrastructure/persistence/JsonSerializer.h
+)
+
+set(TEXTFX_RENDER_SOURCES
+    src/render/GaussianBlur.h
     src/render/RenderGraph.cpp
     src/render/RenderGraph.h
     src/render/RenderTextLayout.cpp
     src/render/RenderTextLayout.h
 )
 
-function(textfx_configure_core target)
+set(TEXTFX_APP_SOURCES
+    src/app/viewmodels/BoxRenderState.cpp
+    src/app/viewmodels/BoxRenderState.h
+    src/app/models/BoxesModel.cpp
+    src/app/models/BoxesModel.h
+    src/app/controllers/EditorController.cpp
+    src/app/controllers/EditorControllerModelWorkflows.cpp
+    src/app/controllers/EditorControllerSupport.cpp
+    src/app/controllers/EditorController.h
+    src/app/controllers/EditorControllerStringUtils.h
+    src/app/qt/EditorLimits.cpp
+    src/app/qt/EditorLimits.h
+    src/app/viewmodels/EditorViewModels.cpp
+    src/app/viewmodels/EditorViewModels.h
+    src/app/services/TextBoxClipboardService.cpp
+    src/app/services/TextBoxClipboardService.h
+)
+
+function(textfx_configure_includes target)
     target_include_directories(${target} PUBLIC src)
+endfunction()
+
+function(textfx_add_infrastructure_library target)
+    add_library(${target} STATIC ${TEXTFX_INFRASTRUCTURE_SOURCES})
+    textfx_configure_includes(${target})
     target_link_libraries(${target}
         PUBLIC
+            textfx_application
+            textfx_domain
+            Qt6::Core
+            Qt6::Gui
+    )
+endfunction()
+
+function(textfx_add_render_library target infrastructure_target)
+    add_library(${target} STATIC ${TEXTFX_RENDER_SOURCES})
+    textfx_configure_includes(${target})
+    target_link_libraries(${target}
+        PUBLIC
+            textfx_application
+            textfx_domain
+            ${infrastructure_target}
+            Qt6::Core
+            Qt6::Gui
+    )
+endfunction()
+
+function(textfx_add_app_core_library target infrastructure_target render_target)
+    add_library(${target} STATIC ${TEXTFX_APP_SOURCES})
+    textfx_configure_includes(${target})
+    target_link_libraries(${target}
+        PUBLIC
+            textfx_application
+            textfx_domain
+            ${infrastructure_target}
+            ${render_target}
             Qt6::Core
             Qt6::Gui
             Qt6::Quick
     )
 endfunction()
 
-add_library(textfx_core ${TEXTFX_CORE_SOURCES})
-textfx_configure_core(textfx_core)
+add_library(textfx_domain STATIC ${TEXTFX_DOMAIN_SOURCES})
+textfx_configure_includes(textfx_domain)
+
+add_library(textfx_application STATIC ${TEXTFX_APPLICATION_SOURCES})
+textfx_configure_includes(textfx_application)
+target_link_libraries(textfx_application
+    PUBLIC
+        textfx_domain
+        Qt6::Core
+)
+
+textfx_add_infrastructure_library(textfx_infrastructure)
+textfx_add_render_library(textfx_render textfx_infrastructure)
+textfx_add_app_core_library(textfx_app_core textfx_infrastructure textfx_render)
 
 set(TEXTFX_ICON_RESOURCES
     assets/icons/flat/align-center.svg
@@ -174,7 +233,7 @@ qt_add_qml_module(textfx
 
 target_link_libraries(textfx
     PRIVATE
-        textfx_core
+        textfx_app_core
         Qt6::Qml
         Qt6::Quick
         Qt6::QuickDialogs2
@@ -217,22 +276,27 @@ if(BUILD_TESTING)
         QSG_RHI_BACKEND=software
     )
 
-    add_library(textfx_core_test ${TEXTFX_CORE_SOURCES})
-    textfx_configure_core(textfx_core_test)
-    target_compile_definitions(textfx_core_test PUBLIC TEXTFX_ENABLE_TEST_HOOKS=1)
+    textfx_add_infrastructure_library(textfx_infrastructure_test)
+    target_compile_definitions(textfx_infrastructure_test PUBLIC TEXTFX_ENABLE_TEST_HOOKS=1)
+
+    textfx_add_render_library(textfx_render_test textfx_infrastructure_test)
+    target_compile_definitions(textfx_render_test PUBLIC TEXTFX_ENABLE_TEST_HOOKS=1)
+
+    textfx_add_app_core_library(textfx_app_core_test textfx_infrastructure_test textfx_render_test)
+    target_compile_definitions(textfx_app_core_test PUBLIC TEXTFX_ENABLE_TEST_HOOKS=1)
 
     function(textfx_assert_no_test_hooks target)
         get_target_property(compile_definitions ${target} COMPILE_DEFINITIONS)
         get_target_property(interface_definitions ${target} INTERFACE_COMPILE_DEFINITIONS)
         get_target_property(link_libraries ${target} LINK_LIBRARIES)
         foreach(values IN ITEMS compile_definitions interface_definitions link_libraries)
-            if(${values} MATCHES "TEXTFX_ENABLE_TEST_HOOKS|textfx_core_test")
+            if(${values} MATCHES "TEXTFX_ENABLE_TEST_HOOKS|textfx_(infrastructure|render)_test|textfx_app_core_test")
                 message(FATAL_ERROR "${target} must not depend on test hooks")
             endif()
         endforeach()
     endfunction()
 
-    textfx_assert_no_test_hooks(textfx_core)
+    textfx_assert_no_test_hooks(textfx_app_core)
     textfx_assert_no_test_hooks(textfx)
 
     function(textfx_add_test_icon_resources target)
@@ -246,7 +310,7 @@ if(BUILD_TESTING)
         tests/serialization_check.cpp
     )
 
-    target_link_libraries(textfx_serialization_check PRIVATE textfx_core)
+    target_link_libraries(textfx_serialization_check PRIVATE textfx_app_core)
     target_compile_definitions(textfx_serialization_check PRIVATE TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
     list(APPEND TEXTFX_TEST_TARGETS textfx_serialization_check)
 
@@ -254,7 +318,7 @@ if(BUILD_TESTING)
         tests/render_golden_check.cpp
     )
 
-    target_link_libraries(textfx_render_golden_check PRIVATE textfx_core_test)
+    target_link_libraries(textfx_render_golden_check PRIVATE textfx_app_core_test)
     target_compile_definitions(textfx_render_golden_check PRIVATE
         TEXTFX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
     )
@@ -281,7 +345,7 @@ if(BUILD_TESTING)
 
         target_link_libraries(textfx_core_tests
             PRIVATE
-                textfx_core
+                textfx_app_core
                 Catch2::Catch2WithMain
         )
 
@@ -306,7 +370,7 @@ if(BUILD_TESTING)
 
         target_link_libraries(textfx_qt_smoke_tests
             PRIVATE
-                textfx_core
+                textfx_app_core
                 Qt6::Qml
                 Qt6::Quick
                 Qt6::QuickControls2
@@ -337,7 +401,7 @@ if(BUILD_TESTING)
 
         target_link_libraries(textfx_editor_controller_workflow_tests
             PRIVATE
-                textfx_core_test
+                textfx_app_core_test
                 Qt6::Test
         )
         target_compile_definitions(textfx_editor_controller_workflow_tests PRIVATE
@@ -363,7 +427,7 @@ if(BUILD_TESTING)
 
         target_link_libraries(textfx_qml_shell_smoke_tests
             PRIVATE
-                textfx_core
+                textfx_app_core
                 Qt6::Qml
                 Qt6::Quick
                 Qt6::QuickControls2
@@ -394,7 +458,7 @@ if(BUILD_TESTING)
 
         target_link_libraries(textfx_qml_interaction_smoke_tests
             PRIVATE
-                textfx_core
+                textfx_app_core
                 Qt6::Qml
                 Qt6::Quick
                 Qt6::QuickControls2
@@ -425,7 +489,7 @@ if(BUILD_TESTING)
 
         target_link_libraries(textfx_qml_text_box_delegate_smoke_tests
             PRIVATE
-                textfx_core
+                textfx_app_core
                 Qt6::Qml
                 Qt6::Quick
                 Qt6::QuickControls2
@@ -456,7 +520,7 @@ if(BUILD_TESTING)
 
         target_link_libraries(textfx_outlined_text_item_tests
             PRIVATE
-                textfx_core
+                textfx_app_core
                 Qt6::Qml
                 Qt6::Quick
                 Qt6::Test
@@ -483,7 +547,7 @@ if(BUILD_TESTING)
 
     target_link_libraries(textfx_font_diagnostic
         PRIVATE
-            textfx_core
+            textfx_app_core
             Qt6::Gui
     )
 
