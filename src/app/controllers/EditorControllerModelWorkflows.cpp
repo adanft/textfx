@@ -6,7 +6,7 @@
 #include "application/queries/EffectMetadata.h"
 #include "application/services/PageTextService.h"
 #include "application/services/ProjectSessionService.h"
-#include "application/services/TextBoxClipboardService.h"
+#include "app/services/TextBoxClipboardService.h"
 #include "application/services/TextBoxEditingService.h"
 #include "application/services/TextBoxSelectionService.h"
 #include "application/services/TextWorkflowService.h"

@@ -184,8 +184,11 @@ int EditorController::boxCount() const {
 QAbstractListModel *EditorController::boxesModel() { return &boxesModel_; }
 
 QVariant EditorController::selectedBoxViewModel() const {
-  return SelectionQueryService::selectedBoxViewModel(document_.textBoxes(),
-                                                    selectedIndex_);
+  const auto *box =
+      SelectionQueryService::selectedBox(document_.textBoxes(), selectedIndex_);
+  if (!box)
+    return {};
+  return EditorViewModels::textBoxMap(*box, selectedIndex_);
 }
 
 QVariantList EditorController::layers() const {

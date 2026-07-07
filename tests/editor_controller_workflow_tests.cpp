@@ -1,6 +1,5 @@
 #include "app/controllers/EditorController.h"
 #include "app/models/BoxesModel.h"
-#include "app/viewmodels/EditorViewModels.h"
 #include "application/queries/SelectionQueryService.h"
 #include "app/viewmodels/BoxRenderState.h"
 #include "application/queries/BoxRoles.h"
@@ -579,25 +578,24 @@ private slots:
     QCOMPARE(selectedIndex, 2);
   }
 
-  void selectionQueryServiceSelectedBoxViewModelMatchesEditorProjection() {
-    std::vector<TextBox> boxes;
-    TextBox box;
-    box.text = "Projected box";
-    box.bounds = {12.0, 34.0, 156.0, 78.0};
-    box.style.fontSize = 29;
-    boxes.push_back(box);
+  void editorSelectedBoxViewModelMatchesEditorProjection() {
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(12, 34, 156, 78);
+    editor.updateSelectedText(QStringLiteral("Projected box"));
+    editor.setSelectedFontSize(29);
 
-    const QVariant invalid = SelectionQueryService::selectedBoxViewModel(boxes, -1);
-    QVERIFY(!invalid.isValid());
+    const QVariantMap actual = editor.selectedBoxViewModel().toMap();
+    const QVariantMap expected = editor.boxes().at(0).toMap();
+    QCOMPARE(actual.value(QStringLiteral("index")),
+             expected.value(QStringLiteral("index")));
+    QCOMPARE(actual.value(QStringLiteral("text")),
+             expected.value(QStringLiteral("text")));
+    QCOMPARE(actual.value(QStringLiteral("fontSize")),
+             expected.value(QStringLiteral("fontSize")));
 
-    const QVariant outOfRange = SelectionQueryService::selectedBoxViewModel(boxes, 1);
-    QVERIFY(!outOfRange.isValid());
-
-    const QVariantMap actual = SelectionQueryService::selectedBoxViewModel(boxes, 0).toMap();
-    const QVariantMap expected = EditorViewModels::textBoxMap(boxes.at(0), 0);
-    QCOMPARE(actual.value(QStringLiteral("index")), expected.value(QStringLiteral("index")));
-    QCOMPARE(actual.value(QStringLiteral("text")), expected.value(QStringLiteral("text")));
-    QCOMPARE(actual.value(QStringLiteral("fontSize")), expected.value(QStringLiteral("fontSize")));
+    editor.selectBox(-1);
+    QVERIFY(!editor.selectedBoxViewModel().isValid());
   }
 
   void boxRolesAffectSelectedBoxStateClassifiesProductionRoles() {

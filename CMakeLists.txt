@@ -62,8 +62,8 @@ set(TEXTFX_CORE_SOURCES
     src/application/services/ProjectExportService.h
     src/application/services/ProjectSessionService.cpp
     src/application/services/ProjectSessionService.h
-    src/application/services/TextBoxClipboardService.cpp
-    src/application/services/TextBoxClipboardService.h
+    src/app/services/TextBoxClipboardService.cpp
+    src/app/services/TextBoxClipboardService.h
     src/application/services/TextBoxEditingService.cpp
     src/application/services/TextBoxEditingService.h
     src/application/services/TextBoxSelectionService.cpp

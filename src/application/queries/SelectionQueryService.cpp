@@ -1,6 +1,5 @@
 #include "application/queries/SelectionQueryService.h"
 
-#include "app/viewmodels/EditorViewModels.h"
 #include "application/queries/EffectMetadata.h"
 
 #include <utility>
@@ -19,13 +18,6 @@ const TextBox *selectedBox(const std::vector<TextBox> &boxes, int selectedIndex)
 TextBox *selectedBox(std::vector<TextBox> &boxes, int selectedIndex) {
   return const_cast<TextBox *>(
       selectedBox(std::as_const(boxes), selectedIndex));
-}
-
-QVariant selectedBoxViewModel(const std::vector<TextBox> &boxes, int selectedIndex) {
-  const auto *box = selectedBox(boxes, selectedIndex);
-  if (!box)
-    return {};
-  return EditorViewModels::textBoxMap(*box, selectedIndex);
 }
 
 bool roleAffectsSelectedBoxState(int role) {
