@@ -156,17 +156,6 @@ void EditorController::setNotification(QString message) {
   emit notificationChanged();
 }
 
-void EditorController::refreshPages() {
-  pages_.clear();
-  pagePaths_.clear();
-  if (!store_) {
-    return;
-  }
-  const auto pages = ProjectSessionService::discoverPages(*store_);
-  pagePaths_ = pages.paths;
-  pages_ = pages.names;
-}
-
 void EditorController::clearLoadedProjectState() {
   store_.reset();
   currentPage_.clear();

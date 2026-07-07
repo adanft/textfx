@@ -2,8 +2,8 @@
 
 #include "app/viewmodels/EditorViewModels.h"
 #include "app/project/ProjectCreationWorkflow.h"
+#include "app/project/ProjectOpenWorkflow.h"
 #include "app/project/ProjectSaveExportWorkflow.h"
-#include "application/services/ProjectSessionService.h"
 #include "application/queries/SelectionQueryService.h"
 #include "application/services/TextBoxSelectionService.h"
 #include "app/controllers/EditorControllerStringUtils.h"
@@ -143,16 +143,18 @@ bool EditorController::openProjectInternal(const QString &folder,
                                            const QString &successNotification) {
   if (!autosaveCurrent())
     return false;
-  store_ = std::make_unique<ProjectStore>(folder.toStdString());
-  std::string error;
-  pageTexts_ = store_->loadPageTexts(&error);
-  pageTextPositions_.clear();
-  if (!error.empty()) {
+  auto result = ProjectOpenWorkflow::open(folder.toStdString());
+  if (!result.success) {
     clearProjectState();
-    setNotification(toQString(error));
+    setNotification(result.error);
     return false;
   }
-  refreshPages();
+
+  store_ = std::move(result.store);
+  pageTexts_ = std::move(result.pageTexts);
+  pageTextPositions_.clear();
+  pagePaths_ = std::move(result.pagePaths);
+  pages_ = std::move(result.pageNames);
   prepareProjectDocumentState();
   if (!pagePaths_.empty()) {
     if (!loadPageAt(0)) {

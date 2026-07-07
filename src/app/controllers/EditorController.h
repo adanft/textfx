@@ -208,7 +208,6 @@ private:
   void clearProjectState();
   bool openProjectInternal(const QString &folder,
                            const QString &successNotification);
-  void refreshPages();
   bool loadPageAt(int index);
   bool autosaveCurrent();
   std::string currentPageKey() const;
