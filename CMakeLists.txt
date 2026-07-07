@@ -71,9 +71,9 @@ set(TEXTFX_CORE_SOURCES
     src/domain/AuthoringLimits.h
     src/domain/document/DocumentModel.cpp
     src/domain/document/DocumentModel.h
-    src/fonts/FontResolver.cpp
-    src/fonts/FontResolver.h
-    src/fonts/SfntNames.h
+    src/infrastructure/fonts/FontResolver.cpp
+    src/infrastructure/fonts/FontResolver.h
+    src/infrastructure/fonts/SfntNames.h
     src/infrastructure/persistence/ProjectStore.cpp
     src/infrastructure/persistence/ProjectStore.h
     src/infrastructure/persistence/JsonSerializer.cpp

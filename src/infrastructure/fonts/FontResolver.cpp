@@ -1,6 +1,6 @@
-#include "fonts/FontResolver.h"
+#include "infrastructure/fonts/FontResolver.h"
 
-#include "fonts/SfntNames.h"
+#include "infrastructure/fonts/SfntNames.h"
 
 #include <QDirIterator>
 #include <QFile>

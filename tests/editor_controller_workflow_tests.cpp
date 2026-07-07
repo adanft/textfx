@@ -6,7 +6,7 @@
 #include "application/queries/CommandAvailability.h"
 #include "app/EffectMetadata.h"
 #include "domain/AuthoringLimits.h"
-#include "fonts/FontResolver.h"
+#include "infrastructure/fonts/FontResolver.h"
 #include "qt_test_helpers.h"
 
 #include <QAbstractItemModel>

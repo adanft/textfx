@@ -1,4 +1,4 @@
-#include "fonts/FontResolver.h"
+#include "infrastructure/fonts/FontResolver.h"
 
 #include <QColor>
 #include <QDir>

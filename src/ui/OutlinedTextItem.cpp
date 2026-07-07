@@ -2,7 +2,7 @@
 
 #include "domain/AuthoringLimits.h"
 #include "render/GaussianBlur.h"
-#include "fonts/FontResolver.h"
+#include "infrastructure/fonts/FontResolver.h"
 #include "render/RenderTextLayout.h"
 
 #include <QFont>

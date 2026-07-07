@@ -1,8 +1,8 @@
 #include "app/EditorController.h"
 #include "application/services/TextBoxSelectionService.h"
 #include "domain/AuthoringLimits.h"
-#include "fonts/FontResolver.h"
-#include "fonts/SfntNames.h"
+#include "infrastructure/fonts/FontResolver.h"
+#include "infrastructure/fonts/SfntNames.h"
 #include "qt_test_helpers.h"
 
 #include <QCoreApplication>

@@ -1,6 +1,6 @@
 #include "app/BoxRenderState.h"
 
-#include "fonts/FontResolver.h"
+#include "infrastructure/fonts/FontResolver.h"
 
 #include <QFont>
 
