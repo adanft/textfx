@@ -1,7 +1,7 @@
 #include "app/EditorController.h"
 
 #include "application/queries/CommandAvailability.h"
-#include "app/EditorControllerStringUtils.h"
+#include "app/controllers/EditorControllerStringUtils.h"
 #include "app/viewmodels/EditorViewModels.h"
 #include "app/EffectMetadata.h"
 #include "application/services/PageTextService.h"

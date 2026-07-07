@@ -5,7 +5,7 @@
 #include "application/services/ProjectSessionService.h"
 #include "app/SelectionQueryService.h"
 #include "application/services/TextBoxSelectionService.h"
-#include "app/EditorControllerStringUtils.h"
+#include "app/controllers/EditorControllerStringUtils.h"
 #include "domain/AuthoringLimits.h"
 #include "render/RenderGraph.h"
 

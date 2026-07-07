@@ -1,6 +1,6 @@
 #include "app/EditorController.h"
 
-#include "app/EditorControllerStringUtils.h"
+#include "app/controllers/EditorControllerStringUtils.h"
 #include "app/EffectMetadata.h"
 #include "application/services/ProjectSessionService.h"
 #include "app/SelectionQueryService.h"

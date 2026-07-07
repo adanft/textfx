@@ -39,11 +39,11 @@ set(TEXTFX_CORE_SOURCES
     src/app/models/BoxesModel.h
     src/application/queries/CommandAvailability.cpp
     src/application/queries/CommandAvailability.h
-    src/app/EditorController.cpp
-    src/app/EditorControllerModelWorkflows.cpp
-    src/app/EditorControllerSupport.cpp
+    src/app/controllers/EditorController.cpp
+    src/app/controllers/EditorControllerModelWorkflows.cpp
+    src/app/controllers/EditorControllerSupport.cpp
     src/app/EditorController.h
-    src/app/EditorControllerStringUtils.h
+    src/app/controllers/EditorControllerStringUtils.h
     src/app/EditorLimits.cpp
     src/app/EditorLimits.h
     src/app/viewmodels/EditorViewModels.cpp
