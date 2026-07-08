@@ -164,6 +164,7 @@ QString readQmlFile(const QString &name) {
       QStringLiteral("features/leftPanel/") + name,
       QStringLiteral("features/rightPanel/") + name,
       QStringLiteral("features/rightPanel/navigation/") + name,
+      QStringLiteral("features/rightPanel/boxEffects/") + name,
       QStringLiteral("features/rightPanel/textEffects/") + name,
       QStringLiteral("features/rightPanel/layers/") + name,
       QStringLiteral("features/menus/") + name,
@@ -185,7 +186,9 @@ QString readQmlFile(const QString &name) {
 QStringList qmlSourceFiles() {
   return {
       QStringLiteral("app/Main.qml"),
-      QStringLiteral("features/rightPanel/BoxEffectsSection.qml"),
+      QStringLiteral("features/rightPanel/boxEffects/BoxEffectsSection.qml"),
+      QStringLiteral("features/rightPanel/boxEffects/RotationEffectEditor.qml"),
+      QStringLiteral("features/rightPanel/boxEffects/PerspectiveEffectEditor.qml"),
       QStringLiteral("features/canvas/interactions/BoxMoveInteractionState.qml"),
       QStringLiteral("features/canvas/interactions/BoxRotateInteractionState.qml"),
       QStringLiteral("features/canvas/interactions/BoxResizeInteractionState.qml"),

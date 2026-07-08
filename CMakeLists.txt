@@ -214,7 +214,9 @@ qt_add_qml_module(textfx
         qml/app/Main.qml
         qml/constants/UiConstants.js
         qml/utils/ColorUtils.js
-        qml/features/rightPanel/BoxEffectsSection.qml
+        qml/features/rightPanel/boxEffects/BoxEffectsSection.qml
+        qml/features/rightPanel/boxEffects/RotationEffectEditor.qml
+        qml/features/rightPanel/boxEffects/PerspectiveEffectEditor.qml
         qml/features/canvas/interactions/BoxMoveInteractionState.qml
         qml/features/canvas/interactions/BoxRotateInteractionState.qml
         qml/features/canvas/interactions/BoxResizeInteractionState.qml

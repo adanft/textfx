@@ -589,6 +589,9 @@ private slots:
         readQmlFile(QStringLiteral("NavigationSection.qml"));
     const QString boxEffectsSectionSource =
         readQmlFile(QStringLiteral("BoxEffectsSection.qml"));
+    const QString boxEffectsEditorsSource =
+        readQmlFile(QStringLiteral("RotationEffectEditor.qml")) +
+        readQmlFile(QStringLiteral("PerspectiveEffectEditor.qml"));
     const QString textEffectsSectionSource =
         readQmlFile(QStringLiteral("TextEffectsSection.qml"));
     const QString outlineEffectEditorSource =
@@ -864,7 +867,7 @@ private slots:
     QVERIFY(boxStart >= 0);
     QVERIFY(textStart >= 0);
     const QString boxEffectsSource =
-        boxEffectsSectionSource.mid(boxStart);
+        boxEffectsSectionSource.mid(boxStart) + boxEffectsEditorsSource;
     QVERIFY(boxEffectsSource.contains(QStringLiteral("id: boxEffectsTabs")));
     QVERIFY(boxEffectsSource.contains(QStringLiteral(
         "property var selectedBoxData")));
@@ -879,11 +882,11 @@ private slots:
         boxEffectsSource,
         QStringLiteral("TabButton { text: qsTr(\"Perspective\") }")));
     QVERIFY(boxEffectsSource.contains(QStringLiteral(
-        "boxEffectsSection.editor.setSelectedRotation(value)")));
+        "rotationEffectEditor.editor.setSelectedRotation(value)")));
     QVERIFY(boxEffectsSource.contains(QStringLiteral(
-        "boxEffectsSection.editor.setSelectedPerspectiveEnabled(checked)")));
+        "perspectiveEffectEditor.editor.setSelectedPerspectiveEnabled(checked)")));
     QVERIFY(boxEffectsSource.contains(QStringLiteral(
-        "boxEffectsSection.editor.resetSelectedPerspective()")));
+        "perspectiveEffectEditor.editor.resetSelectedPerspective()")));
 
     const QString textEffectsSource =
         textEffectsSectionSource + textEffectsEditorsSource;
