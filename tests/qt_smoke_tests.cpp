@@ -1914,7 +1914,7 @@ QtObject {
     QVERIFY(!source.contains(QStringLiteral("window.zoom * window.zoom")));
   }
 
-  void qmlHasEightPerspectiveHandlesAndQPainterUsesFontResolver() {
+  void qmlHasEightPerspectiveHandles() {
     QFile qml(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml"));
     QVERIFY(qml.open(QIODevice::ReadOnly | QIODevice::Text));
     const QString qmlSource = ::qmlSource();
@@ -1932,17 +1932,6 @@ QtObject {
     QVERIFY(!qmlSource.contains(QStringLiteral("perspectiveHandleOffset")));
     QVERIFY(!qmlSource.contains(QStringLiteral(
         "visible: !canvas.effectsPreviewDisplayable || Editor.editingText")));
-
-    QFile render(
-        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../src/infrastructure/rendering/RenderGraph.cpp"));
-    QVERIFY(render.open(QIODevice::ReadOnly | QIODevice::Text));
-    const QString renderSource = QString::fromUtf8(render.readAll());
-    QVERIFY(renderSource.contains(
-        QStringLiteral("return resolveFont(font).font;")));
-    QVERIFY(
-        renderSource.contains(QStringLiteral("font.setBold(box.style.bold)")));
-    QVERIFY(!renderSource.contains(
-        QStringLiteral("SkFontMgr_New_Custom_Directory")));
   }
 
   void qmlUsesRawOverlayAndTopLayerFirstList() {

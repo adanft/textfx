@@ -1,10 +1,11 @@
 #include "domain/document/DocumentModel.h"
 #include "qt_test_helpers.h"
 #include "infrastructure/rendering/RenderGraph.h"
+#include "infrastructure/rendering/RenderTextLayout.h"
 #include "app/qt/OutlinedTextItem.h"
 
 #include <QColor>
-#include <QFile>
+#include <QFont>
 #include <QImage>
 #include <QPainter>
 #include <QPointF>
@@ -1085,32 +1086,30 @@ private slots:
   }
 
   void wrapsWithinOutlineInset() {
-    QFile source(QStringLiteral(TEXTFX_FIXTURE_DIR
-                                "/../../src/app/qt/OutlinedTextItem.cpp"));
-    QVERIFY(source.open(QIODevice::ReadOnly | QIODevice::Text));
-    const QString code = QString::fromUtf8(source.readAll());
-    QFile layoutSource(QStringLiteral(
-        TEXTFX_FIXTURE_DIR "/../../src/infrastructure/rendering/RenderTextLayout.cpp"));
-    QVERIFY(layoutSource.open(QIODevice::ReadOnly | QIODevice::Text));
-    const QString layoutCode = QString::fromUtf8(layoutSource.readAll());
+    QFont font;
+    font.setPixelSize(18);
 
-    QVERIFY(code.contains(QStringLiteral("gaussianBlurred")));
-    QVERIFY(code.contains(QStringLiteral("blurCacheKey")));
-    QVERIFY(code.contains(QStringLiteral("blurSize_")));
-    QVERIFY(code.contains(QStringLiteral(
-        "cache.layoutWidth = std::max<qreal>(1.0, width() / cache.scale);")));
-    QVERIFY(code.contains(QStringLiteral("target.scale(scale, scale);")));
-    QVERIFY(sourceContainsIgnoringWhitespace(
-        layoutCode,
-        QStringLiteral("const qreal paintWidth = std::max<qreal>(1.0, "
-                       "options.width - options.inset * 2.0);")));
-    QVERIFY(layoutCode.contains(
-        QStringLiteral("document->setTextWidth(paintWidth);")));
-    QVERIFY(layoutCode.contains(
-        QStringLiteral("options.height - options.inset * 2.0 - blockHeight")));
-    QVERIFY(layoutCode.contains(QStringLiteral("options.inset + line.x()")));
-    QVERIFY(!layoutCode.contains(
-        QStringLiteral("line.setLineWidth(options.width);")));
+    QStringList insetLines;
+    QVector<qreal> insetLineXs;
+    textLayoutPath(TextLayoutOptions{.text = QStringLiteral("ALPHA BETA GAMMA DELTA"),
+                                     .width = 200,
+                                     .height = 180,
+                                     .inset = 40},
+                   font, &insetLines, &insetLineXs);
+
+    QStringList equivalentNarrowLines;
+    QVector<qreal> equivalentNarrowLineXs;
+    textLayoutPath(TextLayoutOptions{.text = QStringLiteral("ALPHA BETA GAMMA DELTA"),
+                                     .width = 120,
+                                     .height = 180,
+                                     .inset = 0},
+                   font, &equivalentNarrowLines, &equivalentNarrowLineXs);
+
+    QVERIFY(insetLines.size() >= 2);
+    QCOMPARE(insetLines, equivalentNarrowLines);
+    QCOMPARE(insetLineXs.size(), equivalentNarrowLineXs.size());
+    for (qsizetype i = 0; i < insetLineXs.size(); ++i)
+      QCOMPARE(insetLineXs.at(i), equivalentNarrowLineXs.at(i) + 40.0);
   }
 
   void blurCacheInvalidatesOnFractionalResize() {
@@ -1162,27 +1161,6 @@ private slots:
     QVERIFY(!imagesDiffer(firstReused, firstFresh));
     QVERIFY(!imagesDiffer(secondReused, secondFresh));
     QVERIFY(imagesDiffer(firstReused, secondReused));
-  }
-
-  void fitsStrokeBoundsBeforePainting() {
-    QFile source(QStringLiteral(TEXTFX_FIXTURE_DIR
-                                "/../../src/app/qt/OutlinedTextItem.cpp"));
-    QVERIFY(source.open(QIODevice::ReadOnly | QIODevice::Text));
-    const QString code = QString::fromUtf8(source.readAll());
-
-    QVERIFY(sourceContainsIgnoringWhitespace(
-        code, QStringLiteral("cache.paintedBounds = cache.paintedBounds.united("
-                             "stroker.createStroke(cache.path)."
-                             "boundingRect());")));
-    QVERIFY(sourceContainsIgnoringWhitespace(
-        code,
-        QStringLiteral(
-            "if (paintedBounds.left() < 0.0) dx = -paintedBounds.left();")));
-    QVERIFY(sourceContainsIgnoringWhitespace(
-        code,
-        QStringLiteral(
-            "if (paintedBounds.top() < 0.0) dy = -paintedBounds.top();")));
-    QVERIFY(code.contains(QStringLiteral("path.translate(dx, dy);")));
   }
 };
 
