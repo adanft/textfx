@@ -8,6 +8,7 @@
 namespace textfx {
 
 class DocumentModel;
+class IPageExportRenderer;
 class ProjectSession;
 
 enum class SaveNotificationOrder {
@@ -25,16 +26,27 @@ struct ProjectSaveExportResult {
 using SaveCurrentProjectResult = ProjectSaveExportResult;
 using SaveAllProjectResult = ProjectSaveExportResult;
 
+struct SaveCurrentProjectRequest {
+  ProjectSession *session;
+  const IPageExportRenderer &renderer;
+  DocumentModel &document;
+  const std::filesystem::path &currentPage;
+};
+
+struct SaveAllProjectRequest {
+  ProjectSession *session;
+  const IPageExportRenderer &renderer;
+  DocumentModel &document;
+  const std::filesystem::path &currentPage;
+  const std::vector<std::filesystem::path> &pagePaths;
+};
+
 class ProjectSaveExportWorkflow {
 public:
-  static SaveCurrentProjectResult saveCurrent(
-      ProjectSession *session, DocumentModel &document,
-      const std::filesystem::path &currentPage);
+  static SaveCurrentProjectResult
+  saveCurrent(const SaveCurrentProjectRequest &request);
 
-  static SaveAllProjectResult saveAll(
-      ProjectSession *session, DocumentModel &document,
-      const std::filesystem::path &currentPage,
-      const std::vector<std::filesystem::path> &pagePaths);
+  static SaveAllProjectResult saveAll(const SaveAllProjectRequest &request);
 };
 
 } // namespace textfx

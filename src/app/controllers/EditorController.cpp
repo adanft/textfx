@@ -9,6 +9,7 @@
 #include "application/services/TextBoxSelectionService.h"
 #include "app/controllers/EditorControllerStringUtils.h"
 #include "domain/AuthoringLimits.h"
+#include "infrastructure/rendering/RenderGraph.h"
 
 #include <QUrl>
 
@@ -244,16 +245,25 @@ void EditorController::applySaveExportResult(QString notification,
 }
 
 void EditorController::save() {
+  const RenderGraph renderer;
   const auto result = ProjectSaveExportWorkflow::saveCurrent(
-      session_.get(), document_, currentPage_);
+      SaveCurrentProjectRequest{.session = session_.get(),
+                                .renderer = renderer,
+                                .document = document_,
+                                .currentPage = currentPage_});
   applySaveExportResult(
       result.notification, result.stateChanged,
       result.notificationOrder == SaveNotificationOrder::BeforeStateChanged);
 }
 
 void EditorController::saveAll() {
+  const RenderGraph renderer;
   const auto result = ProjectSaveExportWorkflow::saveAll(
-      session_.get(), document_, currentPage_, pagePaths_);
+      SaveAllProjectRequest{.session = session_.get(),
+                            .renderer = renderer,
+                            .document = document_,
+                            .currentPage = currentPage_,
+                            .pagePaths = pagePaths_});
   applySaveExportResult(
       result.notification, result.stateChanged,
       result.notificationOrder == SaveNotificationOrder::BeforeStateChanged);

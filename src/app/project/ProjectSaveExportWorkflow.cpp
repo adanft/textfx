@@ -1,9 +1,9 @@
 #include "app/project/ProjectSaveExportWorkflow.h"
 
 #include "app/project/ProjectSession.h"
+#include "application/ports/IPageExportRenderer.h"
 #include "application/services/ProjectExportService.h"
 #include "domain/document/DocumentModel.h"
-#include "infrastructure/rendering/RenderGraph.h"
 
 namespace textfx {
 namespace {
@@ -13,54 +13,65 @@ QString toQString(const std::string &value) {
 } // namespace
 
 SaveCurrentProjectResult ProjectSaveExportWorkflow::saveCurrent(
-    ProjectSession *session, DocumentModel &document,
-    const std::filesystem::path &currentPage) {
-  if (session == nullptr) {
+    const SaveCurrentProjectRequest &request) {
+  if (request.session == nullptr) {
     return {.notification = QStringLiteral("Open a project before saving")};
   }
-  if (currentPage.empty()) {
-    document.markSaved();
+  if (request.currentPage.empty()) {
+    request.document.markSaved();
     return {.notification = QStringLiteral("Document marked saved"),
             .stateChanged = true,
             .notificationOrder = SaveNotificationOrder::AfterStateChanged};
   }
 
   std::string error;
-  if (!session->documentStore().savePage(currentPage, document, &error)) {
+  if (!request.session->documentStore().savePage(request.currentPage,
+                                                 request.document, &error)) {
     return {.notification = QStringLiteral("Could not save boxes: %1")
                             .arg(toQString(error)),
             .stateChanged = true};
   }
 
-  document.markSaved();
-  const RenderGraph graph;
-  const auto exportPath = session->exportStore().pageExportPathFor(currentPage);
-  if (graph.exportPagePng(document, currentPage, exportPath, &error)) {
+  request.document.markSaved();
+  const ProjectExportService exportService(request.session->exportStore(),
+                                           request.renderer);
+  const auto exportResult = exportService.exportPages(ExportJob{
+      .pagePaths = {request.currentPage},
+      .currentPage = request.currentPage,
+      .currentDocument = &request.document,
+  });
+  const auto &pageResult = exportResult.pages.front();
+  if (pageResult.completed) {
     return {.notification = QStringLiteral("Saved boxes and exported PNG to %1.")
-                            .arg(QString::fromStdString(exportPath.string())),
+                            .arg(QString::fromStdString(
+                                pageResult.exportPath.string())),
             .stateChanged = true};
   }
 
   return {.notification = QStringLiteral("Saved boxes, but could not export PNG: %1")
-                          .arg(toQString(error)),
+                          .arg(toQString(pageResult.error)),
           .stateChanged = true};
 }
 
-SaveAllProjectResult ProjectSaveExportWorkflow::saveAll(
-    ProjectSession *session, DocumentModel &document,
-    const std::filesystem::path &currentPage,
-    const std::vector<std::filesystem::path> &pagePaths) {
-  if (session == nullptr) {
+SaveAllProjectResult
+ProjectSaveExportWorkflow::saveAll(const SaveAllProjectRequest &request) {
+  if (request.session == nullptr) {
     return {.notification = QStringLiteral("Open a project before saving")};
   }
-  if (currentPage.empty()) {
-    const auto saveResult = saveCurrent(session, document, currentPage);
+  if (request.currentPage.empty()) {
+    const auto saveResult = saveCurrent(SaveCurrentProjectRequest{
+        .session = request.session,
+        .renderer = request.renderer,
+        .document = request.document,
+        .currentPage = request.currentPage,
+    });
     return saveResult;
   }
 
   std::string error;
-  if (session->documentStore().savePage(currentPage, document, &error)) {
-    document.markSaved();
+  if (request.session->documentStore().savePage(request.currentPage,
+                                                 request.document, &error)) {
+    request.document.markSaved();
   } else {
     return {.notification = QStringLiteral(
                 "Could not save current page; Save All stopped: %1")
@@ -68,12 +79,12 @@ SaveAllProjectResult ProjectSaveExportWorkflow::saveAll(
             .stateChanged = true};
   }
 
-  const RenderGraph graph;
-  const ProjectExportService exportService(session->exportStore(), graph);
+  const ProjectExportService exportService(request.session->exportStore(),
+                                           request.renderer);
   const auto exportResult = exportService.exportPages(ExportJob{
-      .pagePaths = pagePaths,
-      .currentPage = currentPage,
-      .currentDocument = &document,
+      .pagePaths = request.pagePaths,
+      .currentPage = request.currentPage,
+      .currentDocument = &request.document,
   });
 
   if (exportResult.failed > 0) {
