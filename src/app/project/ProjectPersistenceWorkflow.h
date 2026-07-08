@@ -10,7 +10,7 @@
 namespace textfx {
 
 class IProjectDocumentStore;
-class ProjectSession;
+class IProjectPresetStore;
 
 struct ProjectPersistenceResult {
   bool success = false;
@@ -24,11 +24,11 @@ public:
       const std::filesystem::path &pagePath, DocumentModel &document);
 
   static ProjectPersistenceResult
-  savePresets(ProjectSession *session,
+  savePresets(const IProjectPresetStore *presetStore,
               const std::vector<TextPreset> &projectPresets);
 
   static ProjectPersistenceResult
-  loadPresets(ProjectSession *session, DocumentModel &document,
+  loadPresets(const IProjectPresetStore *presetStore, DocumentModel &document,
               std::vector<TextPreset> &projectPresets);
 };
 

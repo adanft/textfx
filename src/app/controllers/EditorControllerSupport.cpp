@@ -271,8 +271,8 @@ PresetWorkflowContext EditorController::presetWorkflowContext() {
 bool EditorController::saveProjectPresets(const std::string &preferredName) {
   if (!session_)
     return false;
-  const auto result =
-      ProjectPersistenceWorkflow::savePresets(session_.get(), projectPresets_);
+  const auto result = ProjectPersistenceWorkflow::savePresets(
+      &session_->presetStore(), projectPresets_);
   if (!result.success) {
     setNotification(result.error);
     return false;
@@ -292,7 +292,7 @@ bool EditorController::reloadPresets(const std::string &preferredName) {
   document_.presets().clear();
   if (session_) {
     const auto result = ProjectPersistenceWorkflow::loadPresets(
-        session_.get(), document_, projectPresets_);
+        &session_->presetStore(), document_, projectPresets_);
     if (!result.success) {
       setNotification(result.error);
       return false;

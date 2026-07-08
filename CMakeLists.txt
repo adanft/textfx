@@ -50,6 +50,7 @@ set(TEXTFX_APPLICATION_SOURCES
     src/application/ports/IProjectDocumentStore.h
     src/application/ports/IProjectExportStore.h
     src/application/ports/IProjectPageSource.h
+    src/application/ports/IProjectPresetStore.h
     src/application/services/PageTextService.cpp
     src/application/services/PageTextService.h
     src/application/services/ProjectExportService.cpp

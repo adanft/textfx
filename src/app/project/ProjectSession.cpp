@@ -28,17 +28,6 @@ std::filesystem::path ProjectSession::rawPagePathFor(
   return store_->rawPagePathFor(cleanPagePath);
 }
 
-bool ProjectSession::savePresets(const std::vector<TextPreset> &projectPresets,
-                                 std::string *error) const {
-  return store_->savePresets(projectPresets, error);
-}
-
-bool ProjectSession::loadPresets(DocumentModel &document,
-                                 std::vector<TextPreset> &projectPresets,
-                                 std::string *error) const {
-  return store_->loadPresets(document, projectPresets, error);
-}
-
 std::filesystem::path ProjectSession::pageExportPathFor(
     const std::filesystem::path &pagePath) const {
   return store_->pageExportPathFor(pagePath);
@@ -49,5 +38,7 @@ const IProjectDocumentStore &ProjectSession::documentStore() const {
 }
 
 const IProjectExportStore &ProjectSession::exportStore() const { return *store_; }
+
+const IProjectPresetStore &ProjectSession::presetStore() const { return *store_; }
 
 } // namespace textfx

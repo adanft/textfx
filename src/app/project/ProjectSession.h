@@ -2,6 +2,7 @@
 
 #include "application/ports/IProjectDocumentStore.h"
 #include "application/ports/IProjectExportStore.h"
+#include "application/ports/IProjectPresetStore.h"
 #include "application/services/PageTextService.h"
 #include "application/services/ProjectSessionService.h"
 #include "domain/document/DocumentModel.h"
@@ -30,15 +31,11 @@ public:
   ProjectPages discoverPages() const;
   std::filesystem::path
   rawPagePathFor(const std::filesystem::path &cleanPagePath) const;
-  bool savePresets(const std::vector<TextPreset> &projectPresets,
-                   std::string *error = nullptr) const;
-  bool loadPresets(DocumentModel &document,
-                   std::vector<TextPreset> &projectPresets,
-                   std::string *error = nullptr) const;
   std::filesystem::path
   pageExportPathFor(const std::filesystem::path &pagePath) const;
   const IProjectDocumentStore &documentStore() const;
   const IProjectExportStore &exportStore() const;
+  const IProjectPresetStore &presetStore() const;
 
 private:
   std::unique_ptr<ProjectStore> store_;

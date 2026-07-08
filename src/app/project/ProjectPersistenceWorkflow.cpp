@@ -1,7 +1,7 @@
 #include "app/project/ProjectPersistenceWorkflow.h"
 
-#include "app/project/ProjectSession.h"
 #include "application/ports/IProjectDocumentStore.h"
+#include "application/ports/IProjectPresetStore.h"
 
 namespace textfx {
 namespace {
@@ -26,13 +26,14 @@ ProjectPersistenceResult ProjectPersistenceWorkflow::autosave(
 }
 
 ProjectPersistenceResult ProjectPersistenceWorkflow::savePresets(
-    ProjectSession *session, const std::vector<TextPreset> &projectPresets) {
+    const IProjectPresetStore *presetStore,
+    const std::vector<TextPreset> &projectPresets) {
   ProjectPersistenceResult result;
-  if (!session)
+  if (!presetStore)
     return result;
 
   std::string error;
-  if (!session->savePresets(projectPresets, &error)) {
+  if (!presetStore->savePresets(projectPresets, &error)) {
     result.error = toQString(error);
     return result;
   }
@@ -42,14 +43,14 @@ ProjectPersistenceResult ProjectPersistenceWorkflow::savePresets(
 }
 
 ProjectPersistenceResult ProjectPersistenceWorkflow::loadPresets(
-    ProjectSession *session, DocumentModel &document,
+    const IProjectPresetStore *presetStore, DocumentModel &document,
     std::vector<TextPreset> &projectPresets) {
   ProjectPersistenceResult result;
-  if (!session)
+  if (!presetStore)
     return result;
 
   std::string error;
-  if (!session->loadPresets(document, projectPresets, &error)) {
+  if (!presetStore->loadPresets(document, projectPresets, &error)) {
     result.error = toQString(error);
     return result;
   }
