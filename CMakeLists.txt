@@ -169,8 +169,8 @@ target_link_libraries(textfx_application
 )
 
 textfx_add_infrastructure_library(textfx_infrastructure)
-textfx_add_render_library(textfx_render textfx_infrastructure)
-textfx_add_app_core_library(textfx_app_core textfx_infrastructure textfx_render)
+textfx_add_render_library(textfx_infrastructure_rendering textfx_infrastructure)
+textfx_add_app_core_library(textfx_app_core textfx_infrastructure textfx_infrastructure_rendering)
 
 set(TEXTFX_ICON_RESOURCES
     assets/icons/flat/align-center.svg
@@ -291,10 +291,10 @@ if(BUILD_TESTING)
     textfx_add_infrastructure_library(textfx_infrastructure_test)
     target_compile_definitions(textfx_infrastructure_test PUBLIC TEXTFX_ENABLE_TEST_HOOKS=1)
 
-    textfx_add_render_library(textfx_render_test textfx_infrastructure_test)
-    target_compile_definitions(textfx_render_test PUBLIC TEXTFX_ENABLE_TEST_HOOKS=1)
+    textfx_add_render_library(textfx_infrastructure_rendering_test textfx_infrastructure_test)
+    target_compile_definitions(textfx_infrastructure_rendering_test PUBLIC TEXTFX_ENABLE_TEST_HOOKS=1)
 
-    textfx_add_app_core_library(textfx_app_core_test textfx_infrastructure_test textfx_render_test)
+    textfx_add_app_core_library(textfx_app_core_test textfx_infrastructure_test textfx_infrastructure_rendering_test)
     target_compile_definitions(textfx_app_core_test PUBLIC TEXTFX_ENABLE_TEST_HOOKS=1)
 
     function(textfx_assert_no_test_hooks target)
@@ -302,7 +302,7 @@ if(BUILD_TESTING)
         get_target_property(interface_definitions ${target} INTERFACE_COMPILE_DEFINITIONS)
         get_target_property(link_libraries ${target} LINK_LIBRARIES)
         foreach(values IN ITEMS compile_definitions interface_definitions link_libraries)
-            if(${values} MATCHES "TEXTFX_ENABLE_TEST_HOOKS|textfx_(infrastructure|render)_test|textfx_app_core_test")
+            if(${values} MATCHES "TEXTFX_ENABLE_TEST_HOOKS|textfx_(infrastructure|infrastructure_rendering)_test|textfx_app_core_test")
                 message(FATAL_ERROR "${target} must not depend on test hooks")
             endif()
         endforeach()
