@@ -103,6 +103,25 @@ Expected notes:
 - The `check` target uses `ctest --no-tests=error` so an empty test registry is a failure.
 - Render checks cover deterministic render seams and all-effects PNG export behavior.
 
+## Architecture boundaries
+
+TextFX uses a pragmatic layered layout:
+
+```text
+src/domain             core document model and rules
+src/application        use-case services, queries, and ports
+src/infrastructure     filesystem, fonts, and Qt rendering/export adapters
+src/app                Qt/QML application adapter and controller workflows
+```
+
+Allowed dependency flow is:
+
+```text
+domain <- application <- infrastructure <- app
+```
+
+`src/infrastructure/rendering` owns Qt rendering/export adapters. The `src/application` layer should depend on ports such as `IPageExportRenderer`, not include rendering adapters directly. The `src/app` Qt/QML adapter may compose infrastructure adapters at the application boundary. The `textfx_architecture_layer_check` CTest guard rejects forbidden cross-layer includes and the retired top-level `src/render` directory.
+
 ### Release package
 
 ```bash

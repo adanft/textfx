@@ -25,11 +25,15 @@ endfunction()
 
 set(TEXTFX_FOUND_LAYER_VIOLATION OFF)
 
+if(EXISTS "${TEXTFX_SOURCE_DIR}/src/render")
+    message(SEND_ERROR "src/render is retired; Qt rendering adapters belong under src/infrastructure/rendering")
+    set(TEXTFX_FOUND_LAYER_VIOLATION ON)
+endif()
+
 textfx_check_forbidden_layer_includes("domain" "app|application|infrastructure|render")
 textfx_check_forbidden_layer_includes("application" "app|infrastructure|render")
 textfx_check_forbidden_layer_includes("infrastructure" "app|render")
-textfx_check_forbidden_layer_includes("render" "app")
 
 if(TEXTFX_FOUND_LAYER_VIOLATION)
-    message(FATAL_ERROR "Architecture boundary violation. Approved dependency flow is domain <- application <- infrastructure <- render <- app; upper layers may use lower-layer ports/adapters, but lower layers must not include upper layers.")
+    message(FATAL_ERROR "Architecture boundary violation. Approved dependency flow is domain <- application <- infrastructure <- app. Qt rendering/export adapters live in infrastructure/rendering; src/application must use ports instead of including infrastructure adapters.")
 endif()
