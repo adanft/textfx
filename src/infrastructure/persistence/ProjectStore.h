@@ -6,6 +6,7 @@
 #include "application/ports/IProjectPageTextSource.h"
 #include "application/ports/IProjectPresetStore.h"
 #include "application/ports/IProjectRawPageSource.h"
+#include "application/services/ProjectLayout.h"
 #include "domain/document/DocumentModel.h"
 
 #include <filesystem>
@@ -21,11 +22,11 @@ class ProjectStore : public IProjectPageSource,
                      public IProjectExportStore,
                      public IProjectPresetStore {
 public:
-  static constexpr auto SaveFolder = ".textfx";
-  static constexpr auto CleanedFolder = "Cleaned";
-  static constexpr auto RawFolder = "Raw";
-  static constexpr auto ExportFolder = "Typeset";
-  static constexpr auto PageTextsFile = "Texts.txt";
+  static constexpr auto SaveFolder = ProjectLayout::SaveFolder;
+  static constexpr auto CleanedFolder = ProjectLayout::CleanedFolder;
+  static constexpr auto RawFolder = ProjectLayout::RawFolder;
+  static constexpr auto ExportFolder = ProjectLayout::ExportFolder;
+  static constexpr auto PageTextsFile = ProjectLayout::PageTextsFile;
 
   explicit ProjectStore(std::filesystem::path folder);
 

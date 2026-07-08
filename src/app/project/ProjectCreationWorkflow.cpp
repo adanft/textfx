@@ -1,6 +1,6 @@
 #include "app/project/ProjectCreationWorkflow.h"
 
-#include "infrastructure/persistence/ProjectStore.h"
+#include "application/services/ProjectLayout.h"
 
 #include <fstream>
 #include <optional>
@@ -76,11 +76,11 @@ void clearProjectFileReadFailure() { projectFileReadFailurePath.reset(); }
 ProjectCreationResult
 ProjectCreationWorkflow::createStructure(const std::filesystem::path &root) {
   try {
-    std::filesystem::create_directories(root / ProjectStore::CleanedFolder);
-    std::filesystem::create_directories(root / ProjectStore::RawFolder);
-    std::filesystem::create_directories(root / ProjectStore::ExportFolder);
+    std::filesystem::create_directories(root / ProjectLayout::CleanedFolder);
+    std::filesystem::create_directories(root / ProjectLayout::RawFolder);
+    std::filesystem::create_directories(root / ProjectLayout::ExportFolder);
     std::string error;
-    if (!ensureRegularFile(root / ProjectStore::PageTextsFile, &error)) {
+    if (!ensureRegularFile(root / ProjectLayout::PageTextsFile, &error)) {
       return {.success = false, .error = toQString(error)};
     }
   } catch (const std::filesystem::filesystem_error &ex) {

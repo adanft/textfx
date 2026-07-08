@@ -56,6 +56,7 @@ set(TEXTFX_APPLICATION_SOURCES
     src/application/ports/ProjectPageTexts.h
     src/application/services/PageTextService.cpp
     src/application/services/PageTextService.h
+    src/application/services/ProjectLayout.h
     src/application/services/ProjectExportService.cpp
     src/application/services/ProjectExportService.h
     src/application/services/ProjectSessionService.cpp
