@@ -1,7 +1,7 @@
 #pragma once
 
 #include "app/project/ProjectSession.h"
-#include "application/services/PageTextService.h"
+#include "application/ports/ProjectPageTexts.h"
 
 #include <QString>
 #include <QStringList>

@@ -1,5 +1,7 @@
 #include "app/project/ProjectOpenWorkflow.h"
 
+#include "application/services/ProjectSessionService.h"
+
 namespace textfx {
 
 ProjectOpenResult ProjectOpenWorkflow::open(const std::filesystem::path &folder) {
@@ -7,14 +9,15 @@ ProjectOpenResult ProjectOpenWorkflow::open(const std::filesystem::path &folder)
   result.session = std::make_unique<ProjectSession>(folder);
 
   std::string error;
-  result.pageTexts = result.session->loadPageTexts(&error);
+  result.pageTexts = result.session->pageTextSource().loadPageTexts(&error);
   if (!error.empty()) {
     result.error = QString::fromStdString(error);
     result.session.reset();
     return result;
   }
 
-  const auto pages = result.session->discoverPages();
+  const auto pages =
+      ProjectSessionService::discoverPages(result.session->pageSource());
   result.pagePaths = pages.paths;
   result.pageNames = pages.names;
   result.success = true;

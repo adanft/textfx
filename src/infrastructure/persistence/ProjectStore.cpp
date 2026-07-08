@@ -149,9 +149,8 @@ void clearPageTextsOpenFailure() { pageTextsOpenFailurePath.reset(); }
 } // namespace test_hooks
 #endif
 
-std::unordered_map<std::string, std::vector<std::string>>
-ProjectStore::loadPageTexts(std::string *error) const {
-  std::unordered_map<std::string, std::vector<std::string>> result;
+PageTextMap ProjectStore::loadPageTexts(std::string *error) const {
+  PageTextMap result;
   const auto canonicalPath = pageTextsPath();
   auto path = canonicalPath;
   if (!std::filesystem::exists(path))

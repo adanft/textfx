@@ -3,17 +3,20 @@
 #include "application/ports/IProjectDocumentStore.h"
 #include "application/ports/IProjectExportStore.h"
 #include "application/ports/IProjectPageSource.h"
+#include "application/ports/IProjectPageTextSource.h"
 #include "application/ports/IProjectPresetStore.h"
+#include "application/ports/IProjectRawPageSource.h"
 #include "domain/document/DocumentModel.h"
 
 #include <filesystem>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace textfx {
 
 class ProjectStore : public IProjectPageSource,
+                     public IProjectPageTextSource,
+                     public IProjectRawPageSource,
                      public IProjectDocumentStore,
                      public IProjectExportStore,
                      public IProjectPresetStore {
@@ -29,15 +32,14 @@ public:
   const std::filesystem::path &folder() const { return folder_; }
   std::vector<std::filesystem::path> listPagePaths() const override;
   std::filesystem::path
-  rawPagePathFor(const std::filesystem::path &cleanPagePath) const;
+  rawPagePathFor(const std::filesystem::path &cleanPagePath) const override;
   std::filesystem::path
   pageSavePathFor(const std::filesystem::path &pagePath) const;
   std::filesystem::path
   pageExportPathFor(const std::filesystem::path &pagePath) const override;
   std::filesystem::path presetsPath() const;
   std::filesystem::path pageTextsPath() const;
-  std::unordered_map<std::string, std::vector<std::string>>
-  loadPageTexts(std::string *error = nullptr) const;
+  PageTextMap loadPageTexts(std::string *error = nullptr) const override;
   bool loadPresets(DocumentModel &document,
                    std::vector<TextPreset> &projectPresets,
                    std::string *error = nullptr) const override;

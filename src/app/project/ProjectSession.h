@@ -2,15 +2,14 @@
 
 #include "application/ports/IProjectDocumentStore.h"
 #include "application/ports/IProjectExportStore.h"
+#include "application/ports/IProjectPageSource.h"
+#include "application/ports/IProjectPageTextSource.h"
 #include "application/ports/IProjectPresetStore.h"
-#include "application/services/PageTextService.h"
-#include "application/services/ProjectSessionService.h"
+#include "application/ports/IProjectRawPageSource.h"
 #include "domain/document/DocumentModel.h"
 
 #include <filesystem>
 #include <memory>
-#include <string>
-#include <vector>
 
 namespace textfx {
 
@@ -27,12 +26,11 @@ public:
   ProjectSession(const ProjectSession &) = delete;
   ProjectSession &operator=(const ProjectSession &) = delete;
 
-  PageTextMap loadPageTexts(std::string *error = nullptr) const;
-  ProjectPages discoverPages() const;
-  std::filesystem::path
-  rawPagePathFor(const std::filesystem::path &cleanPagePath) const;
   std::filesystem::path
   pageExportPathFor(const std::filesystem::path &pagePath) const;
+  const IProjectPageSource &pageSource() const;
+  const IProjectPageTextSource &pageTextSource() const;
+  const IProjectRawPageSource &rawPageSource() const;
   const IProjectDocumentStore &documentStore() const;
   const IProjectExportStore &exportStore() const;
   const IProjectPresetStore &presetStore() const;

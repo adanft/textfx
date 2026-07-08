@@ -15,22 +15,19 @@ ProjectSession::ProjectSession(ProjectSession &&) noexcept = default;
 
 ProjectSession &ProjectSession::operator=(ProjectSession &&) noexcept = default;
 
-PageTextMap ProjectSession::loadPageTexts(std::string *error) const {
-  return store_->loadPageTexts(error);
-}
-
-ProjectPages ProjectSession::discoverPages() const {
-  return ProjectSessionService::discoverPages(*store_);
-}
-
-std::filesystem::path ProjectSession::rawPagePathFor(
-    const std::filesystem::path &cleanPagePath) const {
-  return store_->rawPagePathFor(cleanPagePath);
-}
-
 std::filesystem::path ProjectSession::pageExportPathFor(
     const std::filesystem::path &pagePath) const {
   return store_->pageExportPathFor(pagePath);
+}
+
+const IProjectPageSource &ProjectSession::pageSource() const { return *store_; }
+
+const IProjectPageTextSource &ProjectSession::pageTextSource() const {
+  return *store_;
+}
+
+const IProjectRawPageSource &ProjectSession::rawPageSource() const {
+  return *store_;
 }
 
 const IProjectDocumentStore &ProjectSession::documentStore() const {

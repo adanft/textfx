@@ -34,7 +34,7 @@ QUrl EditorController::currentPageUrl() const {
 QUrl EditorController::rawPageUrl() const {
   if (!session_ || currentPage_.empty())
     return {};
-  const auto raw = session_->rawPagePathFor(currentPage_);
+  const auto raw = session_->rawPageSource().rawPagePathFor(currentPage_);
   return raw.empty() ? QUrl{} : QUrl::fromLocalFile(toQString(raw.string()));
 }
 
