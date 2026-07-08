@@ -209,6 +209,7 @@ QStringList qmlSourceFiles() {
       QStringLiteral("features/canvas/PaintLayer.qml"),
       QStringLiteral("features/rightPanel/pageEffects/PaintSection.qml"),
       QStringLiteral("features/canvas/interactions/PathHandleInteractionState.qml"),
+      QStringLiteral("features/canvas/interactions/PaintInteractionState.qml"),
       QStringLiteral("features/canvas/geometry/PerspectiveGeometry.qml"),
       QStringLiteral("features/canvas/interactions/PerspectiveInteractionState.qml"),
       QStringLiteral("features/rightPanel/RightInspectorPanel.qml"),

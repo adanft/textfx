@@ -234,6 +234,7 @@ qt_add_qml_module(textfx
         qml/features/canvas/PaintLayer.qml
         qml/features/rightPanel/pageEffects/PaintSection.qml
         qml/features/canvas/interactions/PathHandleInteractionState.qml
+            qml/features/canvas/interactions/PaintInteractionState.qml
         qml/features/canvas/geometry/PerspectiveGeometry.qml
         qml/features/canvas/interactions/PerspectiveInteractionState.qml
         qml/features/rightPanel/RightInspectorPanel.qml

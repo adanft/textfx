@@ -83,11 +83,11 @@ ApplicationWindow {
     property alias pathHandlePressLocalY: pathHandleInteraction.pathHandlePressLocalY
     property alias pathHandleStartX: pathHandleInteraction.pathHandleStartX
     property alias pathHandleStartY: pathHandleInteraction.pathHandleStartY
-    property var activePaintPoints: []
-    property var activePaintPreviewPoints: []
-    property string activePaintTarget: ""
-    property int activePaintPageIndex: -1
-    property int paintPreviewPublishRevision: 0
+    property alias activePaintPoints: paintInteraction.activePaintPoints
+    property alias activePaintPreviewPoints: paintInteraction.activePaintPreviewPoints
+    property alias activePaintTarget: paintInteraction.activePaintTarget
+    property alias activePaintPageIndex: paintInteraction.activePaintPageIndex
+    property alias paintPreviewPublishRevision: paintInteraction.paintPreviewPublishRevision
     readonly property bool pageNavigationEnabled: dragMode !== editorInteraction.dragModePaint
 
     function fitPageScale() {
@@ -428,96 +428,43 @@ ApplicationWindow {
     }
 
     function paintPoint(x, y) {
-        return [window.viewToDocumentX(x), window.viewToDocumentY(y)];
+        return paintInteraction.paintPoint(x, y);
     }
 
     function activePaintStroke(target) {
-        if (window.activePaintTarget !== target || Editor.currentPageIndex !== activePaintPageIndex || rightPanel.paintEraserMode || activePaintPreviewPoints.length === 0)
-            return {};
-
-        return {
-            "color": rightPanel.paintBrushColor,
-            "size": rightPanel.paintBrushSize,
-            "opacity": rightPanel.paintBrushOpacity,
-            "points": activePaintPreviewPoints
-        };
+        return paintInteraction.activePaintStroke(target);
     }
 
     function publishPaintPreview() {
-        paintPreviewPublishTimer.stop();
-        if (dragMode !== editorInteraction.dragModePaint || rightPanel.paintEraserMode || activePaintPoints.length === 0)
-            return ;
-        activePaintPreviewPoints = activePaintPoints.slice();
-        ++paintPreviewPublishRevision;
+        return paintInteraction.publishPaintPreview();
     }
 
     function clearPaintDrag() {
-        paintPreviewPublishTimer.stop();
-        activePaintPoints = [];
-        activePaintPreviewPoints = [];
-        activePaintTarget = "";
-        activePaintPageIndex = -1;
-        dragMode = editorInteraction.dragModeIdle;
+        return paintInteraction.clearPaintDrag();
     }
 
     function paintDragPageMatchesOrigin() {
-        return activePaintPageIndex >= 0 && Editor.currentPageIndex === activePaintPageIndex;
+        return paintInteraction.paintDragPageMatchesOrigin();
     }
 
     function schedulePaintPreviewPublish() {
-        if (!paintPreviewPublishTimer.running)
-            paintPreviewPublishTimer.start();
+        return paintInteraction.schedulePaintPreviewPublish();
     }
 
     function beginPaintDrag(x, y) {
-        if (!rightPanel.paintMode)
-            return false;
-        Editor.endTextEdit();
-        dragMode = editorInteraction.dragModePaint;
-        activePaintTarget = rightPanel.paintTarget;
-        activePaintPageIndex = Editor.currentPageIndex;
-        const point = paintPoint(x, y);
-        if (rightPanel.paintEraserMode) {
-            Editor.erasePaintAt(activePaintTarget, point[0], point[1], rightPanel.paintEraserSize);
-        } else {
-            activePaintPoints = [point];
-            publishPaintPreview();
-        }
-        return true;
+        return paintInteraction.beginPaintDrag(x, y);
     }
 
     function updatePaintDrag(x, y) {
-        if (dragMode !== editorInteraction.dragModePaint)
-            return ;
-        if (!paintDragPageMatchesOrigin()) {
-            cancelPaintDrag();
-            return ;
-        }
-        const point = paintPoint(x, y);
-        if (rightPanel.paintEraserMode) {
-            Editor.erasePaintAt(activePaintTarget, point[0], point[1], rightPanel.paintEraserSize);
-            return ;
-        }
-        activePaintPoints.push(point);
-        schedulePaintPreviewPublish();
+        return paintInteraction.updatePaintDrag(x, y);
     }
 
     function endPaintDrag() {
-        if (dragMode !== editorInteraction.dragModePaint)
-            return false;
-        if (paintDragPageMatchesOrigin())
-            publishPaintPreview();
-        if (!rightPanel.paintEraserMode && activePaintPoints.length > 0 && paintDragPageMatchesOrigin())
-            Editor.addPaintStroke(activePaintTarget, rightPanel.paintBrushColor, rightPanel.paintBrushSize, rightPanel.paintBrushOpacity, activePaintPoints);
-        clearPaintDrag();
-        return true;
+        return paintInteraction.endPaintDrag();
     }
 
     function cancelPaintDrag() {
-        if (dragMode !== editorInteraction.dragModePaint)
-            return false;
-        clearPaintDrag();
-        return true;
+        return paintInteraction.cancelPaintDrag();
     }
 
     width: 1280
@@ -538,14 +485,6 @@ ApplicationWindow {
         readonly property int dragModeMove: 7
         readonly property int dragModePathHandle: 8
         readonly property int dragModePaint: 9
-    }
-
-    Timer {
-        id: paintPreviewPublishTimer
-
-        interval: 16
-        repeat: false
-        onTriggered: window.publishPaintPreview()
     }
 
     QtObject {
@@ -583,6 +522,21 @@ ApplicationWindow {
         idleMode: editorInteraction.dragModeIdle
         panMode: editorInteraction.dragModePan
         createMode: editorInteraction.dragModeCreate
+    }
+
+    PaintInteractionState {
+        id: paintInteraction
+
+        objectName: "paintInteractionState"
+        editor: window.editor
+        paintPanel: rightPanel
+        dragMode: window.dragMode
+        dragModeIdle: editorInteraction.dragModeIdle
+        dragModePaint: editorInteraction.dragModePaint
+        documentPoint: (x, y) => [window.viewToDocumentX(x), window.viewToDocumentY(y)]
+        setDragMode: (mode) => {
+            window.dragMode = mode;
+        }
     }
 
     BoxResizeInteractionState {
