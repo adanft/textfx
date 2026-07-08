@@ -15,11 +15,6 @@ ProjectSession::ProjectSession(ProjectSession &&) noexcept = default;
 
 ProjectSession &ProjectSession::operator=(ProjectSession &&) noexcept = default;
 
-std::filesystem::path ProjectSession::pageExportPathFor(
-    const std::filesystem::path &pagePath) const {
-  return store_->pageExportPathFor(pagePath);
-}
-
 const IProjectPageSource &ProjectSession::pageSource() const { return *store_; }
 
 const IProjectPageTextSource &ProjectSession::pageTextSource() const {

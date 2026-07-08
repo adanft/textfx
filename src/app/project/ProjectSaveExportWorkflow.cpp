@@ -34,7 +34,7 @@ SaveCurrentProjectResult ProjectSaveExportWorkflow::saveCurrent(
 
   document.markSaved();
   const RenderGraph graph;
-  const auto exportPath = session->pageExportPathFor(currentPage);
+  const auto exportPath = session->exportStore().pageExportPathFor(currentPage);
   if (graph.exportPagePng(document, currentPage, exportPath, &error)) {
     return {.notification = QStringLiteral("Saved boxes and exported PNG to %1.")
                             .arg(QString::fromStdString(exportPath.string())),

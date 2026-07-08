@@ -26,8 +26,6 @@ public:
   ProjectSession(const ProjectSession &) = delete;
   ProjectSession &operator=(const ProjectSession &) = delete;
 
-  std::filesystem::path
-  pageExportPathFor(const std::filesystem::path &pagePath) const;
   const IProjectPageSource &pageSource() const;
   const IProjectPageTextSource &pageTextSource() const;
   const IProjectRawPageSource &rawPageSource() const;
