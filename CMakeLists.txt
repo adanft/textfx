@@ -163,6 +163,21 @@ function(textfx_add_app_core_library target infrastructure_target render_target)
     )
 endfunction()
 
+function(textfx_assert_no_layer_target_dependency target forbidden_targets)
+    foreach(property IN ITEMS LINK_LIBRARIES INTERFACE_LINK_LIBRARIES)
+        get_target_property(link_libraries ${target} ${property})
+        if(NOT link_libraries)
+            continue()
+        endif()
+
+        foreach(link_library IN LISTS link_libraries)
+            if(link_library MATCHES "${forbidden_targets}")
+                message(FATAL_ERROR "${target} must not link ${link_library}")
+            endif()
+        endforeach()
+    endforeach()
+endfunction()
+
 add_library(textfx_domain STATIC ${TEXTFX_DOMAIN_SOURCES})
 textfx_configure_includes(textfx_domain)
 
@@ -256,6 +271,11 @@ target_link_libraries(textfx
         Qt6::Quick
         Qt6::QuickDialogs2
 )
+
+textfx_assert_no_layer_target_dependency(textfx_domain "^textfx_(application|infrastructure|infrastructure_rendering|app_core)$")
+textfx_assert_no_layer_target_dependency(textfx_application "^textfx_(infrastructure|infrastructure_rendering|app_core)$")
+textfx_assert_no_layer_target_dependency(textfx_infrastructure "^textfx_(infrastructure_rendering|app_core)$")
+textfx_assert_no_layer_target_dependency(textfx_infrastructure_rendering "^textfx_app_core$")
 
 install(TARGETS textfx
     BUNDLE DESTINATION .
