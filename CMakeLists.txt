@@ -229,10 +229,10 @@ qt_add_qml_module(textfx
         qml/features/rightPanel/layers/LayersSection.qml
         qml/features/leftPanel/LeftInspectorPanel.qml
         qml/features/rightPanel/navigation/NavigationSection.qml
-        qml/features/rightPanel/PageEffectsSection.qml
+        qml/features/rightPanel/pageEffects/PageEffectsSection.qml
         qml/features/leftPanel/PageTextsSection.qml
         qml/features/canvas/PaintLayer.qml
-        qml/features/rightPanel/PaintSection.qml
+        qml/features/rightPanel/pageEffects/PaintSection.qml
         qml/features/canvas/interactions/PathHandleInteractionState.qml
         qml/features/canvas/geometry/PerspectiveGeometry.qml
         qml/features/canvas/interactions/PerspectiveInteractionState.qml

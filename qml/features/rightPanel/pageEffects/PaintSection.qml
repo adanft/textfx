@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../constants/UiConstants.js" as UiConstants
-import "../../shared"
+import "../../../constants/UiConstants.js" as UiConstants
+import "../../../shared"
 
 ColumnLayout {
     id: paintSection

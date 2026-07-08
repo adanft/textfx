@@ -5,6 +5,7 @@ import "../../constants/UiConstants.js" as UiConstants
 import "../../shared"
 import "boxEffects"
 import "navigation"
+import "pageEffects"
 import "textEffects"
 import "layers"
 
