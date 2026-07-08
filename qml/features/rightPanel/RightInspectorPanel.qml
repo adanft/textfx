@@ -3,6 +3,9 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../constants/UiConstants.js" as UiConstants
 import "../../shared"
+import "navigation"
+import "textEffects"
+import "layers"
 
 Pane {
     id: rightInspectorPanel

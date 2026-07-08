@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import "../../constants/UiConstants.js" as UiConstants
+import "../../../constants/UiConstants.js" as UiConstants
 
 ColumnLayout {
     id: layersSection

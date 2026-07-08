@@ -224,9 +224,9 @@ qt_add_qml_module(textfx
         qml/features/canvas/CanvasView.qml
         qml/app/EditorChrome.qml
         qml/commands/EditorCommands.qml
-        qml/features/rightPanel/LayersSection.qml
+        qml/features/rightPanel/layers/LayersSection.qml
         qml/features/leftPanel/LeftInspectorPanel.qml
-        qml/features/rightPanel/NavigationSection.qml
+        qml/features/rightPanel/navigation/NavigationSection.qml
         qml/features/rightPanel/PageEffectsSection.qml
         qml/features/leftPanel/PageTextsSection.qml
         qml/features/canvas/PaintLayer.qml
@@ -239,7 +239,7 @@ qt_add_qml_module(textfx
         qml/features/menus/EditMenu.qml
         qml/features/menus/ViewMenu.qml
         qml/shared/SelectedBoxState.qml
-        qml/features/rightPanel/TextEffectsSection.qml
+        qml/features/rightPanel/textEffects/TextEffectsSection.qml
         qml/features/rightPanel/textEffects/OutlineEffectEditor.qml
         qml/features/rightPanel/textEffects/BlurEffectEditor.qml
         qml/features/rightPanel/textEffects/ShadowEffectEditor.qml
