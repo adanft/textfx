@@ -1,5 +1,6 @@
 #pragma once
 
+#include "application/ports/IProjectDocumentStore.h"
 #include "application/ports/IProjectExportStore.h"
 #include "application/services/PageTextService.h"
 #include "application/services/ProjectSessionService.h"
@@ -29,13 +30,6 @@ public:
   ProjectPages discoverPages() const;
   std::filesystem::path
   rawPagePathFor(const std::filesystem::path &cleanPagePath) const;
-  bool loadPage(const std::filesystem::path &pagePath, DocumentModel &document,
-                std::string *error = nullptr) const;
-  bool autosave(const std::filesystem::path &pagePath, DocumentModel &document,
-                std::string *error = nullptr) const;
-  bool savePage(const std::filesystem::path &pagePath,
-                const DocumentModel &document,
-                std::string *error = nullptr) const;
   bool savePresets(const std::vector<TextPreset> &projectPresets,
                    std::string *error = nullptr) const;
   bool loadPresets(DocumentModel &document,
@@ -43,6 +37,7 @@ public:
                    std::string *error = nullptr) const;
   std::filesystem::path
   pageExportPathFor(const std::filesystem::path &pagePath) const;
+  const IProjectDocumentStore &documentStore() const;
   const IProjectExportStore &exportStore() const;
 
 private:

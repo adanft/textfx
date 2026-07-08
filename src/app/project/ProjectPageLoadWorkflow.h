@@ -9,7 +9,7 @@
 
 namespace textfx {
 
-class ProjectSession;
+class IProjectDocumentStore;
 
 struct ProjectPageLoadResult {
   bool success = false;
@@ -25,7 +25,7 @@ public:
       int requestedIndex, const std::vector<std::filesystem::path> &pagePaths);
 
   static ProjectPageLoadResult
-  load(ProjectSession *session, int requestedIndex,
+  load(const IProjectDocumentStore *documentStore, int requestedIndex,
        const std::vector<std::filesystem::path> &pagePaths);
 };
 

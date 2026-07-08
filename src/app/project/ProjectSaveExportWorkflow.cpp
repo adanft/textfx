@@ -26,7 +26,7 @@ SaveCurrentProjectResult ProjectSaveExportWorkflow::saveCurrent(
   }
 
   std::string error;
-  if (!session->savePage(currentPage, document, &error)) {
+  if (!session->documentStore().savePage(currentPage, document, &error)) {
     return {.notification = QStringLiteral("Could not save boxes: %1")
                             .arg(toQString(error)),
             .stateChanged = true};
@@ -59,7 +59,7 @@ SaveAllProjectResult ProjectSaveExportWorkflow::saveAll(
   }
 
   std::string error;
-  if (session->savePage(currentPage, document, &error)) {
+  if (session->documentStore().savePage(currentPage, document, &error)) {
     document.markSaved();
   } else {
     return {.notification = QStringLiteral(

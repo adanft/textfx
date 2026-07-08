@@ -28,24 +28,6 @@ std::filesystem::path ProjectSession::rawPagePathFor(
   return store_->rawPagePathFor(cleanPagePath);
 }
 
-bool ProjectSession::loadPage(const std::filesystem::path &pagePath,
-                              DocumentModel &document,
-                              std::string *error) const {
-  return store_->loadPage(pagePath, document, error);
-}
-
-bool ProjectSession::autosave(const std::filesystem::path &pagePath,
-                              DocumentModel &document,
-                              std::string *error) const {
-  return store_->autosave(pagePath, document, error);
-}
-
-bool ProjectSession::savePage(const std::filesystem::path &pagePath,
-                              const DocumentModel &document,
-                              std::string *error) const {
-  return store_->savePage(pagePath, document, error);
-}
-
 bool ProjectSession::savePresets(const std::vector<TextPreset> &projectPresets,
                                  std::string *error) const {
   return store_->savePresets(projectPresets, error);
@@ -60,6 +42,10 @@ bool ProjectSession::loadPresets(DocumentModel &document,
 std::filesystem::path ProjectSession::pageExportPathFor(
     const std::filesystem::path &pagePath) const {
   return store_->pageExportPathFor(pagePath);
+}
+
+const IProjectDocumentStore &ProjectSession::documentStore() const {
+  return *store_;
 }
 
 const IProjectExportStore &ProjectSession::exportStore() const { return *store_; }

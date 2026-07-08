@@ -9,6 +9,7 @@
 
 namespace textfx {
 
+class IProjectDocumentStore;
 class ProjectSession;
 
 struct ProjectPersistenceResult {
@@ -19,8 +20,8 @@ struct ProjectPersistenceResult {
 class ProjectPersistenceWorkflow {
 public:
   static ProjectPersistenceResult autosave(
-      ProjectSession *session, const std::filesystem::path &pagePath,
-      DocumentModel &document);
+      const IProjectDocumentStore *documentStore,
+      const std::filesystem::path &pagePath, DocumentModel &document);
 
   static ProjectPersistenceResult
   savePresets(ProjectSession *session,

@@ -217,7 +217,8 @@ bool EditorController::loadPageAt(int index) {
   if (!autosaveCurrent())
     return false;
 
-  auto result = ProjectPageLoadWorkflow::load(session_.get(), index, pagePaths_);
+  auto result = ProjectPageLoadWorkflow::load(&session_->documentStore(), index,
+                                              pagePaths_);
   if (!result.success) {
     if (!result.error.isEmpty())
       setNotification(result.error);
@@ -242,8 +243,8 @@ bool EditorController::autosaveCurrent() {
   if (!session_ || currentPage_.empty())
     return true;
   const bool wasDirty = document_.dirty();
-  const auto result =
-      ProjectPersistenceWorkflow::autosave(session_.get(), currentPage_, document_);
+  const auto result = ProjectPersistenceWorkflow::autosave(
+      &session_->documentStore(), currentPage_, document_);
   if (!result.success) {
     setNotification(result.error);
     return false;

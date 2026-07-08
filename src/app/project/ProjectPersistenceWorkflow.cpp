@@ -1,6 +1,7 @@
 #include "app/project/ProjectPersistenceWorkflow.h"
 
 #include "app/project/ProjectSession.h"
+#include "application/ports/IProjectDocumentStore.h"
 
 namespace textfx {
 namespace {
@@ -8,14 +9,14 @@ QString toQString(const std::string &value) { return QString::fromStdString(valu
 } // namespace
 
 ProjectPersistenceResult ProjectPersistenceWorkflow::autosave(
-    ProjectSession *session, const std::filesystem::path &pagePath,
-    DocumentModel &document) {
+    const IProjectDocumentStore *documentStore,
+    const std::filesystem::path &pagePath, DocumentModel &document) {
   ProjectPersistenceResult result;
-  if (!session)
+  if (!documentStore)
     return result;
 
   std::string error;
-  if (!session->autosave(pagePath, document, &error)) {
+  if (!documentStore->autosave(pagePath, document, &error)) {
     result.error = toQString(error);
     return result;
   }
