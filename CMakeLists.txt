@@ -87,6 +87,8 @@ set(TEXTFX_RENDER_SOURCES
     src/infrastructure/rendering/RenderGraph.h
     src/infrastructure/rendering/RenderTextLayout.cpp
     src/infrastructure/rendering/RenderTextLayout.h
+    src/infrastructure/rendering/TextComposition.cpp
+    src/infrastructure/rendering/TextComposition.h
 )
 
 set(TEXTFX_APP_SOURCES
@@ -401,6 +403,22 @@ if(BUILD_TESTING)
     endif()
 
     if(Qt6Test_FOUND)
+        qt_add_executable(textfx_text_composition_tests
+            tests/text_composition_tests.cpp
+        )
+        target_link_libraries(textfx_text_composition_tests
+            PRIVATE
+                textfx_infrastructure_rendering
+                Qt6::Test
+        )
+        add_test(NAME textfx_text_composition_tests COMMAND textfx_text_composition_tests)
+        set_tests_properties(textfx_text_composition_tests PROPERTIES
+            LABELS "render;composition"
+            TIMEOUT 30
+            ENVIRONMENT "${TEXTFX_QT_TEST_ENVIRONMENT}"
+        )
+        list(APPEND TEXTFX_TEST_TARGETS textfx_text_composition_tests)
+
         qt_add_executable(textfx_qt_smoke_tests
             tests/qt_smoke_tests.cpp
             tests/qt_test_helpers.cpp

@@ -3,6 +3,7 @@
 #include "domain/AuthoringLimits.h"
 #include "infrastructure/rendering/GaussianBlur.h"
 #include "infrastructure/fonts/FontResolver.h"
+#include "infrastructure/rendering/TextComposition.h"
 #include "infrastructure/rendering/RenderTextLayout.h"
 
 #include <QColor>
@@ -136,25 +137,12 @@ void drawPaintStrokes(QPainter &painter, const std::vector<PaintStroke> &strokes
   painter.restore();
 }
 
-std::vector<qreal>
-stackedOutlineStrokeWidths(const std::vector<OutlineLayer> &layers) {
-  std::vector<qreal> result(layers.size(), 0.0);
-  qreal cumulativeRadius = 0.0;
-  for (std::size_t i = 0; i < layers.size(); ++i) {
-    const auto &layer = layers[i];
-    if (!layer.enabled || layer.size <= 0)
-      continue;
-    cumulativeRadius += layer.size;
-    result[i] = cumulativeRadius * 2.0;
-  }
-  return result;
-}
-
-qreal maxEnabledOutlineStrokeWidth(const std::vector<OutlineLayer> &layers) {
-  const auto strokeWidths = stackedOutlineStrokeWidths(layers);
-  qreal result = 0.0;
-  for (const qreal strokeWidth : strokeWidths)
-    result = std::max(result, strokeWidth);
+QVector<TextCompositionOutlineLayer>
+compositionOutlineLayers(const std::vector<OutlineLayer> &layers) {
+  QVector<TextCompositionOutlineLayer> result;
+  result.reserve(static_cast<qsizetype>(layers.size()));
+  for (const OutlineLayer &layer : layers)
+    result.append({layer.enabled, static_cast<qreal>(layer.size)});
   return result;
 }
 
@@ -196,54 +184,36 @@ void drawTextBox(QPainter &painter, const TextBox &box) {
     return;
   const auto font = qFontFor(box);
   const auto outlineLayers = paintOutlineLayers(box.effects);
+  const QVector<TextCompositionOutlineLayer> compositionLayers =
+      compositionOutlineLayers(outlineLayers);
   const bool hasExplicitOutlineLayers =
       box.effects.outlineLayersSet || !box.effects.outlineLayers.empty();
-  const auto outlineStrokeWidths = !hasExplicitOutlineLayers
-                                        ? std::vector<qreal>{static_cast<qreal>(
-                                              box.effects.outlineSize)}
-                                        : stackedOutlineStrokeWidths(outlineLayers);
+  const QVector<qreal> outlineStrokeWidths =
+      !hasExplicitOutlineLayers
+          ? QVector<qreal>{static_cast<qreal>(box.effects.outlineSize)}
+          : stackedOutlineStrokeWidths(compositionLayers);
   const qreal outline = !hasExplicitOutlineLayers
-                             ? (box.effects.outlineEnabled ? box.effects.outlineSize
-                                                           : 0)
-                             : maxEnabledOutlineStrokeWidth(outlineLayers);
-  const qreal inset = outline > 0 ? outline / 2.0 : 0.0;
+          ? (box.effects.outlineEnabled ? box.effects.outlineSize
+                                                             : 0)
+                               : maximumOutlineStrokeWidth(compositionLayers);
+  const qreal inset = outlineInset(outline);
   const QVector<QPointF> normalizedPoints =
       normalizedPathPoints(box.effects.pathPoints);
   const TextLayoutOptions layoutOptions = layoutOptionsFor(box, inset);
-  const bool usingPathText = box.effects.pathEnabled &&
-                             normalizedPoints.size() > 1 &&
-                             !isNeutralFlatPath(normalizedPoints);
-  auto path =
-      usingPathText
-          ? pathTextLayoutPath(layoutOptions, font, normalizedPoints,
-                               box.effects.pathMode == 1,
-                               box.style.fontSize + box.style.lineSpacing)
-          : textLayoutPath(layoutOptions, font);
-  QRectF paintedBounds = path.boundingRect();
-  if (outline > 0) {
-    QPainterPathStroker stroker;
-    stroker.setWidth(outline);
-    stroker.setJoinStyle(Qt::RoundJoin);
-    paintedBounds =
-        paintedBounds.united(stroker.createStroke(path).boundingRect());
-  }
-  qreal dx = 0.0;
-  qreal dy = 0.0;
-  if (paintedBounds.left() < 0.0)
-    dx = -paintedBounds.left();
-  else if (paintedBounds.width() <= box.bounds.w &&
-           paintedBounds.right() > box.bounds.w)
-    dx = box.bounds.w - paintedBounds.right();
-  if (!usingPathText) {
-    if (paintedBounds.top() < 0.0)
-      dy = -paintedBounds.top();
-    else if (paintedBounds.height() <= box.bounds.h &&
-             paintedBounds.bottom() > box.bounds.h)
-      dy = box.bounds.h - paintedBounds.bottom();
-  }
-  if (!qFuzzyIsNull(dx) || !qFuzzyIsNull(dy)) {
-    path.translate(dx, dy);
-    paintedBounds.translate(dx, dy);
+  const bool usingPathText = usesPathText(box.effects.pathEnabled, normalizedPoints);
+  const TextLayoutPathPolicy pathPolicy{
+      .enabled = box.effects.pathEnabled,
+      .normalizedPoints = normalizedPoints,
+      .smooth = box.effects.pathMode == 1,
+      .lineSpacing = static_cast<qreal>(box.style.fontSize +
+                                        box.style.lineSpacing)};
+  auto path = composeTextLayoutPath(layoutOptions, font, pathPolicy);
+  QRectF paintedBounds = paintedTextBounds(path, outline);
+  const QPointF translation = translationToConstrainTextBounds(
+      paintedBounds, box.bounds.w, box.bounds.h, usingPathText);
+  if (!qFuzzyIsNull(translation.x()) || !qFuzzyIsNull(translation.y())) {
+    path.translate(translation);
+    paintedBounds.translate(translation);
   }
   QRectF effectBounds = paintedBounds;
   const int shadowRadius =
@@ -251,11 +221,10 @@ void drawTextBox(QPainter &painter, const TextBox &box) {
           ? cappedBlurKernelRadius(box.effects.shadowBlurSize)
           : 0;
   if (box.effects.shadowEnabled) {
-    effectBounds = effectBounds.united(
-        path.boundingRect()
-            .translated(box.effects.shadowOffsetX, box.effects.shadowOffsetY)
-            .adjusted(-shadowRadius, -shadowRadius, shadowRadius,
-                      shadowRadius));
+    effectBounds = effectBoundsForShadow(
+        paintedBounds, path,
+        {static_cast<qreal>(box.effects.shadowOffsetX),
+         static_cast<qreal>(box.effects.shadowOffsetY)}, shadowRadius);
   }
 
   painter.save();

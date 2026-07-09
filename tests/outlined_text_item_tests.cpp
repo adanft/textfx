@@ -2,6 +2,7 @@
 #include "qt_test_helpers.h"
 #include "infrastructure/rendering/RenderGraph.h"
 #include "infrastructure/rendering/RenderTextLayout.h"
+#include "infrastructure/rendering/GaussianBlur.h"
 #include "app/qt/OutlinedTextItem.h"
 
 #include <QColor>
@@ -881,6 +882,107 @@ private slots:
     QVERIFY(liveBlue > 0);
     QVERIFY(exportRed > 0);
     QVERIFY(exportBlue > 0);
+  }
+
+  void legacyOutlineEffectsMatchExportAndKeepFractionalPreviewBlurPolicy() {
+    const QColor background(240, 240, 240, 255);
+    constexpr int documentWidth = 500;
+    constexpr int documentHeight = 300;
+    constexpr qreal previewScale = 0.75;
+
+    auto configurePreview = [&](OutlinedTextItem &item, qreal scale) {
+      item.setWidth(documentWidth * scale);
+      item.setHeight(documentHeight * scale);
+      item.setText(QStringLiteral("Italic fj"));
+      item.setFontFamily(QStringLiteral("sans-serif"));
+      item.setPixelSize(64);
+      item.setItalic(true);
+      item.setColor(Qt::black);
+      item.setOutlineColor(Qt::red);
+      item.setOutlineSize(17);
+      item.setShadowEnabled(true);
+      item.setShadowColor(QColor(0, 0, 0, 160));
+      item.setShadowOffsetX(18);
+      item.setShadowOffsetY(12);
+      item.setShadowBlurSize(100);
+      item.setBlurSize(100);
+      item.setRenderScale(scale);
+    };
+
+    auto renderPreview = [&](qreal scale, OutlinedTextItem *configured = nullptr) {
+      OutlinedTextItem localItem;
+      OutlinedTextItem &item = configured ? *configured : localItem;
+      if (!configured)
+        configurePreview(item, scale);
+      QImage image(static_cast<int>(std::ceil(documentWidth * scale)),
+                   static_cast<int>(std::ceil(documentHeight * scale)),
+                   QImage::Format_ARGB32_Premultiplied);
+      image.fill(background);
+      QPainter painter(&image);
+      item.paint(&painter);
+      return image;
+    };
+
+    DocumentModel document;
+    TextBox box;
+    box.text = "Italic fj";
+    box.bounds = {0.0, 0.0, documentWidth, documentHeight};
+    box.style.fontFamily = "sans-serif";
+    box.style.fontSize = 64;
+    box.style.italic = true;
+    box.style.textColor = "000000ff";
+    box.effects.outlineEnabled = true;
+    box.effects.outlineColor = "ff0000ff";
+    box.effects.outlineSize = 17;
+    box.effects.shadowEnabled = true;
+    box.effects.shadowColor = "000000a0";
+    box.effects.shadowOffsetX = 18;
+    box.effects.shadowOffsetY = 12;
+    box.effects.shadowBlurSize = 100;
+    box.effects.blurEnabled = true;
+    box.effects.blurSize = 100;
+    document.addTextBox(box);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString pagePath = dir.filePath(QStringLiteral("page.png"));
+    const QString exportPath = dir.filePath(QStringLiteral("export.png"));
+    QImage page(documentWidth, documentHeight, QImage::Format_RGBA8888);
+    page.fill(background);
+    QVERIFY(page.save(pagePath, "PNG"));
+
+    std::string error;
+    const RenderGraph graph;
+    QVERIFY2(graph.exportPagePng(document, pagePath.toStdString(),
+                                 exportPath.toStdString(), &error),
+             error.c_str());
+    const QImage exported(exportPath);
+    QVERIFY(!exported.isNull());
+
+    OutlinedTextItem fullScaleItem;
+    configurePreview(fullScaleItem, 1.0);
+    const QImage fullScalePreview = renderPreview(1.0, &fullScaleItem);
+    const QRect fullScaleBounds = visibleBounds(fullScalePreview, background);
+    const QRect exportBounds = visibleBounds(exported, background);
+    QVERIFY(!fullScaleBounds.isEmpty());
+    QVERIFY(!exportBounds.isEmpty());
+    QVERIFY(fullScaleItem.editLayoutPaintOffsetX() > 0.0 ||
+            fullScaleItem.editLayoutPaintOffsetY() > 0.0);
+    QVERIFY(std::abs(fullScaleBounds.left() - exportBounds.left()) <= 2);
+    QVERIFY(std::abs(fullScaleBounds.top() - exportBounds.top()) <= 2);
+    QVERIFY(std::abs(fullScaleBounds.width() - exportBounds.width()) <= 3);
+    QVERIFY(std::abs(fullScaleBounds.height() - exportBounds.height()) <= 3);
+
+    const QImage fractionalPreview = renderPreview(previewScale);
+    const QRect fractionalBounds = visibleBounds(fractionalPreview, background);
+    QVERIFY(!fractionalBounds.isEmpty());
+    QCOMPARE(cappedBlurKernelRadius(100 * previewScale), 32);
+    QCOMPARE(cappedBlurKernelRadius(100), 32);
+    QVERIFY2(fractionalBounds.width() >
+                 std::ceil(exportBounds.width() * previewScale) + 5,
+             qPrintable(QStringLiteral("fractional width=%1 export width=%2")
+                            .arg(fractionalBounds.width())
+                            .arg(exportBounds.width())));
   }
 
   void pathPreservesMultilineTextOnFlatPath() {
