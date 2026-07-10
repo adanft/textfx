@@ -3,12 +3,12 @@
 #include "domain/AuthoringLimits.h"
 #include "infrastructure/rendering/GaussianBlur.h"
 #include "infrastructure/fonts/FontResolver.h"
+#include "infrastructure/rendering/RenderPaintSpecs.h"
 #include "infrastructure/rendering/TextComposition.h"
 #include "infrastructure/rendering/RenderTextLayout.h"
 
 #include <QFont>
 #include <QJsonDocument>
-#include <QLinearGradient>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPainterPathStroker>
@@ -460,15 +460,13 @@ void OutlinedTextItem::paint(QPainter *painter) {
       stroke.setFillRule(Qt::WindingFill);
       target.fillPath(stroke, outline->color);
     }
-    if (gradientEnabled_) {
-      QLinearGradient gradient(0, 0, gradientDirection_ == 1 ? layoutWidth : 0,
-                               gradientDirection_ == 1 ? 0 : layoutHeight);
-      gradient.setColorAt(0.0, gradientColorA_);
-      gradient.setColorAt(1.0, gradientColorB_);
-      target.fillPath(path, gradient);
-    } else {
-      target.fillPath(path, color_);
-    }
+    target.fillPath(path, textFillBrush({.gradientEnabled = gradientEnabled_,
+                                         .baseColor = color_,
+                                         .gradientDirection = gradientDirection_,
+                                         .gradientColorA = gradientColorA_,
+                                         .gradientColorB = gradientColorB_,
+                                         .layoutWidth = layoutWidth,
+                                         .layoutHeight = layoutHeight}));
   };
   painter->save();
   // Keep blur execution in device pixels; export has document scale 1.0.

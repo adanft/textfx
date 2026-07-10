@@ -85,6 +85,8 @@ set(TEXTFX_RENDER_SOURCES
     src/infrastructure/rendering/GaussianBlur.h
     src/infrastructure/rendering/RenderGraph.cpp
     src/infrastructure/rendering/RenderGraph.h
+    src/infrastructure/rendering/RenderPaintSpecs.cpp
+    src/infrastructure/rendering/RenderPaintSpecs.h
     src/infrastructure/rendering/RenderTextLayout.cpp
     src/infrastructure/rendering/RenderTextLayout.h
     src/infrastructure/rendering/TextComposition.cpp

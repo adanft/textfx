@@ -3,13 +3,13 @@
 #include "domain/AuthoringLimits.h"
 #include "infrastructure/rendering/GaussianBlur.h"
 #include "infrastructure/fonts/FontResolver.h"
+#include "infrastructure/rendering/RenderPaintSpecs.h"
 #include "infrastructure/rendering/TextComposition.h"
 #include "infrastructure/rendering/RenderTextLayout.h"
 
 #include <QColor>
 #include <QFont>
 #include <QImage>
-#include <QLinearGradient>
 #include <QPainter>
 #include <QPainterPath>
 #include <QImageWriter>
@@ -92,14 +92,13 @@ QVector<QPointF> normalizedPathPoints(const std::vector<Point> &points) {
 }
 
 QBrush fillBrushFor(const TextBox &box) {
-  if (!box.effects.gradientEnabled)
-    return QBrush(toQColor(box.style.textColor));
-  QLinearGradient gradient(
-      0, 0, box.effects.gradientDirection == 1 ? box.bounds.w : 0,
-      box.effects.gradientDirection == 1 ? 0 : box.bounds.h);
-  gradient.setColorAt(0.0, toQColor(box.effects.gradientColorA));
-  gradient.setColorAt(1.0, toQColor(box.effects.gradientColorB));
-  return QBrush(gradient);
+  return textFillBrush({.gradientEnabled = box.effects.gradientEnabled,
+                        .baseColor = toQColor(box.style.textColor),
+                        .gradientDirection = box.effects.gradientDirection,
+                        .gradientColorA = toQColor(box.effects.gradientColorA),
+                        .gradientColorB = toQColor(box.effects.gradientColorB),
+                        .layoutWidth = box.bounds.w,
+                        .layoutHeight = box.bounds.h});
 }
 
 std::vector<OutlineLayer> effectiveOutlineLayers(const TextEffects &effects) {
