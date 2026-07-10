@@ -1134,6 +1134,96 @@ private slots:
                                      .arg(visibleBounds(exported, background).height()))));
   }
 
+  void blurMatchesExportAtFullScale() {
+    const QColor background(240, 240, 240, 255);
+    constexpr int width = 260;
+    constexpr int height = 120;
+
+    auto renderLive = [&](int blurSize) {
+      OutlinedTextItem item;
+      item.setWidth(width);
+      item.setHeight(height);
+      item.setText(QStringLiteral("Blur"));
+      item.setFontFamily(QStringLiteral("sans-serif"));
+      item.setPixelSize(64);
+      item.setColor(Qt::black);
+      item.setBlurSize(blurSize);
+      item.setRenderScale(1.0);
+
+      QImage image(width, height, QImage::Format_ARGB32_Premultiplied);
+      image.fill(background);
+      QPainter painter(&image);
+      item.paint(&painter);
+      painter.end();
+      return image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    };
+
+    const QImage sharpLive = renderLive(0);
+    QImage live = renderLive(12);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString pagePath = dir.filePath(QStringLiteral("page.png"));
+    const QString exportPath = dir.filePath(QStringLiteral("export.png"));
+    QImage page(width, height, QImage::Format_ARGB32_Premultiplied);
+    page.fill(background);
+    QVERIFY(page.save(pagePath, "PNG"));
+
+    DocumentModel document;
+    TextBox box;
+    box.text = "Blur";
+    box.bounds = {0.0, 0.0, width, height};
+    box.style.fontFamily = "sans-serif";
+    box.style.fontSize = 64;
+    box.style.textColor = "000000ff";
+    box.effects.blurEnabled = true;
+    box.effects.blurSize = 12;
+    document.addTextBox(box);
+
+    std::string error;
+    const RenderGraph graph;
+    QVERIFY2(graph.exportPagePng(document, pagePath.toStdString(),
+                                 exportPath.toStdString(), &error),
+             error.c_str());
+    QImage exported(exportPath);
+    QVERIFY(!exported.isNull());
+    exported = exported.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+
+    QVERIFY(imagesDiffer(sharpLive, live));
+    constexpr int minimumBlurGradientPixels = 100;
+    const auto softPixels = [](const QImage &image) {
+      return countPixels(image, [](const QColor &color) {
+        return color.red() > 40 && color.red() < 220 && color.green() > 40 &&
+               color.green() < 220 && color.blue() > 40 && color.blue() < 220 &&
+               color.alpha() > 0;
+      });
+    };
+    QVERIFY(softPixels(live) > minimumBlurGradientPixels);
+    QVERIFY(softPixels(exported) > minimumBlurGradientPixels);
+
+    int differingPixels = 0;
+    for (int y = 0; y < live.height(); ++y) {
+      for (int x = 0; x < live.width(); ++x) {
+        if (live.pixelColor(x, y) != exported.pixelColor(x, y))
+          ++differingPixels;
+      }
+    }
+
+    QVERIFY2(differingPixels == 0,
+             qPrintable(QStringLiteral("differingPixels=%1 liveBounds=%2 exportBounds=%3")
+                            .arg(differingPixels)
+                            .arg(QStringLiteral("%1,%2 %3x%4")
+                                     .arg(visibleBounds(live, background).x())
+                                     .arg(visibleBounds(live, background).y())
+                                     .arg(visibleBounds(live, background).width())
+                                     .arg(visibleBounds(live, background).height()))
+                            .arg(QStringLiteral("%1,%2 %3x%4")
+                                     .arg(visibleBounds(exported, background).x())
+                                     .arg(visibleBounds(exported, background).y())
+                                     .arg(visibleBounds(exported, background).width())
+                                     .arg(visibleBounds(exported, background).height()))));
+  }
+
   void gradientAndPathAffectRenderedText() {
     auto render = [](bool gradient, bool path) {
       OutlinedTextItem item;
