@@ -289,6 +289,112 @@ private slots:
     QVERIFY(blackPixels > 0);
   }
 
+  void explicitOutlineLayersMatchExportAtFullScale() {
+    const QColor background(240, 240, 240, 255);
+    constexpr int width = 260;
+    constexpr int height = 120;
+
+    OutlinedTextItem item;
+    item.setWidth(width);
+    item.setHeight(height);
+    item.setText(QStringLiteral("Outline"));
+    item.setFontFamily(QStringLiteral("sans-serif"));
+    item.setPixelSize(56);
+    item.setColor(Qt::black);
+    item.setRenderScale(1.0);
+    item.setOutlineLayers({QVariantMap{{QStringLiteral("enabled"), true},
+                                       {QStringLiteral("color"), QStringLiteral("00ff00ff")},
+                                       {QStringLiteral("size"), 5}},
+                           QVariantMap{{QStringLiteral("enabled"), true},
+                                       {QStringLiteral("color"), QStringLiteral("ff0000ff")},
+                                       {QStringLiteral("size"), 9}}});
+
+    QImage live(width, height, QImage::Format_ARGB32_Premultiplied);
+    live.fill(background);
+    QPainter livePainter(&live);
+    item.paint(&livePainter);
+    livePainter.end();
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString pagePath = dir.filePath(QStringLiteral("page.png"));
+    const QString exportPath = dir.filePath(QStringLiteral("export.png"));
+    QImage page(width, height, QImage::Format_ARGB32_Premultiplied);
+    page.fill(background);
+    QVERIFY(page.save(pagePath, "PNG"));
+
+    DocumentModel document;
+    TextBox box;
+    box.text = "Outline";
+    box.bounds = {0.0, 0.0, width, height};
+    box.style.fontFamily = "sans-serif";
+    box.style.fontSize = 56;
+    box.style.textColor = "000000ff";
+    box.effects.outlineLayersSet = true;
+    box.effects.outlineLayers = {{true, "00ff00ff", 5},
+                                 {true, "ff0000ff", 9}};
+    document.addTextBox(box);
+
+    std::string error;
+    const RenderGraph graph;
+    QVERIFY2(graph.exportPagePng(document, pagePath.toStdString(),
+                                 exportPath.toStdString(), &error),
+             error.c_str());
+    QImage exported(exportPath);
+    QVERIFY(!exported.isNull());
+
+    live = live.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    exported = exported.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+
+    const auto redOutlinePixels = [](const QImage &image) {
+      return countPixels(image, [](const QColor &color) {
+        return color.red() > 120 && color.green() < 80 && color.blue() < 80 &&
+               color.alpha() > 0;
+      });
+    };
+    const auto greenOutlinePixels = [](const QImage &image) {
+      return countPixels(image, [](const QColor &color) {
+        return color.green() > 120 && color.red() < 80 && color.blue() < 80 &&
+               color.alpha() > 0;
+      });
+    };
+    const auto blackFillPixels = [](const QImage &image) {
+      return countPixels(image, [](const QColor &color) {
+        return color.red() < 40 && color.green() < 40 && color.blue() < 40 &&
+               color.alpha() > 0;
+      });
+    };
+
+    QVERIFY(redOutlinePixels(live) > 0);
+    QVERIFY(greenOutlinePixels(live) > 0);
+    QVERIFY(blackFillPixels(live) > 0);
+    QVERIFY(redOutlinePixels(exported) > 0);
+    QVERIFY(greenOutlinePixels(exported) > 0);
+    QVERIFY(blackFillPixels(exported) > 0);
+
+    int differingPixels = 0;
+    for (int y = 0; y < live.height(); ++y) {
+      for (int x = 0; x < live.width(); ++x) {
+        if (live.pixelColor(x, y) != exported.pixelColor(x, y))
+          ++differingPixels;
+      }
+    }
+
+    QVERIFY2(differingPixels == 0,
+             qPrintable(QStringLiteral("differingPixels=%1 liveBounds=%2 exportBounds=%3")
+                            .arg(differingPixels)
+                            .arg(QStringLiteral("%1,%2 %3x%4")
+                                     .arg(visibleBounds(live, background).x())
+                                     .arg(visibleBounds(live, background).y())
+                                     .arg(visibleBounds(live, background).width())
+                                     .arg(visibleBounds(live, background).height()))
+                            .arg(QStringLiteral("%1,%2 %3x%4")
+                                     .arg(visibleBounds(exported, background).x())
+                                     .arg(visibleBounds(exported, background).y())
+                                     .arg(visibleBounds(exported, background).width())
+                                     .arg(visibleBounds(exported, background).height()))));
+  }
+
   void multiOutlineMetricsUseOutermostCumulativeStrokeWidth() {
     OutlinedTextItem equalBands;
     equalBands.setOutlineLayers({QVariantMap{{QStringLiteral("enabled"), true},
