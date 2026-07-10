@@ -878,6 +878,123 @@ private slots:
     QVERIFY(softBlurredPixels > 200);
   }
 
+  void gradientMatchesExportAtFullScale() {
+    const QColor background(240, 240, 240, 255);
+    constexpr int width = 260;
+    constexpr int height = 120;
+
+    OutlinedTextItem item;
+    item.setWidth(width);
+    item.setHeight(height);
+    item.setText(QStringLiteral("Gradient"));
+    item.setFontFamily(QStringLiteral("sans-serif"));
+    item.setPixelSize(56);
+    item.setColor(Qt::black);
+    item.setGradientEnabled(true);
+    item.setGradientDirection(1);
+    item.setGradientColorA(Qt::red);
+    item.setGradientColorB(Qt::blue);
+    item.setRenderScale(1.0);
+
+    QImage live(width, height, QImage::Format_ARGB32_Premultiplied);
+    live.fill(background);
+    QPainter livePainter(&live);
+    item.paint(&livePainter);
+    livePainter.end();
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString pagePath = dir.filePath(QStringLiteral("page.png"));
+    const QString exportPath = dir.filePath(QStringLiteral("export.png"));
+    QImage page(width, height, QImage::Format_ARGB32_Premultiplied);
+    page.fill(background);
+    QVERIFY(page.save(pagePath, "PNG"));
+
+    DocumentModel document;
+    TextBox box;
+    box.text = "Gradient";
+    box.bounds = {0.0, 0.0, width, height};
+    box.style.fontFamily = "sans-serif";
+    box.style.fontSize = 56;
+    box.style.textColor = "000000ff";
+    box.effects.gradientEnabled = true;
+    box.effects.gradientDirection = 1;
+    box.effects.gradientColorA = "ff0000ff";
+    box.effects.gradientColorB = "0000ffff";
+    document.addTextBox(box);
+
+    std::string error;
+    const RenderGraph graph;
+    QVERIFY2(graph.exportPagePng(document, pagePath.toStdString(),
+                                 exportPath.toStdString(), &error),
+             error.c_str());
+    QImage exported(exportPath);
+    QVERIFY(!exported.isNull());
+
+    live = live.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    exported = exported.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+
+    const auto redPixels = [](const QImage &image) {
+      return countPixels(image, [](const QColor &color) {
+        return color.red() > color.blue() + 30 && color.alpha() > 0;
+      });
+    };
+    const auto bluePixels = [](const QImage &image) {
+      return countPixels(image, [](const QColor &color) {
+        return color.blue() > color.red() + 30 && color.alpha() > 0;
+      });
+    };
+    const auto averageX = [](const QImage &image, const auto &predicate) {
+      qint64 totalX = 0;
+      qint64 pixels = 0;
+      for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+          if (!predicate(image.pixelColor(x, y)))
+            continue;
+          totalX += x;
+          ++pixels;
+        }
+      }
+      return pixels == 0 ? -1.0 : static_cast<double>(totalX) / pixels;
+    };
+    const auto isRedPixel = [](const QColor &color) {
+      return color.red() > color.blue() + 30 && color.alpha() > 0;
+    };
+    const auto isBluePixel = [](const QColor &color) {
+      return color.blue() > color.red() + 30 && color.alpha() > 0;
+    };
+
+    QVERIFY(redPixels(live) > 0);
+    QVERIFY(bluePixels(live) > 0);
+    QVERIFY(redPixels(exported) > 0);
+    QVERIFY(bluePixels(exported) > 0);
+    QVERIFY(averageX(live, isRedPixel) + 20.0 < averageX(live, isBluePixel));
+    QVERIFY(averageX(exported, isRedPixel) + 20.0 <
+            averageX(exported, isBluePixel));
+
+    int differingPixels = 0;
+    for (int y = 0; y < live.height(); ++y) {
+      for (int x = 0; x < live.width(); ++x) {
+        if (live.pixelColor(x, y) != exported.pixelColor(x, y))
+          ++differingPixels;
+      }
+    }
+
+    QVERIFY2(differingPixels == 0,
+             qPrintable(QStringLiteral("differingPixels=%1 liveBounds=%2 exportBounds=%3")
+                            .arg(differingPixels)
+                            .arg(QStringLiteral("%1,%2 %3x%4")
+                                     .arg(visibleBounds(live, background).x())
+                                     .arg(visibleBounds(live, background).y())
+                                     .arg(visibleBounds(live, background).width())
+                                     .arg(visibleBounds(live, background).height()))
+                            .arg(QStringLiteral("%1,%2 %3x%4")
+                                     .arg(visibleBounds(exported, background).x())
+                                     .arg(visibleBounds(exported, background).y())
+                                     .arg(visibleBounds(exported, background).width())
+                                     .arg(visibleBounds(exported, background).height()))));
+  }
+
   void gradientAndPathAffectRenderedText() {
     auto render = [](bool gradient, bool path) {
       OutlinedTextItem item;
