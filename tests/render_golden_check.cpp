@@ -1405,5 +1405,63 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  DocumentModel disabledPerspective;
+  perspectiveBox.effects.perspectiveEnabled = false;
+  perspectiveBox.effects.perspectiveNw = {20.0, 8.0};
+  perspectiveBox.effects.perspectiveNe = {24.0, 0.0};
+  perspectiveBox.effects.perspectiveSw = {10.0, -6.0};
+  perspectiveBox.effects.perspectiveSe = {12.0, 10.0};
+  disabledPerspective.addTextBox(perspectiveBox);
+  const auto disabledPerspectiveImage = exportedImage(
+      graph, disabledPerspective, pagePath,
+      tempPath / "export-perspective-disabled-offsets.png");
+  if (disabledPerspectiveImage.isNull() ||
+      imagesDiffer(unwarpedImage, disabledPerspectiveImage) ||
+      !graph.warnings(disabledPerspective).empty()) {
+    std::cerr << "Disabled perspective offsets affected PNG export or warnings\n";
+    return 1;
+  }
+
+  DocumentModel staticPerspective;
+  perspectiveBox.effects.perspectiveEnabled = true;
+  perspectiveBox.effects.perspectiveNw = {0.0, 0.0};
+  perspectiveBox.effects.perspectiveNe = {0.0, 0.0};
+  perspectiveBox.effects.perspectiveSe = {0.0, 0.0};
+  perspectiveBox.effects.perspectiveSw = {0.0, 0.0};
+  staticPerspective.addTextBox(perspectiveBox);
+  const auto staticPerspectiveImage = exportedImage(
+      graph, staticPerspective, pagePath, tempPath / "export-perspective-static.png");
+  if (staticPerspectiveImage.isNull() ||
+      imagesDiffer(unwarpedImage, staticPerspectiveImage)) {
+    std::cerr << "Enabled perspective with static corners changed PNG export\n";
+    return 1;
+  }
+
+  DocumentModel degeneratePerspective;
+  perspectiveBox.effects.perspectiveNe = {-180.0, 0.0};
+  perspectiveBox.effects.perspectiveSe = {-180.0, 0.0};
+  degeneratePerspective.addTextBox(perspectiveBox);
+  const auto degeneratePerspectiveImage = exportedImage(
+      graph, degeneratePerspective, pagePath,
+      tempPath / "export-perspective-degenerate.png");
+  const QRect degenerateBounds =
+      nonBackgroundBounds(degeneratePerspectiveImage, background);
+  if (degeneratePerspectiveImage.isNull() || !degenerateBounds.isEmpty()) {
+    std::cerr << "Degenerate perspective quad no longer collapses export: "
+              << degenerateBounds.x() << ',' << degenerateBounds.y() << ' '
+              << degenerateBounds.width() << 'x' << degenerateBounds.height()
+              << '\n';
+    return 1;
+  }
+
+  const std::vector<std::string> perspectiveWarnings =
+      graph.warnings(degeneratePerspective);
+  if (perspectiveWarnings != std::vector<std::string>{
+          "Perspective is approximated with an affine transform "
+          "in MVP export/preview"}) {
+    std::cerr << "Perspective export warning contract changed\n";
+    return 1;
+  }
+
   return 0;
 }
