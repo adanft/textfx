@@ -2025,8 +2025,8 @@ Window {
   void qmlPaintLayerStrokeMatchesExportMetrics() {
     registerQmlTypes();
 
-    constexpr int width = 128;
-    constexpr int height = 96;
+    constexpr int width = 160;
+    constexpr int height = 120;
     const QColor background(Qt::white);
 
     QQmlApplicationEngine engine;
@@ -2048,12 +2048,24 @@ Window {
         objectName: "paintLayer"
         anchors.fill: parent
         drawPreviewStroke: false
-        strokes: [{
-            "color": "ff0000ff",
-            "opacity": 1.0,
-            "size": 8,
-            "points": [[20, 20], [90, 20], [90, 70]]
-        }]
+        strokes: [
+            {
+                "color": "ff0000ff",
+                "points": [[20, 24], [130, 24], [130, 54]]
+            },
+            {
+                "color": "000000ff",
+                "opacity": 2.0,
+                "size": 0.5,
+                "points": [[20, 86], [130, 86]]
+            },
+            {
+                "color": "00ff00ff",
+                "opacity": 0.0,
+                "size": 8,
+                "points": [[20, 104], [130, 104]]
+            }
+        ]
     }
 }
 )QML")
@@ -2073,7 +2085,7 @@ Window {
     QVERIFY(QTest::qWaitForWindowExposed(window));
     auto *layer = window->findChild<QObject *>(QStringLiteral("paintLayer"));
     QVERIFY(layer);
-    QTRY_COMPARE(layer->property("lastPaintedStrokeCount").toInt(), 1);
+    QTRY_COMPARE(layer->property("lastPaintedStrokeCount").toInt(), 2);
     QCoreApplication::processEvents();
 
     QImage live = window->grabWindow().convertToFormat(QImage::Format_ARGB32_Premultiplied);
@@ -2088,8 +2100,14 @@ Window {
     QVERIFY(page.save(pagePath, "PNG"));
 
     DocumentModel document;
+    PaintStroke defaultStroke;
+    defaultStroke.color = "ff0000ff";
+    defaultStroke.points = {{20.0, 24.0}, {130.0, 24.0}, {130.0, 54.0}};
+    document.paint().aboveText.push_back(defaultStroke);
     document.paint().aboveText.push_back(
-        PaintStroke{"ff0000ff", 8.0, 1.0, {{20.0, 20.0}, {90.0, 20.0}, {90.0, 70.0}}});
+        PaintStroke{"000000ff", 0.5, 2.0, {{20.0, 86.0}, {130.0, 86.0}}});
+    document.paint().aboveText.push_back(
+        PaintStroke{"00ff00ff", 8.0, 0.0, {{20.0, 104.0}, {130.0, 104.0}}});
 
     std::string error;
     const RenderGraph graph;
@@ -2116,12 +2134,36 @@ Window {
                color.alpha() > 0;
       });
     };
+    const auto bandInk = [](const QImage &image, int top, int bottom) {
+      int ink = 0;
+      for (int y = top; y <= bottom; ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+          const QColor color = image.pixelColor(x, y);
+          ink += 255 - std::max({color.red(), color.green(), color.blue()});
+        }
+      }
+      return ink;
+    };
+    const auto greenPixels = [](const QImage &image) {
+      return countPixels(image, [](const QColor &color) {
+        return color.green() > 120 && color.red() < 80 && color.blue() < 80 &&
+               color.alpha() > 0;
+      });
+    };
     const int liveRedPixels = redPixels(live);
     const int exportRedPixels = redPixels(exported);
+    const int liveBandInk = bandInk(live, 82, 90);
+    const int exportBandInk = bandInk(exported, 82, 90);
     QVERIFY(liveRedPixels > 0);
     QVERIFY(exportRedPixels > 0);
+    QVERIFY(liveBandInk > 0);
+    QVERIFY(exportBandInk > 0);
+    QCOMPARE(greenPixels(live), 0);
+    QCOMPARE(greenPixels(exported), 0);
     QVERIFY(std::abs(liveRedPixels - exportRedPixels) <=
-            std::max(25, exportRedPixels / 10));
+            std::max(40, exportRedPixels / 10));
+    QVERIFY(std::abs(liveBandInk - exportBandInk) <=
+            std::max(1800, exportBandInk / 6));
   }
 };
 
