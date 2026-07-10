@@ -1224,6 +1224,96 @@ private slots:
                                      .arg(visibleBounds(exported, background).height()))));
   }
 
+  void pathTextMatchesExportAtFullScale() {
+    const QColor background(240, 240, 240, 255);
+    constexpr int width = 260;
+    constexpr int height = 140;
+
+    auto renderLive = [&](bool pathEnabled, int pathMode = 1) {
+      OutlinedTextItem item;
+      item.setWidth(width);
+      item.setHeight(height);
+      item.setText(QStringLiteral("PathText"));
+      item.setFontFamily(QStringLiteral("sans-serif"));
+      item.setPixelSize(48);
+      item.setColor(Qt::black);
+      item.setPathEnabled(pathEnabled);
+      item.setPathMode(pathMode);
+      item.setPathPoints({QVariantList{0.0, 0.80}, QVariantList{0.5, 0.20},
+                          QVariantList{1.0, 0.80}});
+      item.setRenderScale(1.0);
+
+      QImage image(width, height, QImage::Format_ARGB32_Premultiplied);
+      image.fill(background);
+      QPainter painter(&image);
+      item.paint(&painter);
+      painter.end();
+      return image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    };
+
+    const QImage plainLive = renderLive(false);
+    const QImage straightPathLive = renderLive(true, 0);
+    QImage live = renderLive(true, 1);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString pagePath = dir.filePath(QStringLiteral("page.png"));
+    const QString exportPath = dir.filePath(QStringLiteral("export.png"));
+    QImage page(width, height, QImage::Format_ARGB32_Premultiplied);
+    page.fill(background);
+    QVERIFY(page.save(pagePath, "PNG"));
+
+    DocumentModel document;
+    TextBox box;
+    box.text = "PathText";
+    box.bounds = {0.0, 0.0, width, height};
+    box.style.fontFamily = "sans-serif";
+    box.style.fontSize = 48;
+    box.style.textColor = "000000ff";
+    box.effects.pathEnabled = true;
+    box.effects.pathMode = 1;
+    box.effects.pathPoints = {{0.0, 0.80}, {0.5, 0.20}, {1.0, 0.80}};
+    document.addTextBox(box);
+
+    std::string error;
+    const RenderGraph graph;
+    QVERIFY2(graph.exportPagePng(document, pagePath.toStdString(),
+                                 exportPath.toStdString(), &error),
+             error.c_str());
+    QImage exported(exportPath);
+    QVERIFY(!exported.isNull());
+    exported = exported.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+
+    QVERIFY(imagesDiffer(plainLive, live));
+    QVERIFY(imagesDiffer(straightPathLive, live));
+    QVERIFY(!visibleBounds(live, background).isEmpty());
+    QVERIFY(!visibleBounds(exported, background).isEmpty());
+    QVERIFY(visibleBounds(live, background).height() >
+            visibleBounds(plainLive, background).height());
+
+    int differingPixels = 0;
+    for (int y = 0; y < live.height(); ++y) {
+      for (int x = 0; x < live.width(); ++x) {
+        if (live.pixelColor(x, y) != exported.pixelColor(x, y))
+          ++differingPixels;
+      }
+    }
+
+    QVERIFY2(differingPixels == 0,
+             qPrintable(QStringLiteral("differingPixels=%1 liveBounds=%2 exportBounds=%3")
+                            .arg(differingPixels)
+                            .arg(QStringLiteral("%1,%2 %3x%4")
+                                     .arg(visibleBounds(live, background).x())
+                                     .arg(visibleBounds(live, background).y())
+                                     .arg(visibleBounds(live, background).width())
+                                     .arg(visibleBounds(live, background).height()))
+                            .arg(QStringLiteral("%1,%2 %3x%4")
+                                     .arg(visibleBounds(exported, background).x())
+                                     .arg(visibleBounds(exported, background).y())
+                                     .arg(visibleBounds(exported, background).width())
+                                     .arg(visibleBounds(exported, background).height()))));
+  }
+
   void gradientAndPathAffectRenderedText() {
     auto render = [](bool gradient, bool path) {
       OutlinedTextItem item;
