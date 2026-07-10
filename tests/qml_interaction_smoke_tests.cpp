@@ -1,4 +1,6 @@
 #include "app/controllers/EditorController.h"
+#include "domain/document/DocumentModel.h"
+#include "infrastructure/rendering/RenderGraph.h"
 #include "qt_test_helpers.h"
 
 #include <QClipboard>
@@ -1926,6 +1928,108 @@ Canvas.CanvasView {
             .value(QStringLiteral("pathPoints"))
             .toList();
     QCOMPARE(afterReleaseMove, during);
+  }
+
+  void qmlPaintLayerStrokeMatchesExportMetrics() {
+    registerQmlTypes();
+
+    constexpr int width = 128;
+    constexpr int height = 96;
+    const QColor background(Qt::white);
+
+    QQmlApplicationEngine engine;
+    engine.addImportPath(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/features/canvas"));
+    QQmlComponent component(&engine);
+    const QString qml = QStringLiteral(R"QML(
+import QtQuick
+import QtQuick.Window
+import "%1" as Canvas
+Window {
+    id: root
+    width: %2
+    height: %3
+    visible: true
+    color: "white"
+
+    Canvas.PaintLayer {
+        id: paintLayer
+        objectName: "paintLayer"
+        anchors.fill: parent
+        drawPreviewStroke: false
+        strokes: [{
+            "color": "ff0000ff",
+            "opacity": 1.0,
+            "size": 8,
+            "points": [[20, 20], [90, 20], [90, 70]]
+        }]
+    }
+}
+)QML")
+                            .arg(QUrl::fromLocalFile(QStringLiteral(
+                                     TEXTFX_FIXTURE_DIR "/../../qml/features/canvas"))
+                                     .toString())
+                            .arg(width)
+                            .arg(height);
+    component.setData(qml.toUtf8(),
+                      QUrl::fromLocalFile(QStringLiteral(
+                          TEXTFX_FIXTURE_DIR "/../../tests/paint_layer_parity_test.qml")));
+    QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+    std::unique_ptr<QObject> object(component.create());
+    QVERIFY2(object, qPrintable(component.errorString()));
+    auto *window = qobject_cast<QQuickWindow *>(object.get());
+    QVERIFY(window);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+    auto *layer = window->findChild<QObject *>(QStringLiteral("paintLayer"));
+    QVERIFY(layer);
+    QTRY_COMPARE(layer->property("lastPaintedStrokeCount").toInt(), 1);
+    QCoreApplication::processEvents();
+
+    QImage live = window->grabWindow().convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    QCOMPARE(live.size(), QSize(width, height));
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString pagePath = dir.filePath(QStringLiteral("page.png"));
+    const QString exportPath = dir.filePath(QStringLiteral("export.png"));
+    QImage page(width, height, QImage::Format_ARGB32_Premultiplied);
+    page.fill(background);
+    QVERIFY(page.save(pagePath, "PNG"));
+
+    DocumentModel document;
+    document.paint().aboveText.push_back(
+        PaintStroke{"ff0000ff", 8.0, 1.0, {{20.0, 20.0}, {90.0, 20.0}, {90.0, 70.0}}});
+
+    std::string error;
+    const RenderGraph graph;
+    QVERIFY2(graph.exportPagePng(document, pagePath.toStdString(),
+                                 exportPath.toStdString(), &error),
+             error.c_str());
+    QImage exported(exportPath);
+    QVERIFY(!exported.isNull());
+    exported = exported.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    QCOMPARE(exported.size(), live.size());
+
+    const QRect liveBounds = visibleBounds(live, background);
+    const QRect exportBounds = visibleBounds(exported, background);
+    QVERIFY(!liveBounds.isEmpty());
+    QVERIFY(!exportBounds.isEmpty());
+    QVERIFY(std::abs(liveBounds.left() - exportBounds.left()) <= 2);
+    QVERIFY(std::abs(liveBounds.top() - exportBounds.top()) <= 2);
+    QVERIFY(std::abs(liveBounds.right() - exportBounds.right()) <= 2);
+    QVERIFY(std::abs(liveBounds.bottom() - exportBounds.bottom()) <= 2);
+
+    const auto redPixels = [](const QImage &image) {
+      return countPixels(image, [](const QColor &color) {
+        return color.red() > 120 && color.green() < 80 && color.blue() < 80 &&
+               color.alpha() > 0;
+      });
+    };
+    const int liveRedPixels = redPixels(live);
+    const int exportRedPixels = redPixels(exported);
+    QVERIFY(liveRedPixels > 0);
+    QVERIFY(exportRedPixels > 0);
+    QVERIFY(std::abs(liveRedPixels - exportRedPixels) <=
+            std::max(25, exportRedPixels / 10));
   }
 };
 
