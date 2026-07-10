@@ -9,6 +9,7 @@
 #include "application/services/TextBoxSelectionService.h"
 #include "app/controllers/EditorControllerStringUtils.h"
 #include "domain/AuthoringLimits.h"
+#include "domain/document/PaintStrokeRules.h"
 #include "infrastructure/rendering/RenderGraph.h"
 
 #include <QUrl>
@@ -323,10 +324,11 @@ void EditorController::addPaintStroke(const QString &target, const QString &colo
     return;
   PaintStroke stroke;
   stroke.color = normalizedPaintColor(color);
-  stroke.size = std::max(1.0, size);
-  stroke.opacity = std::clamp(opacity, 0.0, 1.0);
+  stroke.size = size;
+  stroke.opacity = opacity;
   stroke.points = pointsFromVariantList(points);
-  if (stroke.points.empty())
+  stroke = normalizedPaintStroke(std::move(stroke));
+  if (!isDrawablePaintStroke(stroke))
     return;
   layer->push_back(std::move(stroke));
   markDocumentChanged();

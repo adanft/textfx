@@ -405,6 +405,63 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  DocumentModel minimumPaintSize;
+  minimumPaintSize.paint().aboveText.push_back(
+      {"000000ff", 1.0, 1.0, {{20.0, 100.0}, {120.0, 100.0}}});
+  DocumentModel fractionalPaintSize;
+  fractionalPaintSize.paint().aboveText.push_back(
+      {"000000ff", 0.5, 1.0, {{20.0, 100.0}, {120.0, 100.0}}});
+  DocumentModel negativePaintSize;
+  negativePaintSize.paint().aboveText.push_back(
+      {"000000ff", -3.0, 1.0, {{20.0, 100.0}, {120.0, 100.0}}});
+  const auto minimumPaintImage = exportedImage(
+      graph, minimumPaintSize, pagePath, tempPath / "minimum-paint-size.png");
+  const auto fractionalPaintImage = exportedImage(
+      graph, fractionalPaintSize, pagePath, tempPath / "fractional-paint-size.png");
+  const auto negativePaintImage = exportedImage(
+      graph, negativePaintSize, pagePath, tempPath / "negative-paint-size.png");
+  if (minimumPaintImage.isNull() || fractionalPaintImage.isNull() ||
+      negativePaintImage.isNull() ||
+      imagesDiffer(minimumPaintImage, fractionalPaintImage) ||
+      imagesDiffer(minimumPaintImage, negativePaintImage)) {
+    std::cerr << "Paint sizes below one did not export at the minimum size\n";
+    return 1;
+  }
+
+  DocumentModel clampedOpacityPaint;
+  clampedOpacityPaint.paint().aboveText.push_back(
+      {"000000ff", 4.0, 2.0, {{20.0, 115.0}, {120.0, 115.0}}});
+  DocumentModel opaquePaint;
+  opaquePaint.paint().aboveText.push_back(
+      {"000000ff", 4.0, 1.0, {{20.0, 115.0}, {120.0, 115.0}}});
+  DocumentModel transparentPaint;
+  transparentPaint.paint().aboveText.push_back(
+      {"000000ff", 4.0, -0.5, {{20.0, 115.0}, {120.0, 115.0}}});
+  const auto clampedOpacityImage = exportedImage(
+      graph, clampedOpacityPaint, pagePath, tempPath / "clamped-paint-opacity.png");
+  const auto opaquePaintImage = exportedImage(
+      graph, opaquePaint, pagePath, tempPath / "opaque-paint.png");
+  const auto transparentPaintImage = exportedImage(
+      graph, transparentPaint, pagePath, tempPath / "transparent-paint.png");
+  if (clampedOpacityImage.isNull() || opaquePaintImage.isNull() ||
+      transparentPaintImage.isNull() ||
+      imagesDiffer(clampedOpacityImage, opaquePaintImage) ||
+      imagesDiffer(page, transparentPaintImage)) {
+    std::cerr << "Paint opacity was not clamped or transparent paint was rendered\n";
+    return 1;
+  }
+
+  DocumentModel singlePointPaint;
+  singlePointPaint.paint().aboveText.push_back(
+      {"000000ff", 4.0, 1.0, {{160.0, 115.0}}});
+  const auto singlePointPaintImage = exportedImage(
+      graph, singlePointPaint, pagePath, tempPath / "single-point-paint.png");
+  if (singlePointPaintImage.isNull() ||
+      !imagesDiffer(page, singlePointPaintImage)) {
+    std::cerr << "Single-point paint stroke was not rendered\n";
+    return 1;
+  }
+
   const auto timedOutPath = tempPath / "timed-export.png";
   const auto timedResult =
       graph.exportPagePngTimed(DocumentModel{}, pagePath, timedOutPath);

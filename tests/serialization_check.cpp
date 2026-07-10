@@ -1,9 +1,11 @@
 #include "infrastructure/persistence/JsonSerializer.h"
+#include "domain/document/PaintStrokeRules.h"
 #include "application/services/TextBoxEditingService.h"
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <sstream>
 
 #include <QTemporaryDir>
@@ -24,6 +26,22 @@ std::string readText(const std::filesystem::path &path) {
 } // namespace
 
 int main() {
+  const PaintStroke fractionalStroke =
+      normalizedPaintStroke({"000000ff", 2.5, 0.5, {{1.0, 2.0}}});
+  if (fractionalStroke.size != 2.5 || fractionalStroke.opacity != 0.5 ||
+      !isDrawablePaintStroke(fractionalStroke)) {
+    std::cerr << "Fractional paint stroke values were not preserved\n";
+    return 1;
+  }
+  const PaintStroke nonFiniteStroke = normalizedPaintStroke(
+      {"000000ff", std::numeric_limits<double>::quiet_NaN(),
+       std::numeric_limits<double>::infinity(), {{1.0, 2.0}}});
+  if (nonFiniteStroke.size != MinimumPaintStrokeSize ||
+      nonFiniteStroke.opacity != 0.0 || isDrawablePaintStroke(nonFiniteStroke)) {
+    std::cerr << "Non-finite paint stroke values were not normalized\n";
+    return 1;
+  }
+
   const auto pageFixture = fixtures() / "textfx-page.json";
   const auto presetFixture = fixtures() / "textfx-presets.json";
 
@@ -131,6 +149,30 @@ int main() {
       paintRoundTrip.paint().behindText.front().points.size() != 2 ||
       paintRoundTrip.paint().aboveText.front().points.back().x != 7.0) {
     std::cerr << "Paint layers did not round-trip\n";
+    return 1;
+  }
+
+  DocumentModel rawPaintDocument;
+  rawPaintDocument.paint().behindText.push_back(
+      {"ff0000ff", 0.5, 1.5, {{1.0, 2.0}}});
+  rawPaintDocument.paint().aboveText.push_back(
+      {"0000ffff", -3.0, -0.25, {{3.0, 4.0}}});
+  const auto normalizedPaintOutput =
+      std::filesystem::path(tempDir.path().toStdString()) /
+      "normalized-paint.json";
+  if (!JsonSerializer::savePage(normalizedPaintOutput, "normalized.png",
+                                rawPaintDocument, &error)) {
+    std::cerr << "Normalized paint page failed to save: " << error << '\n';
+    return 1;
+  }
+  DocumentModel normalizedPaintRoundTrip;
+  if (!JsonSerializer::loadPage(normalizedPaintOutput, normalizedPaintRoundTrip,
+                                &error) ||
+      normalizedPaintRoundTrip.paint().behindText.front().size != 1.0 ||
+      normalizedPaintRoundTrip.paint().behindText.front().opacity != 1.0 ||
+      normalizedPaintRoundTrip.paint().aboveText.front().size != 1.0 ||
+      normalizedPaintRoundTrip.paint().aboveText.front().opacity != 0.0) {
+    std::cerr << "Paint size and opacity were not normalized on persistence\n";
     return 1;
   }
 

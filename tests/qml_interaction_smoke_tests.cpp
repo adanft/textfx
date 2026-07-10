@@ -1930,6 +1930,98 @@ Canvas.CanvasView {
     QCOMPARE(afterReleaseMove, during);
   }
 
+  void qmlPaintLayerNormalizesBoundaryStrokeValues() {
+    registerQmlTypes();
+
+    QQmlApplicationEngine engine;
+    engine.addImportPath(QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/features/canvas"));
+    QQmlComponent component(&engine);
+    const QString qml = QStringLiteral(R"QML(
+import QtQuick
+import QtQuick.Window
+import "%1" as Canvas
+Window {
+    width: 96
+    height: 64
+    visible: true
+    color: "white"
+
+    Canvas.PaintLayer {
+        id: paintLayer
+        objectName: "paintLayer"
+        anchors.fill: parent
+        drawPreviewStroke: false
+        strokes: [
+            { "color": "ff0000ff", "points": [[8, 10], [88, 10]] },
+            { "color": "00ff00ff", "opacity": 0.0, "size": 8, "points": [[8, 28], [88, 28]] },
+            { "color": "ff00ffff", "opacity": 1.0, "size": 0.5, "points": [[8, 46], [88, 46]] }
+        ]
+    }
+}
+)QML")
+                            .arg(QUrl::fromLocalFile(QStringLiteral(
+                                     TEXTFX_FIXTURE_DIR "/../../qml/features/canvas"))
+                                     .toString());
+    component.setData(qml.toUtf8(),
+                      QUrl::fromLocalFile(QStringLiteral(
+                          TEXTFX_FIXTURE_DIR "/../../tests/paint_layer_normalization_test.qml")));
+    QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+    std::unique_ptr<QObject> object(component.create());
+    QVERIFY2(object, qPrintable(component.errorString()));
+    auto *window = qobject_cast<QQuickWindow *>(object.get());
+    QVERIFY(window);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+    auto *layer = window->findChild<QObject *>(QStringLiteral("paintLayer"));
+    QVERIFY(layer);
+    QVariant normalized;
+    auto invokeNormalizer = [&](const char *method, const QVariantMap &stroke) {
+      const QVariant argument = stroke;
+      return QMetaObject::invokeMethod(layer, method, Q_RETURN_ARG(QVariant, normalized),
+                                       Q_ARG(QVariant, argument));
+    };
+    QVERIFY(invokeNormalizer("normalizedStrokeSize",
+                             {{QStringLiteral("color"), QStringLiteral("ff0000ff")}}));
+    QCOMPARE(normalized.toDouble(), 12.0);
+    QVERIFY(invokeNormalizer("normalizedStrokeSize", {{QStringLiteral("size"), 0.5}}));
+    QCOMPARE(normalized.toDouble(), 1.0);
+    QVERIFY(invokeNormalizer(
+        "normalizedStrokeSize",
+        {{QStringLiteral("size"), QStringLiteral("invalid")}}));
+    QCOMPARE(normalized.toDouble(), 1.0);
+    QVERIFY(invokeNormalizer("normalizedStrokeOpacity", {}));
+    QCOMPARE(normalized.toDouble(), 1.0);
+    QVERIFY(invokeNormalizer("normalizedStrokeOpacity",
+                             {{QStringLiteral("opacity"), 2.0}}));
+    QCOMPARE(normalized.toDouble(), 1.0);
+    QVERIFY(invokeNormalizer(
+        "normalizedStrokeOpacity",
+        {{QStringLiteral("opacity"), QStringLiteral("invalid")}}));
+    QCOMPARE(normalized.toDouble(), 0.0);
+    QTRY_COMPARE(layer->property("liveStrokeCount").toInt(), 2);
+    QTRY_COMPARE(layer->property("lastPaintedStrokeCount").toInt(), 2);
+
+    const QImage image =
+        window->grabWindow().convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    const auto redPixels = countPixels(image, [](const QColor &color) {
+      return color.red() > 120 && color.green() < 80 && color.blue() < 80 &&
+             color.alpha() > 0;
+    });
+    const auto greenPixels = countPixels(image, [](const QColor &color) {
+      return color.green() > 120 && color.red() < 80 && color.blue() < 80 &&
+             color.alpha() > 0;
+    });
+    int lowerStrokePixels = 0;
+    for (int y = 40; y < image.height(); ++y) {
+      for (int x = 0; x < image.width(); ++x) {
+        if (image.pixelColor(x, y) != Qt::white)
+          ++lowerStrokePixels;
+      }
+    }
+    QVERIFY(redPixels > 0);
+    QCOMPARE(greenPixels, 0);
+    QVERIFY(lowerStrokePixels > 0);
+  }
+
   void qmlPaintLayerStrokeMatchesExportMetrics() {
     registerQmlTypes();
 

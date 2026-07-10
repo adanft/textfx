@@ -1,6 +1,7 @@
 #include "infrastructure/rendering/RenderGraph.h"
 
 #include "domain/AuthoringLimits.h"
+#include "domain/document/PaintStrokeRules.h"
 #include "infrastructure/rendering/GaussianBlur.h"
 #include "infrastructure/fonts/FontResolver.h"
 #include "infrastructure/rendering/RenderPaintSpecs.h"
@@ -117,20 +118,22 @@ void drawPaintStrokes(QPainter &painter, const std::vector<PaintStroke> &strokes
   painter.save();
   painter.setRenderHint(QPainter::Antialiasing, true);
   for (const auto &stroke : strokes) {
-    if (stroke.points.empty() || stroke.size <= 0.0 || stroke.opacity <= 0.0)
+    const PaintStroke normalized = normalizedPaintStroke(stroke);
+    if (!isDrawablePaintStroke(normalized))
       continue;
-    QColor color = toQColor(stroke.color);
-    color.setAlphaF(std::clamp(stroke.opacity, 0.0, 1.0) * color.alphaF());
-    QPen pen(color, stroke.size, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QColor color = toQColor(normalized.color);
+    color.setAlphaF(normalized.opacity * color.alphaF());
+    QPen pen(color, normalized.size, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
     painter.setPen(pen);
-    if (stroke.points.size() == 1) {
-      const auto &point = stroke.points.front();
+    if (normalized.points.size() == 1) {
+      const auto &point = normalized.points.front();
       painter.drawPoint(QPointF(point.x, point.y));
       continue;
     }
-    QPainterPath path(QPointF(stroke.points.front().x, stroke.points.front().y));
-    for (std::size_t i = 1; i < stroke.points.size(); ++i)
-      path.lineTo(stroke.points[i].x, stroke.points[i].y);
+    QPainterPath path(
+        QPointF(normalized.points.front().x, normalized.points.front().y));
+    for (std::size_t i = 1; i < normalized.points.size(); ++i)
+      path.lineTo(normalized.points[i].x, normalized.points[i].y);
     painter.drawPath(path);
   }
   painter.restore();

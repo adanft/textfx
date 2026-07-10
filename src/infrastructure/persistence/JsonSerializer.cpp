@@ -1,6 +1,7 @@
 #include "infrastructure/persistence/JsonSerializer.h"
 
 #include "domain/AuthoringLimits.h"
+#include "domain/document/PaintStrokeRules.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -121,7 +122,7 @@ PaintStroke paintStrokeFromJson(const QJsonObject &object) {
   stroke.size = object.value("size").toDouble(stroke.size);
   stroke.opacity = object.value("opacity").toDouble(stroke.opacity);
   stroke.points = pathPointsFromJson(object.value("points"));
-  return stroke;
+  return normalizedPaintStroke(std::move(stroke));
 }
 
 std::vector<PaintStroke> paintStrokesFromJson(const QJsonValue &value) {
@@ -134,10 +135,11 @@ std::vector<PaintStroke> paintStrokesFromJson(const QJsonValue &value) {
 }
 
 QJsonObject paintStrokeToJson(const PaintStroke &stroke) {
-  return {{"color", QString::fromStdString(stroke.color)},
-          {"size", stroke.size},
-          {"opacity", stroke.opacity},
-          {"points", pointsToJson(stroke.points)}};
+  const PaintStroke normalized = normalizedPaintStroke(stroke);
+  return {{"color", QString::fromStdString(normalized.color)},
+          {"size", normalized.size},
+          {"opacity", normalized.opacity},
+          {"points", pointsToJson(normalized.points)}};
 }
 
 QJsonArray paintStrokesToJson(const std::vector<PaintStroke> &strokes) {

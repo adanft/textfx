@@ -275,8 +275,16 @@ private slots:
                           8.0, 1.0, strokePoints);
     editor.addPaintStroke(QStringLiteral("above_text"), QStringLiteral("zzzzzzzz"),
                           8.0, 1.0, strokePoints);
+    editor.addPaintStroke(QStringLiteral("behind_text"), QStringLiteral("ff0000ff"),
+                          0.5, 1.5, strokePoints);
+    editor.addPaintStroke(QStringLiteral("above_text"), QStringLiteral("0000ffff"),
+                          8.0, 0.0, strokePoints);
 
-    QCOMPARE(editor.paintBehindText().size(), 1);
+    QCOMPARE(editor.paintBehindText().size(), 2);
+    QCOMPARE(editor.paintBehindText().at(1).toMap().value(QStringLiteral("size")).toDouble(),
+             1.0);
+    QCOMPARE(editor.paintBehindText().at(1).toMap().value(QStringLiteral("opacity")).toDouble(),
+             1.0);
     QCOMPARE(editor.paintAboveText().size(), 2);
     QCOMPARE(editor.paintAboveText().at(1).toMap().value(QStringLiteral("color")).toString(),
              QStringLiteral("000000ff"));
