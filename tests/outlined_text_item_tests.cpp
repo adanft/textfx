@@ -1328,6 +1328,113 @@ private slots:
                                      .arg(visibleBounds(exported, background).height()))));
   }
 
+  void combinedBlurAndShadowMatchExportAtFullScale() {
+    const QColor background(240, 240, 240, 255);
+    constexpr int width = 260;
+    constexpr int height = 120;
+
+    auto renderLive = [&](bool blurEnabled, bool shadowEnabled) {
+      OutlinedTextItem item;
+      item.setWidth(width);
+      item.setHeight(height);
+      item.setText(QStringLiteral("Blur Shadow"));
+      item.setFontFamily(QStringLiteral("sans-serif"));
+      item.setPixelSize(48);
+      item.setColor(Qt::black);
+      item.setBlurSize(blurEnabled ? 8 : 0);
+      item.setShadowEnabled(shadowEnabled);
+      item.setShadowColor(QColor(0, 0, 0, 160));
+      item.setShadowOffsetX(10);
+      item.setShadowOffsetY(6);
+      item.setShadowBlurSize(5);
+      item.setRenderScale(1.0);
+
+      QImage image(width, height, QImage::Format_ARGB32_Premultiplied);
+      image.fill(background);
+      QPainter painter(&image);
+      item.paint(&painter);
+      painter.end();
+      return image;
+    };
+
+    const QImage livePlain = renderLive(false, false);
+    const QImage liveBlurOnly = renderLive(true, false);
+    const QImage liveShadowOnly = renderLive(false, true);
+    QImage live = renderLive(true, true);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString pagePath = dir.filePath(QStringLiteral("page.png"));
+    const QString exportPath = dir.filePath(QStringLiteral("export.png"));
+    QImage page(width, height, QImage::Format_ARGB32_Premultiplied);
+    page.fill(background);
+    QVERIFY(page.save(pagePath, "PNG"));
+
+    DocumentModel document;
+    TextBox box;
+    box.text = "Blur Shadow";
+    box.bounds = {0.0, 0.0, width, height};
+    box.style.fontFamily = "sans-serif";
+    box.style.fontSize = 48;
+    box.style.textColor = "000000ff";
+    box.effects.blurEnabled = true;
+    box.effects.blurSize = 8;
+    box.effects.shadowEnabled = true;
+    box.effects.shadowColor = "000000a0";
+    box.effects.shadowOffsetX = 10;
+    box.effects.shadowOffsetY = 6;
+    box.effects.shadowBlurSize = 5;
+    document.addTextBox(box);
+
+    std::string error;
+    const RenderGraph graph;
+    QVERIFY2(graph.exportPagePng(document, pagePath.toStdString(),
+                                 exportPath.toStdString(), &error),
+             error.c_str());
+    QImage exported(exportPath);
+    QVERIFY(!exported.isNull());
+
+    live = live.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    exported = exported.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    QVERIFY(imagesDiffer(livePlain, liveBlurOnly));
+    QVERIFY(imagesDiffer(livePlain, liveShadowOnly));
+    QVERIFY(imagesDiffer(liveBlurOnly, live));
+    QVERIFY(imagesDiffer(liveShadowOnly, live));
+    QVERIFY(imagesDiffer(page, exported));
+
+    const auto softPixels = [](const QImage &image) {
+      return countPixels(image, [](const QColor &color) {
+        return color.red() > 40 && color.red() < 220 && color.green() > 40 &&
+               color.green() < 220 && color.blue() > 40 && color.blue() < 220 &&
+               color.alpha() > 0;
+      });
+    };
+    QVERIFY(softPixels(live) > softPixels(livePlain));
+    QVERIFY(softPixels(exported) > softPixels(livePlain));
+
+    int differingPixels = 0;
+    for (int y = 0; y < live.height(); ++y) {
+      for (int x = 0; x < live.width(); ++x) {
+        if (live.pixelColor(x, y) != exported.pixelColor(x, y))
+          ++differingPixels;
+      }
+    }
+
+    QVERIFY2(differingPixels == 0,
+             qPrintable(QStringLiteral("differingPixels=%1 liveBounds=%2 exportBounds=%3")
+                            .arg(differingPixels)
+                            .arg(QStringLiteral("%1,%2 %3x%4")
+                                     .arg(visibleBounds(live, background).x())
+                                     .arg(visibleBounds(live, background).y())
+                                     .arg(visibleBounds(live, background).width())
+                                     .arg(visibleBounds(live, background).height()))
+                            .arg(QStringLiteral("%1,%2 %3x%4")
+                                     .arg(visibleBounds(exported, background).x())
+                                     .arg(visibleBounds(exported, background).y())
+                                     .arg(visibleBounds(exported, background).width())
+                                     .arg(visibleBounds(exported, background).height()))));
+  }
+
   void pathTextMatchesExportAtFullScale() {
     const QColor background(240, 240, 240, 255);
     constexpr int width = 260;
