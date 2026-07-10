@@ -995,6 +995,145 @@ private slots:
                                      .arg(visibleBounds(exported, background).height()))));
   }
 
+  void shadowMatchesExportAtFullScale() {
+    const QColor background(240, 240, 240, 255);
+    constexpr int width = 260;
+    constexpr int height = 120;
+
+    OutlinedTextItem item;
+    item.setWidth(width);
+    item.setHeight(height);
+    item.setText(QStringLiteral("Shadow"));
+    item.setFontFamily(QStringLiteral("sans-serif"));
+    item.setPixelSize(56);
+    item.setColor(Qt::black);
+    item.setShadowEnabled(true);
+    item.setShadowColor(Qt::red);
+    item.setShadowOffsetX(12);
+    item.setShadowOffsetY(8);
+    item.setShadowBlurSize(0);
+    item.setRenderScale(1.0);
+
+    QImage live(width, height, QImage::Format_ARGB32_Premultiplied);
+    live.fill(background);
+    QPainter livePainter(&live);
+    item.paint(&livePainter);
+    livePainter.end();
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString pagePath = dir.filePath(QStringLiteral("page.png"));
+    const QString exportPath = dir.filePath(QStringLiteral("export.png"));
+    QImage page(width, height, QImage::Format_ARGB32_Premultiplied);
+    page.fill(background);
+    QVERIFY(page.save(pagePath, "PNG"));
+
+    DocumentModel document;
+    TextBox box;
+    box.text = "Shadow";
+    box.bounds = {0.0, 0.0, width, height};
+    box.style.fontFamily = "sans-serif";
+    box.style.fontSize = 56;
+    box.style.textColor = "000000ff";
+    box.effects.shadowEnabled = true;
+    box.effects.shadowColor = "ff0000ff";
+    box.effects.shadowOffsetX = 12;
+    box.effects.shadowOffsetY = 8;
+    box.effects.shadowBlurSize = 0;
+    document.addTextBox(box);
+
+    std::string error;
+    const RenderGraph graph;
+    QVERIFY2(graph.exportPagePng(document, pagePath.toStdString(),
+                                 exportPath.toStdString(), &error),
+             error.c_str());
+    QImage exported(exportPath);
+    QVERIFY(!exported.isNull());
+
+    live = live.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    exported = exported.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+
+    const auto redShadowPixels = [](const QImage &image) {
+      return countPixels(image, [](const QColor &color) {
+        return color.red() > 120 && color.green() < 80 && color.blue() < 80 &&
+               color.alpha() > 0;
+      });
+    };
+    const auto blackFillPixels = [](const QImage &image) {
+      return countPixels(image, [](const QColor &color) {
+        return color.red() < 40 && color.green() < 40 && color.blue() < 40 &&
+               color.alpha() > 0;
+      });
+    };
+    const auto exactRedPixels = [](const QImage &image) {
+      return countPixels(image, [](const QColor &color) {
+        return color == Qt::red;
+      });
+    };
+    const auto averagePosition = [](const QImage &image, const auto &predicate) {
+      qint64 totalX = 0;
+      qint64 totalY = 0;
+      qint64 pixels = 0;
+      for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x) {
+          if (!predicate(image.pixelColor(x, y)))
+            continue;
+          totalX += x;
+          totalY += y;
+          ++pixels;
+        }
+      }
+      return pixels == 0 ? QPointF{-1.0, -1.0}
+                         : QPointF{static_cast<qreal>(totalX) / pixels,
+                                   static_cast<qreal>(totalY) / pixels};
+    };
+    const auto isRedShadowPixel = [](const QColor &color) {
+      return color.red() > 120 && color.green() < 80 && color.blue() < 80 &&
+             color.alpha() > 0;
+    };
+    const auto isBlackFillPixel = [](const QColor &color) {
+      return color.red() < 40 && color.green() < 40 && color.blue() < 40 &&
+             color.alpha() > 0;
+    };
+
+    QVERIFY(redShadowPixels(live) > 0);
+    QVERIFY(blackFillPixels(live) > 0);
+    QVERIFY(exactRedPixels(live) > 0);
+    QVERIFY(redShadowPixels(exported) > 0);
+    QVERIFY(blackFillPixels(exported) > 0);
+    QVERIFY(exactRedPixels(exported) > 0);
+    QVERIFY(averagePosition(live, isRedShadowPixel).x() >
+            averagePosition(live, isBlackFillPixel).x() + 6.0);
+    QVERIFY(averagePosition(live, isRedShadowPixel).y() >
+            averagePosition(live, isBlackFillPixel).y() + 4.0);
+    QVERIFY(averagePosition(exported, isRedShadowPixel).x() >
+            averagePosition(exported, isBlackFillPixel).x() + 6.0);
+    QVERIFY(averagePosition(exported, isRedShadowPixel).y() >
+            averagePosition(exported, isBlackFillPixel).y() + 4.0);
+
+    int differingPixels = 0;
+    for (int y = 0; y < live.height(); ++y) {
+      for (int x = 0; x < live.width(); ++x) {
+        if (live.pixelColor(x, y) != exported.pixelColor(x, y))
+          ++differingPixels;
+      }
+    }
+
+    QVERIFY2(differingPixels == 0,
+             qPrintable(QStringLiteral("differingPixels=%1 liveBounds=%2 exportBounds=%3")
+                            .arg(differingPixels)
+                            .arg(QStringLiteral("%1,%2 %3x%4")
+                                     .arg(visibleBounds(live, background).x())
+                                     .arg(visibleBounds(live, background).y())
+                                     .arg(visibleBounds(live, background).width())
+                                     .arg(visibleBounds(live, background).height()))
+                            .arg(QStringLiteral("%1,%2 %3x%4")
+                                     .arg(visibleBounds(exported, background).x())
+                                     .arg(visibleBounds(exported, background).y())
+                                     .arg(visibleBounds(exported, background).width())
+                                     .arg(visibleBounds(exported, background).height()))));
+  }
+
   void gradientAndPathAffectRenderedText() {
     auto render = [](bool gradient, bool path) {
       OutlinedTextItem item;
