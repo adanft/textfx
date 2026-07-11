@@ -20,11 +20,11 @@ private slots:
     QCOMPARE(outlineInset(0.0), 0.0);
   }
 
-  void selectsOnlyNonNeutralPaths() {
+  void selectsAllValidPaths() {
     const QVector<QPointF> neutral{{0.0, 0.5}, {0.5, 0.5}, {1.0, 0.5}};
     const QVector<QPointF> curved{{0.0, 0.8}, {0.5, 0.2}, {1.0, 0.8}};
     QVERIFY(!usesPathText(false, curved));
-    QVERIFY(!usesPathText(true, neutral));
+    QVERIFY(usesPathText(true, neutral));
     QVERIFY(usesPathText(true, curved));
 
     QFont font;
@@ -35,8 +35,7 @@ private slots:
     const QPainterPath plain = composeTextLayoutPath(
         options, font, {.enabled = true,
                         .normalizedPoints = neutral,
-                        .smooth = false,
-                        .lineSpacing = 24});
+                        .smooth = false});
     const QPainterPath expected = textLayoutPath(options, font);
     QCOMPARE(plain.boundingRect(), expected.boundingRect());
   }

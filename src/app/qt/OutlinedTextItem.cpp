@@ -580,8 +580,7 @@ const OutlinedTextItem::LayoutCache &OutlinedTextItem::layoutCache() const {
   const TextLayoutPathPolicy pathPolicy{
       .enabled = pathEnabled_,
       .normalizedPoints = normalizedPoints,
-      .smooth = pathMode_ == 1,
-      .lineSpacing = pixelSize_ + lineSpacing_};
+      .smooth = pathMode_ == 1};
   if (cache.usingPathText) {
     cache.path = composeTextLayoutPath(layoutOptions, cache.font, pathPolicy);
 #ifdef TEXTFX_TESTING

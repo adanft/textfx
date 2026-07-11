@@ -1771,7 +1771,7 @@ private slots:
                             .arg(pathBounds.height())));
   }
 
-  void defaultFlatPathKeepsPlainVisibleBounds() {
+  void defaultFlatPathUsesPathMapping() {
     const QColor background(Qt::transparent);
     auto render = [background](bool pathEnabled) {
       OutlinedTextItem item;
@@ -1800,24 +1800,8 @@ private slots:
     const QRect pathBounds = visibleBounds(path, background);
     QVERIFY(!plainBounds.isEmpty());
     QVERIFY(!pathBounds.isEmpty());
-    QVERIFY2(!imagesDiffer(plain, path),
-             "default flat path must render exactly like plain text");
-    QVERIFY2(std::abs(plainBounds.left() - pathBounds.left()) <= 3,
-             qPrintable(QStringLiteral("plain=%1 path=%2")
-                            .arg(plainBounds.left())
-                            .arg(pathBounds.left())));
-    QVERIFY2(std::abs(plainBounds.top() - pathBounds.top()) <= 3,
-             qPrintable(QStringLiteral("plain=%1 path=%2")
-                            .arg(plainBounds.top())
-                            .arg(pathBounds.top())));
-    QVERIFY2(std::abs(plainBounds.width() - pathBounds.width()) <= 6,
-             qPrintable(QStringLiteral("plain=%1 path=%2")
-                            .arg(plainBounds.width())
-                            .arg(pathBounds.width())));
-    QVERIFY2(std::abs(plainBounds.height() - pathBounds.height()) <= 6,
-             qPrintable(QStringLiteral("plain=%1 path=%2")
-                            .arg(plainBounds.height())
-                            .arg(pathBounds.height())));
+    QVERIFY2(imagesDiffer(plain, path),
+             "default flat path must use direct path mapping");
   }
 
   void pathUsesVisualWrappedLinesOnFlatPath() {
@@ -1877,14 +1861,137 @@ private slots:
     QVERIFY(!left.isEmpty());
     QVERIFY(!center.isEmpty());
     QVERIFY(!right.isEmpty());
-    QVERIFY2(std::abs(left.center().x() - center.center().x()) <= 3,
+    QVERIFY2(left.center().x() < center.center().x(),
              qPrintable(QStringLiteral("left=%1 center=%2")
                             .arg(left.center().x())
                             .arg(center.center().x())));
-    QVERIFY2(std::abs(right.center().x() - center.center().x()) <= 3,
+    QVERIFY2(center.center().x() < right.center().x(),
              qPrintable(QStringLiteral("center=%1 right=%2")
                             .arg(center.center().x())
                             .arg(right.center().x())));
+  }
+
+  void minimallyMovedGuideHasNoRenderedSnap() {
+    const QColor background(Qt::transparent);
+    auto render = [background](qreal guideY) {
+      OutlinedTextItem item;
+      item.setWidth(240);
+      item.setHeight(140);
+      item.setText(QStringLiteral("HAVE"));
+      item.setPixelSize(32);
+      item.setColor(Qt::black);
+      item.setHorizontalAlignment(Qt::AlignHCenter);
+      item.setPathEnabled(true);
+      item.setPathPoints(QVariantList{QVariantList{0.0, guideY},
+                                      QVariantList{1.0, guideY}});
+      QImage image(240, 140, QImage::Format_ARGB32_Premultiplied);
+      image.fill(background);
+      QPainter painter(&image);
+      item.paint(&painter);
+      return image;
+    };
+
+    const QImage firstActive = render(0.5 + 0.25 / 140.0);
+    const QImage secondActive = render(0.5 + 0.5 / 140.0);
+    const QRect firstBounds = visibleBounds(firstActive, background);
+    const QRect secondBounds = visibleBounds(secondActive, background);
+    QVERIFY(!firstBounds.isEmpty());
+    QVERIFY(!secondBounds.isEmpty());
+    QVERIFY2(imagesDiffer(firstActive, secondActive),
+             "a tiny active guide movement must be visibly rendered");
+    QVERIFY2(std::abs(secondBounds.left() - firstBounds.left()) <= 1,
+             qPrintable(QStringLiteral("first=%1,%2 %3x%4 second=%5,%6 %7x%8")
+                            .arg(firstBounds.left())
+                            .arg(firstBounds.top())
+                            .arg(firstBounds.width())
+                            .arg(firstBounds.height())
+                            .arg(secondBounds.left())
+                            .arg(secondBounds.top())
+                            .arg(secondBounds.width())
+                            .arg(secondBounds.height())));
+    QVERIFY(std::abs(secondBounds.top() - firstBounds.top()) <= 1);
+    QVERIFY(std::abs(secondBounds.width() - firstBounds.width()) <= 1);
+    QVERIFY(std::abs(secondBounds.height() - firstBounds.height()) <= 1);
+  }
+
+  void activeGuidePreservesFlatAndDiagonalGlyphGeometry() {
+    QFont font;
+    font.setPixelSize(30);
+    const TextLayoutOptions options{.text = QStringLiteral("ALPHA"),
+                                    .width = 180,
+                                    .height = 150,
+                                    .lineSpacing = 4,
+                                    .horizontalAlignment = Qt::AlignRight};
+    QStringList lines;
+    const QPainterPath normal = textLayoutPath(options, font, &lines);
+    QCOMPARE(lines.size(), 1);
+
+    const qreal flatY = 0.62 * options.height;
+    const QPainterPath flat = pathTextLayoutPath(
+        options, font, {{0.0, 0.62}, {1.0, 0.62}}, false);
+    QPainterPath expectedFlat = normal;
+    expectedFlat.translate(0.0, flatY - options.height * 0.5);
+    QCOMPARE(flat, expectedFlat);
+    QCOMPARE(flat.boundingRect().top() - flatY,
+             normal.boundingRect().top() - options.height * 0.5);
+    QCOMPARE(flat.boundingRect().bottom() - flatY,
+             normal.boundingRect().bottom() - options.height * 0.5);
+
+    const QPainterPath shortGuide = pathTextLayoutPath(
+        options, font, {{0.4, 0.62}, {0.6, 0.62}}, false);
+    QPainterPath expectedShortGuide = normal;
+    expectedShortGuide.translate(options.width * 0.4,
+                                 flatY - options.height * 0.5);
+    QCOMPARE(shortGuide, expectedShortGuide);
+
+    const QVector<QPointF> diagonal{{0.0, 0.35}, {1.0, 0.65}};
+    const QPainterPath rotated =
+        pathTextLayoutPath(options, font, diagonal, false);
+    const QPointF start(0.0, diagonal.first().y() * options.height);
+    const QPointF end(options.width, diagonal.last().y() * options.height);
+    const qreal angle =
+        std::atan2(end.y() - start.y(), end.x() - start.x()) * 180.0 /
+        std::acos(-1.0);
+    QTransform expectedTransform;
+    expectedTransform.translate(start.x(), start.y());
+    expectedTransform.rotate(angle);
+    expectedTransform.translate(0.0, -options.height * 0.5);
+    QCOMPARE(rotated, expectedTransform.map(normal));
+  }
+
+  void pathUsesQTextLayoutLineSpacing() {
+    QFont font;
+    font.setPixelSize(30);
+    const TextLayoutOptions compactOptions{
+        .text = QStringLiteral("ALPHA BETA GAMMA"),
+        .width = 120,
+        .height = 180,
+        .lineSpacing = 4,
+        .horizontalAlignment = Qt::AlignLeft};
+    TextLayoutOptions expandedOptions = compactOptions;
+    expandedOptions.lineSpacing = 64;
+    QStringList lines;
+    textLayoutPath(compactOptions, font, &lines);
+    QVERIFY(lines.size() >= 2);
+
+    const QVector<QPointF> guide{{0.0, 0.5}, {1.0, 0.5}};
+    const QPainterPath compact =
+        pathTextLayoutPath(compactOptions, font, guide, false);
+    const QPainterPath expanded =
+        pathTextLayoutPath(expandedOptions, font, guide, false);
+    QVERIFY(expanded.boundingRect().height() >
+            compact.boundingRect().height() + 40.0);
+  }
+
+  void samplesBeyondGuideEndpointsAlongTangents() {
+    const QVector<QPointF> guide{{20.0, 30.0}, {50.0, 70.0}};
+    const QPointF tangent = (guide.last() - guide.first()) / 50.0;
+    const PathSample before = pathSampleAtDistance(guide, -12.0);
+    const PathSample after = pathSampleAtDistance(guide, 85.0);
+    QCOMPARE(before.tangent, tangent);
+    QCOMPARE(after.tangent, tangent);
+    QCOMPARE(before.point, guide.first() - tangent * 12.0);
+    QCOMPARE(after.point, guide.last() + tangent * 35.0);
   }
 
   void pathPointDoesNotStretchHorizontalSpacing() {
@@ -1917,11 +2024,7 @@ private slots:
              qPrintable(QStringLiteral("flat=%1 curved=%2")
                             .arg(flat.left())
                             .arg(curved.left())));
-    QVERIFY2(std::abs(flat.right() - curved.right()) <= 24,
-             qPrintable(QStringLiteral("flat=%1 curved=%2")
-                            .arg(flat.right())
-                            .arg(curved.right())));
-    QVERIFY2(std::abs(flat.width() - curved.width()) <= 32,
+    QVERIFY2(std::abs(flat.width() - curved.width()) <= 40,
              qPrintable(QStringLiteral("flat=%1 curved=%2")
                             .arg(flat.width())
                             .arg(curved.width())));

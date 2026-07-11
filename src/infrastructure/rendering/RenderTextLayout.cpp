@@ -1,7 +1,9 @@
 #include "infrastructure/rendering/RenderTextLayout.h"
 
 #include <QFontMetricsF>
+#include <QGlyphRun>
 #include <QLineF>
+#include <QRawFont>
 #include <QTextBlock>
 #include <QTextBlockFormat>
 #include <QTextCursor>
@@ -190,7 +192,26 @@ PathSample pathSampleAtDistance(const QVector<QPointF> &points,
   if (points.size() == 1)
     return {points.first(), {1.0, 0.0}};
 
-  qreal remaining = std::clamp(distance, 0.0, pathLength(points));
+  qsizetype firstSegmentIndex = -1;
+  qsizetype lastSegmentIndex = -1;
+  for (qsizetype i = 0; i + 1 < points.size(); ++i) {
+    if (QLineF(points.at(i), points.at(i + 1)).length() <= 0.0)
+      continue;
+    if (firstSegmentIndex < 0)
+      firstSegmentIndex = i;
+    lastSegmentIndex = i;
+  }
+  if (firstSegmentIndex < 0)
+    return {points.first(), {1.0, 0.0}};
+
+  const QPointF firstA = points.at(firstSegmentIndex);
+  const QPointF firstB = points.at(firstSegmentIndex + 1);
+  const QPointF firstTangent =
+      (firstB - firstA) / QLineF(firstA, firstB).length();
+  if (distance < 0.0)
+    return {firstA + firstTangent * distance, firstTangent};
+
+  qreal remaining = distance;
   for (qsizetype i = 0; i + 1 < points.size(); ++i) {
     const QPointF a = points.at(i);
     const QPointF b = points.at(i + 1);
@@ -203,64 +224,64 @@ PathSample pathSampleAtDistance(const QVector<QPointF> &points,
     remaining -= segment;
   }
 
-  const QPointF a = points.at(points.size() - 2);
-  const QPointF b = points.last();
-  const qreal segment = std::max<qreal>(1.0, QLineF(a, b).length());
-  return {b, (b - a) / segment};
-}
-
-bool isNeutralFlatPath(const QVector<QPointF> &normalizedPoints) {
-  if (normalizedPoints.size() < 2)
-    return false;
-  if (std::abs(normalizedPoints.first().x()) > 0.0001 ||
-      std::abs(normalizedPoints.last().x() - 1.0) > 0.0001)
-    return false;
-  return std::ranges::all_of(normalizedPoints, [](const QPointF &point) {
-    return std::abs(point.y() - 0.5) <= 0.0001;
-  });
+  const QPointF lastA = points.at(lastSegmentIndex);
+  const QPointF lastB = points.at(lastSegmentIndex + 1);
+  const qreal lastLength = QLineF(lastA, lastB).length();
+  const QPointF lastTangent = (lastB - lastA) / lastLength;
+  return {lastB + lastTangent * remaining, lastTangent};
 }
 
 QPainterPath pathTextLayoutPath(const TextLayoutOptions &options,
                                 const QFont &font,
                                 const QVector<QPointF> &normalizedPathPoints,
-                                bool smoothPath, qreal pathLineSpacing) {
+                                bool smoothPath) {
   QPainterPath path;
-  QStringList lines;
   const QVector<QPointF> guidePoints = layoutPathPoints(
       normalizedPathPoints, options.width, options.height, smoothPath);
   const qreal guideLength = pathLength(guidePoints);
   if (guideLength <= 0.0)
     return textLayoutPath(options, font);
 
-  TextLayoutOptions pathOptions = options;
-  pathOptions.width = guideLength;
-  pathOptions.height = 0.0;
-  textLayoutPath(pathOptions, font, &lines);
-  const QFontMetricsF metrics(font);
-  const qreal firstLineOffset =
-      -static_cast<qreal>(lines.size() - 1) * pathLineSpacing * 0.5;
-  for (qsizetype lineIndex = 0; lineIndex < lines.size(); ++lineIndex) {
-    const QString &line = lines.at(lineIndex);
-    qreal distance = std::max<qreal>(
-        0.0, (guideLength - metrics.horizontalAdvance(line)) * 0.5);
-    const qreal lineOffset =
-        firstLineOffset + static_cast<qreal>(lineIndex) * pathLineSpacing;
-    for (const QChar ch : line) {
-      const qreal advance = metrics.horizontalAdvance(ch);
-      const PathSample sample =
-          pathSampleAtDistance(guidePoints, distance + advance * 0.5);
-      distance += advance;
-      if (ch.isSpace())
+  const std::unique_ptr<QTextDocument> document = laidOutDocument(options, font);
+  const qreal blockHeight = textLayoutBlockHeight(options, font);
+  const qreal documentTop =
+      options.inset +
+      std::max<qreal>(
+          0.0, (options.height - options.inset * 2.0 - blockHeight) / 2.0);
+  const QPointF neutralGuideOrigin(0.0, options.height * 0.5);
+  for (QTextBlock block = document->begin(); block.isValid();
+       block = block.next()) {
+    const QTextLayout *layout = block.layout();
+    if (!layout)
+      continue;
+    const QPointF layoutOrigin(options.inset, documentTop + layout->position().y());
+    for (int lineIndex = 0; lineIndex < layout->lineCount(); ++lineIndex) {
+      const QTextLine line = layout->lineAt(lineIndex);
+      if (!line.isValid())
         continue;
-      QPainterPath glyph;
-      glyph.addText(-advance / 2.0, 0.0, font, QString(ch));
-      const QPointF normal(-sample.tangent.y(), sample.tangent.x());
-      QTransform transform;
-      transform.translate(sample.point.x() + normal.x() * lineOffset,
-                          sample.point.y() + normal.y() * lineOffset);
-      transform.rotate(std::atan2(sample.tangent.y(), sample.tangent.x()) *
-                       180.0 / kPi);
-      path.addPath(transform.map(glyph));
+      for (const QGlyphRun &run :
+           line.glyphRuns(line.textStart(), line.textLength())) {
+        const QVector<quint32> indexes = run.glyphIndexes();
+        const QVector<QPointF> positions = run.positions();
+        const qsizetype count = std::min(indexes.size(), positions.size());
+        for (qsizetype glyphIndex = 0; glyphIndex < count; ++glyphIndex) {
+          const QPainterPath outline =
+              run.rawFont().pathForGlyph(indexes.at(glyphIndex));
+          if (outline.isEmpty())
+            continue;
+          const QPointF glyphOrigin = layoutOrigin + positions.at(glyphIndex);
+          const PathSample sample =
+              pathSampleAtDistance(guidePoints, glyphOrigin.x());
+          const QPointF normal(-sample.tangent.y(), sample.tangent.x());
+          const QPointF mappedOrigin =
+              sample.point + normal * (glyphOrigin.y() - neutralGuideOrigin.y());
+          QTransform transform;
+          transform.translate(mappedOrigin.x(), mappedOrigin.y());
+          transform.rotate(std::atan2(sample.tangent.y(), sample.tangent.x()) *
+                           180.0 / kPi);
+          path.addPath(transform.map(outline));
+        }
+      }
     }
   }
   path.setFillRule(Qt::WindingFill);

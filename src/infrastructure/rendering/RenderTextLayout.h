@@ -36,13 +36,12 @@ QPainterPath textLayoutPath(const TextLayoutOptions &options, const QFont &font,
 QPainterPath pathTextLayoutPath(const TextLayoutOptions &options,
                                 const QFont &font,
                                 const QVector<QPointF> &normalizedPathPoints,
-                                bool smoothPath, qreal pathLineSpacing);
+                                bool smoothPath);
 
 QVector<QPointF> layoutPathPoints(const QVector<QPointF> &normalizedPoints,
                                   qreal layoutWidth, qreal layoutHeight,
                                   bool smooth);
 qreal pathLength(const QVector<QPointF> &points);
 PathSample pathSampleAtDistance(const QVector<QPointF> &points, qreal distance);
-bool isNeutralFlatPath(const QVector<QPointF> &normalizedPoints);
 
 } // namespace textfx

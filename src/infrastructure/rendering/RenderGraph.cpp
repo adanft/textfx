@@ -206,9 +206,7 @@ void drawTextBox(QPainter &painter, const TextBox &box) {
   const TextLayoutPathPolicy pathPolicy{
       .enabled = box.effects.pathEnabled,
       .normalizedPoints = normalizedPoints,
-      .smooth = box.effects.pathMode == 1,
-      .lineSpacing = static_cast<qreal>(box.style.fontSize +
-                                        box.style.lineSpacing)};
+      .smooth = box.effects.pathMode == 1};
   auto path = composeTextLayoutPath(layoutOptions, font, pathPolicy);
   QRectF paintedBounds = paintedTextBounds(path, outline);
   const QPointF translation = translationToConstrainTextBounds(

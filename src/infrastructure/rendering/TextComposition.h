@@ -28,7 +28,6 @@ struct TextLayoutPathPolicy {
   bool enabled = false;
   QVector<QPointF> normalizedPoints;
   bool smooth = false;
-  qreal lineSpacing = 0.0;
 };
 
 QPainterPath composeTextLayoutPath(

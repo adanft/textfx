@@ -35,8 +35,7 @@ qreal outlineInset(qreal maximumStrokeWidth) {
 
 bool usesPathText(bool pathEnabled,
                   const QVector<QPointF> &normalizedPathPoints) {
-  return pathEnabled && normalizedPathPoints.size() > 1 &&
-         !isNeutralFlatPath(normalizedPathPoints);
+  return pathEnabled && normalizedPathPoints.size() > 1;
 }
 
 QPainterPath composeTextLayoutPath(
@@ -44,7 +43,7 @@ QPainterPath composeTextLayoutPath(
     const TextLayoutPathPolicy &pathPolicy) {
   if (usesPathText(pathPolicy.enabled, pathPolicy.normalizedPoints))
     return pathTextLayoutPath(options, font, pathPolicy.normalizedPoints,
-                               pathPolicy.smooth, pathPolicy.lineSpacing);
+                               pathPolicy.smooth);
   return textLayoutPath(options, font);
 }
 
