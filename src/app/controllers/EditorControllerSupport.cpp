@@ -15,6 +15,7 @@
 #include <QTextCursor>
 #include <QTextDocument>
 
+#include <algorithm>
 #include <utility>
 
 namespace textfx {
@@ -98,6 +99,31 @@ const TextBox *EditorController::selectedBox() const {
   return SelectionQueryService::selectedBox(document_.textBoxes(), selectedIndex_);
 }
 
+bool EditorController::setSelection(std::vector<int> selectedIndices,
+                                    int selectedIndex) {
+  std::vector<int> normalized;
+  for (const int index : selectedIndices) {
+    if (index >= 0 && index < boxCount() &&
+        std::find(normalized.begin(), normalized.end(), index) == normalized.end())
+      normalized.push_back(index);
+  }
+  if (std::find(normalized.begin(), normalized.end(), selectedIndex) ==
+      normalized.end())
+    selectedIndex = normalized.empty() ? -1 : normalized.back();
+  if (selectedIndex_ == selectedIndex && selectedIndices_ == normalized)
+    return false;
+  selectedIndex_ = selectedIndex;
+  selectedIndices_ = std::move(normalized);
+  return true;
+}
+
+void EditorController::emitSelectionChanged() {
+  emit selectionChanged();
+  emit selectedIndicesChanged();
+  emit selectedBoxChanged();
+  emit stateChanged();
+}
+
 bool EditorController::editSelectedBoxIf(
     const std::function<bool(TextBox &)> &mutation) {
   return editSelectedBoxIf(mutation, allBoxRoles());
@@ -120,6 +146,40 @@ void EditorController::editSelectedBox(
 void EditorController::editSelectedBox(
     const std::function<void(TextBox &)> &mutation, const QList<int> &roles) {
   editSelectedBoxIf([&](TextBox &box) {
+    mutation(box);
+    return true;
+  }, roles);
+}
+
+bool EditorController::editSelectedBoxesIf(
+    const std::function<bool(TextBox &)> &mutation, const QList<int> &roles) {
+  std::vector<int> changedRows;
+  for (const int index : selectedIndices_) {
+    auto *box = SelectionQueryService::selectedBox(document_.textBoxes(), index);
+    if (box && mutation(*box))
+      changedRows.push_back(index);
+  }
+  if (changedRows.empty())
+    return false;
+
+  document_.setDirty(true);
+  for (const int row : changedRows)
+    boxesModel_.notifyBoxChanged(row, roles);
+  if (interactionDepth_ > 0) {
+    pendingDocumentChanged_ = true;
+    emit selectedBoxChanged();
+    emit stateChanged();
+    return true;
+  }
+  emit documentChanged();
+  emit selectedBoxChanged();
+  emit stateChanged();
+  return true;
+}
+
+bool EditorController::editSelectedBoxes(
+    const std::function<void(TextBox &)> &mutation, const QList<int> &roles) {
+  return editSelectedBoxesIf([&](TextBox &box) {
     mutation(box);
     return true;
   }, roles);
@@ -173,6 +233,7 @@ void EditorController::resetToEmptyDocumentState() {
   boxesModel_.endResetBoxes();
   projectPresets_.clear();
   selectedIndex_ = -1;
+  selectedIndices_.clear();
   selectedPresetIndex_ = -1;
 }
 
@@ -181,6 +242,7 @@ void EditorController::prepareProjectDocumentState() {
   document_.clear();
   boxesModel_.endResetBoxes();
   selectedIndex_ = -1;
+  selectedIndices_.clear();
   selectedPresetIndex_ = -1;
   currentPage_.clear();
   currentPageIndex_ = -1;
@@ -195,6 +257,7 @@ void EditorController::applyLoadedPageDocument(int index,
   document_ = std::move(document);
   projectPresets_.clear();
   selectedIndex_ = -1;
+  selectedIndices_.clear();
   editingText_ = false;
   pendingDocumentChanged_ = false;
   boxesModel_.endResetBoxes();
@@ -204,6 +267,7 @@ void EditorController::clearProjectState() {
   clearLoadedProjectState();
   resetToEmptyDocumentState();
   emit selectionChanged();
+  emit selectedIndicesChanged();
   emit selectedBoxChanged();
   emit pageTextsChanged();
   emit documentChanged();
@@ -229,6 +293,7 @@ bool EditorController::loadPageAt(int index) {
                           std::move(result.document));
   reloadPresets();
   emit selectionChanged();
+  emit selectedIndicesChanged();
   emit selectedBoxChanged();
   emit pageTextsChanged();
   emit documentChanged();

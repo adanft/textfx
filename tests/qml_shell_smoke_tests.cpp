@@ -96,19 +96,19 @@ private slots:
 
     const qsizetype edit =
         handler.indexOf(QStringLiteral("if (Editor.editingText)"));
-    const qsizetype transient = handler.indexOf(QStringLiteral(
-        "else if (dragMode !== editorInteraction.dragModeIdle)"));
+    const qsizetype transient = handler.indexOf(
+        QStringLiteral("if (dragMode !== editorInteraction.dragModeIdle)"));
     const qsizetype deselect =
-        handler.indexOf(QStringLiteral("else if (Editor.selectedIndex >= 0)"));
-    QVERIFY(edit >= 0);
-    QVERIFY(transient > edit);
-    QVERIFY(deselect > transient);
+        handler.indexOf(QStringLiteral("if (Editor.selectedIndex >= 0)"));
+    QVERIFY(transient >= 0);
+    QVERIFY(edit > transient);
+    QVERIFY(deselect > edit);
     QVERIFY(handler.contains(QStringLiteral("Editor.endTextEdit()")));
     QVERIFY(handler.contains(QStringLiteral("canvas.forceActiveFocus()")));
     QVERIFY(handler.contains(QStringLiteral("endResizeDrag(false)")));
     QVERIFY(handler.contains(
         QStringLiteral("dragMode = editorInteraction.dragModeIdle")));
-    QVERIFY(handler.contains(QStringLiteral("Editor.selectBox(-1)")));
+    QVERIFY(handler.contains(QStringLiteral("Editor.clearSelection()")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         source,
         QStringLiteral(

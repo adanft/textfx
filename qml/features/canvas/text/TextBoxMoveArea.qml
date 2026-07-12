@@ -18,6 +18,8 @@ MouseArea {
     readonly property int zMoveArea: 10
 
     z: boxRef.selected && editorRef.editingText ? zBehindEditOverlay : zMoveArea
+    property bool controlClickCandidate: false
+    property bool controlClickDragged: false
     x: visualBounds.x
     y: visualBounds.y
     width: visualBounds.width
@@ -33,23 +35,51 @@ MouseArea {
         }
         mouse.accepted = true;
         canvasItem.forceActiveFocus();
+        controlClickCandidate = mouse.modifiers & Qt.ControlModifier;
+        controlClickDragged = false;
+        if (controlClickCandidate)
+            return ;
+        if (editorRef.editingText)
+            editorRef.endTextEdit();
         editorRef.selectBox(boxRef.boxModel.index);
         editorRef.beginInteraction();
         const point = mapToItem(canvasItem, mouse.x, mouse.y);
         rootWindow.beginMoveDrag(boxRef, boxRef.boxModel.index, point.x, point.y);
     }
     onPositionChanged: (mouse) => {
-        if (!pressed || boxRef.boxModel.index !== editorRef.selectedIndex)
+        if (!pressed)
+            return ;
+        if (controlClickCandidate) {
+            const deltaX = mouse.x - pressX;
+            const deltaY = mouse.y - pressY;
+            controlClickDragged = controlClickDragged || deltaX * deltaX + deltaY * deltaY >=
+                    Qt.styleHints.startDragDistance * Qt.styleHints.startDragDistance;
+            return ;
+        }
+        if (boxRef.boxModel.index !== editorRef.selectedIndex)
             return ;
 
         const point = mapToItem(canvasItem, mouse.x, mouse.y);
         rootWindow.updateMoveDrag(point.x, point.y);
     }
     onReleased: {
+        if (controlClickCandidate) {
+            if (!controlClickDragged) {
+                if (editorRef.editingText)
+                    editorRef.endTextEdit();
+                editorRef.toggleBoxSelection(boxRef.boxModel.index);
+            }
+            controlClickCandidate = false;
+            return ;
+        }
         rootWindow.endMoveDrag(true);
         editorRef.endInteraction();
     }
     onCanceled: {
+        if (controlClickCandidate) {
+            controlClickCandidate = false;
+            return ;
+        }
         rootWindow.endMoveDrag(false);
         editorRef.endInteraction();
     }

@@ -14,6 +14,7 @@
 #include <QQuickTextDocument>
 #include <QQuickView>
 #include <QQuickWindow>
+#include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTextBlock>
@@ -1960,7 +1961,7 @@ Item {
             "function handleSize() { return Math.max(1, "
             "documentToViewLength(editorLimits.minimumBoxSize)) }")));
     QVERIFY(delegateSource.contains(
-        QStringLiteral("border.width: !renderSelectionUi || perspectiveActive ? 0 : selected ? "
+        QStringLiteral("border.width: !renderSelectionUi || perspectiveActive ? 0 : selectionMember ? "
                        "rootWindow.selectionLineWidth() : Math.max(1, "
                        "rootWindow.documentToViewLength(1))")));
     QVERIFY(!mainSource.contains(
@@ -2132,6 +2133,238 @@ Item {
         QStringLiteral("window.editor.setSelectedRotation(boxRotateInteraction."
                        "rotateStartRotation)")));
   }
+      void qmlMultiSelectionVisualsAndEscapeUseMembership() {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(10, 20, 120, 60);
+        editor.createTextBox(180, 20, 120, 60);
+        editor.selectBox(0);
+        editor.toggleBoxSelection(1);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(
+            QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+        auto *window =
+            qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        QList<QQuickItem *> delegates;
+        QTRY_VERIFY((delegates.clear(), collectVisualChildrenByName(window->contentItem(),
+                                                  QStringLiteral("textBoxDelegate"),
+                                                  delegates), delegates.size() == 2));
+        QQuickItem *primary = nullptr;
+        QQuickItem *secondary = nullptr;
+        for (QQuickItem *delegate : delegates) {
+          if (delegate->property("boxModel").toMap().value("index").toInt() == 1)
+            primary = delegate;
+          else
+            secondary = delegate;
+        }
+        QVERIFY(primary);
+        QVERIFY(secondary);
+        QTRY_VERIFY(QQmlProperty(primary, QStringLiteral("border.width")).read()
+                        .toReal() > 0.0);
+        QTRY_VERIFY(QQmlProperty(secondary, QStringLiteral("border.width")).read()
+                        .toReal() > 0.0);
+        QCOMPARE(countVisibleVisualChildrenByName(
+                     window->contentItem(), QStringLiteral("resizeHandle_nw")),
+                 1);
+
+        const auto sceneCenter = [](QQuickItem *item) {
+          return item->mapToScene(QPointF(item->width() / 2, item->height() / 2))
+              .toPoint();
+        };
+        editor.selectBox(0);
+        const QPoint primaryCenter = sceneCenter(primary);
+        const QPointF primaryPosition = primary->position();
+        QTest::mousePress(window, Qt::LeftButton, Qt::ControlModifier, primaryCenter);
+        QCOMPARE(window->property("dragMode").toInt(), 0);
+        QCOMPARE(editor.selectedIndices().size(), 1);
+        QCOMPARE(editor.selectedIndices().at(0).toInt(), 0);
+        QTest::mouseMove(window, primaryCenter + QPoint(30, 20));
+        QTest::mouseMove(window, primaryCenter + QPoint(1, 1));
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::ControlModifier,
+                            primaryCenter + QPoint(1, 1));
+        QCOMPARE(window->property("dragMode").toInt(), 0);
+        QCOMPARE(editor.selectedIndices().size(), 1);
+        QCOMPARE(editor.selectedIndices().at(0).toInt(), 0);
+        QCOMPARE(primary->position(), primaryPosition);
+        QTest::mouseClick(window, Qt::LeftButton, Qt::ControlModifier, primaryCenter);
+        QTRY_COMPARE(editor.selectedIndex(), 1);
+        QCOMPARE(editor.selectedIndices().size(), 2);
+
+        QTest::mouseDClick(window, Qt::LeftButton, Qt::NoModifier,
+                            sceneCenter(primary));
+        QTRY_COMPARE(editor.selectedIndex(), 1);
+        QCOMPARE(editor.selectedIndices().size(), 1);
+        QTRY_VERIFY(editor.editingText());
+        const QVariantMap plainStartBounds = editor.boxes().at(0).toMap();
+        const QPoint plainStart = sceneCenter(secondary);
+        QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, plainStart);
+        QTRY_VERIFY(!editor.editingText());
+        QTRY_COMPARE(editor.selectedIndex(), 0);
+        QCOMPARE(window->property("dragMode").toInt(), 7);
+        QTest::mouseMove(window, plainStart + QPoint(15, 10));
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier,
+                            plainStart + QPoint(15, 10));
+        QTRY_COMPARE(window->property("dragMode").toInt(), 0);
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("x")).toDouble(),
+                 plainStartBounds.value(QStringLiteral("x")).toDouble() + 15.0);
+
+        QTest::mouseDClick(window, Qt::LeftButton, Qt::NoModifier,
+                            sceneCenter(primary));
+        QTRY_COMPARE(editor.selectedIndex(), 1);
+        QTRY_VERIFY(editor.editingText());
+        const QVariantMap shiftStartBounds = editor.boxes().at(0).toMap();
+        const QPoint shiftStart = sceneCenter(secondary);
+        QTest::mousePress(window, Qt::LeftButton, Qt::ShiftModifier, shiftStart);
+        QTRY_VERIFY(!editor.editingText());
+        QTRY_COMPARE(editor.selectedIndex(), 0);
+        QCOMPARE(window->property("dragMode").toInt(), 7);
+        QTest::mouseMove(window, shiftStart + QPoint(20, 10));
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::ShiftModifier,
+                            shiftStart + QPoint(20, 10));
+        QTRY_COMPARE(window->property("dragMode").toInt(), 0);
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("x")).toDouble(),
+                 shiftStartBounds.value(QStringLiteral("x")).toDouble() + 20.0);
+
+        QTest::mouseDClick(window, Qt::LeftButton, Qt::NoModifier,
+                            sceneCenter(primary));
+        QTRY_COMPARE(editor.selectedIndex(), 1);
+        QCOMPARE(editor.selectedIndices().size(), 1);
+        QTRY_VERIFY(editor.editingText());
+
+        QObject *canvas = nullptr;
+        QTRY_VERIFY(canvas = findVisualChildByName(window->contentItem(),
+                                                   QStringLiteral("centralCanvas")));
+        QVERIFY(QMetaObject::invokeMethod(canvas, "forceActiveFocus"));
+        QTest::keyClick(window, Qt::Key_Escape);
+        QTRY_VERIFY(!editor.editingText());
+        QTRY_COMPARE(editor.selectedIndex(), -1);
+        QCOMPARE(editor.selectedIndices().size(), 0);
+        QTest::keyClick(window, Qt::Key_Escape);
+        QCOMPARE(editor.selectedIndex(), -1);
+        QCOMPARE(editor.selectedIndices().size(), 0);
+
+        auto *canvasItem = qobject_cast<QQuickItem *>(canvas);
+        QVERIFY(canvasItem);
+        const QPoint createStart = canvasItem->mapToScene(QPointF(420, 260)).toPoint();
+        const QPoint createEnd = createStart + QPoint(80, 60);
+        QTest::mousePress(window, Qt::LeftButton, Qt::ControlModifier, createStart);
+        QTest::mouseMove(window, createEnd);
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::ControlModifier, createEnd);
+        QTRY_COMPARE(editor.boxes().size(), 3);
+      }
+
+      void qmlPlainMoveReleaseCommitsAndEscapeDoesNotRestoreBounds() {
+        registerQmlTypes();
+
+        EditorController editor;
+        editor.newDocument();
+        editor.createTextBox(10, 20, 120, 60);
+
+        QQmlApplicationEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+        engine.load(QUrl::fromLocalFile(
+            QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
+        QCOMPARE(engine.rootObjects().size(), 1);
+        auto *window =
+            qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        QQuickItem *delegate = nullptr;
+        QTRY_VERIFY(delegate = qobject_cast<QQuickItem *>(findVisualChildByName(
+                        window->contentItem(), QStringLiteral("textBoxDelegate"))));
+        const QPoint start = delegate->mapToScene(
+            QPointF(delegate->width() / 2, delegate->height() / 2)).toPoint();
+        const QPoint end = start + QPoint(40, 25);
+        const QVariantMap startBounds = editor.boxes().at(0).toMap();
+
+        QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, start);
+        QTest::mouseMove(window, end);
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, end);
+
+        QTRY_COMPARE(window->property("dragMode").toInt(), 0);
+        QTRY_COMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("x")).toDouble(),
+                     startBounds.value(QStringLiteral("x")).toDouble() + 40.0);
+        QTRY_COMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("y")).toDouble(),
+                     startBounds.value(QStringLiteral("y")).toDouble() + 25.0);
+        const QVariantMap committedBounds = editor.boxes().at(0).toMap();
+
+        QTest::keyClick(window, Qt::Key_Escape);
+        QTRY_COMPARE(editor.selectedIndex(), -1);
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("x")).toDouble(),
+                 committedBounds.value(QStringLiteral("x")).toDouble());
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("y")).toDouble(),
+                 committedBounds.value(QStringLiteral("y")).toDouble());
+
+        const QPoint cancelStart = delegate->mapToScene(
+            QPointF(delegate->width() / 2, delegate->height() / 2)).toPoint();
+        QSignalSpy documentChanged(&editor, &EditorController::documentChanged);
+        QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cancelStart);
+        QTest::mouseMove(window, cancelStart + QPoint(30, 15));
+        QVERIFY(QMetaObject::invokeMethod(window, "handleEscape"));
+        QTRY_COMPARE(window->property("dragMode").toInt(), 0);
+        QTRY_COMPARE(editor.selectedIndex(), -1);
+        QCOMPARE(editor.selectedIndices().size(), 0);
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("x")).toDouble(),
+                 committedBounds.value(QStringLiteral("x")).toDouble());
+        QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("y")).toDouble(),
+                 committedBounds.value(QStringLiteral("y")).toDouble());
+        QTRY_COMPARE(documentChanged.count(), 1);
+
+        editor.selectBox(0);
+        editor.setSelectedFontSize(31);
+        QTRY_COMPARE(documentChanged.count(), 2);
+        const QVariantMap finalizedBounds = editor.boxes().at(0).toMap();
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier,
+                            cancelStart + QPoint(30, 15));
+        QTRY_COMPARE(window->property("dragMode").toInt(), 0);
+        QCOMPARE(editor.selectedIndex(), 0);
+        QCOMPARE(editor.selectedIndices().size(), 1);
+        QCOMPARE(editor.boxes().at(0).toMap(), finalizedBounds);
+        QCOMPARE(documentChanged.count(), 2);
+      }
+
+      void qmlMultiSelectionRoutesModifiersAndKeepsPrimaryControls() {
+        const QString delegateSource =
+            readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+        const QString moveSource =
+            readQmlFile(QStringLiteral("TextBoxMoveArea.qml"));
+        const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
+        const QString canvasStateSource =
+            readQmlFile(QStringLiteral("CanvasInteractionState.qml"));
+
+        QVERIFY(delegateSource.contains(QStringLiteral(
+            "readonly property var selectedIndices: editorRef ? editorRef.selectedIndices : []")));
+        QVERIFY(delegateSource.contains(QStringLiteral(
+            "readonly property bool selectionMember: selectedIndices.indexOf(boxIndex) >= 0")));
+        QVERIFY(delegateSource.contains(QStringLiteral(
+            "border.width: !renderSelectionUi || perspectiveActive ? 0 : selectionMember")));
+        QVERIFY(moveSource.contains(
+            QStringLiteral("controlClickCandidate = mouse.modifiers & Qt.ControlModifier")));
+        QVERIFY(moveSource.contains(
+            QStringLiteral("controlClickDragged = controlClickDragged || deltaX * deltaX + deltaY * deltaY >=")));
+        QVERIFY(!moveSource.contains(QStringLiteral("Qt.ShiftModifier")));
+        QVERIFY(moveSource.contains(QStringLiteral("editorRef.toggleBoxSelection(boxRef.boxModel.index)")));
+        QVERIFY(delegateSource.contains(
+            QStringLiteral("if (eventPoint.modifiers & Qt.ControlModifier)")));
+        QVERIFY(delegateSource.contains(
+            QStringLiteral("boxDelegate.editorRef.selectBox(boxDelegate.boxModel.index)")));
+        QVERIFY(moveSource.contains(QStringLiteral("editorRef.selectBox(boxRef.boxModel.index)")));
+        QVERIFY(moveSource.contains(QStringLiteral("onDoubleClicked: (mouse) => {")));
+        QVERIFY(moveSource.contains(QStringLiteral("editorRef.beginTextEdit()")));
+        QVERIFY(canvasStateSource.contains(QStringLiteral(
+            "button === Qt.LeftButton && (modifiers & Qt.ControlModifier)")));
+        QVERIFY(mainSource.contains(QStringLiteral("Editor.clearSelection()")));
+      }
+
 };
 
 QTEST_MAIN(QmlTextBoxDelegateSmokeTests)

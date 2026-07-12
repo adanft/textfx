@@ -405,26 +405,28 @@ ApplicationWindow {
     }
 
     function handleEscape() {
-        if (Editor.editingText) {
-            Editor.endTextEdit();
-            canvas.forceActiveFocus();
-        } else if (dragMode !== editorInteraction.dragModeIdle) {
+        if (dragMode !== editorInteraction.dragModeIdle) {
             if (dragMode === editorInteraction.dragModeResize)
                 endResizeDrag(false);
             else if (dragMode === editorInteraction.dragModePerspective)
                 endPerspectiveDrag(false);
             else if (dragMode === editorInteraction.dragModeRotate)
                 endRotateDrag(false);
-            else if (dragMode === editorInteraction.dragModeMove)
+            else if (dragMode === editorInteraction.dragModeMove) {
                 endMoveDrag(false);
-            else if (dragMode === editorInteraction.dragModePathHandle)
+                Editor.endInteraction();
+            } else if (dragMode === editorInteraction.dragModePathHandle)
                 endPathHandleDrag();
             else if (dragMode === editorInteraction.dragModePaint)
                 cancelPaintDrag();
             dragMode = editorInteraction.dragModeIdle;
-        } else if (Editor.selectedIndex >= 0) {
-            Editor.selectBox(-1);
         }
+        if (Editor.editingText) {
+            Editor.endTextEdit();
+            canvas.forceActiveFocus();
+        }
+        if (Editor.selectedIndex >= 0)
+            Editor.clearSelection();
     }
 
     function paintPoint(x, y) {

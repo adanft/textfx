@@ -1554,6 +1554,87 @@ private slots:
     QCOMPARE(editor.boxes().size(), 1);
   }
 
+  void boxSelectionTracksOrderedMembershipAndSignals() {
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(1, 2, 80, 40);
+    editor.createTextBox(3, 4, 80, 40);
+    editor.createTextBox(5, 6, 80, 40);
+    QSignalSpy selectionChanged(&editor, &EditorController::selectionChanged);
+    QSignalSpy selectedIndicesChanged(&editor,
+                                      &EditorController::selectedIndicesChanged);
+
+    editor.selectBox(0);
+    editor.toggleBoxSelection(1);
+    editor.toggleBoxSelection(2);
+    QCOMPARE(editor.selectedIndices(), QVariantList({0, 1, 2}));
+    QCOMPARE(editor.selectedIndex(), 2);
+    QVERIFY(editor.isBoxSelected(1));
+
+    editor.toggleBoxSelection(1);
+    QCOMPARE(editor.selectedIndices(), QVariantList({0, 2}));
+    QCOMPARE(editor.selectedIndex(), 2);
+    editor.toggleBoxSelection(2);
+    QCOMPARE(editor.selectedIndices(), QVariantList({0}));
+    QCOMPARE(editor.selectedIndex(), 0);
+    editor.toggleBoxSelection(0);
+    QCOMPARE(editor.selectedIndices(), QVariantList());
+    QCOMPARE(editor.selectedIndex(), -1);
+
+    editor.selectBox(1);
+    QCOMPARE(editor.selectedIndices(), QVariantList({1}));
+    editor.selectBox(99);
+    QCOMPARE(editor.selectedIndices(), QVariantList());
+    QCOMPARE(selectionChanged.count(), selectedIndicesChanged.count());
+  }
+
+  void boxSelectionReplacesOnCreationAndReindexesModelChanges() {
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(1, 2, 80, 40);
+    editor.createTextBox(3, 4, 80, 40);
+    editor.createTextBox(5, 6, 80, 40);
+    editor.selectBox(0);
+    editor.toggleBoxSelection(1);
+    editor.toggleBoxSelection(2);
+
+    editor.moveLayer(0);
+    QCOMPARE(editor.selectedIndices(), QVariantList({1, 2, 0}));
+    QCOMPARE(editor.selectedIndex(), 0);
+    editor.deleteSelected();
+    QCOMPARE(editor.selectedIndices(), QVariantList({0, 1}));
+    QCOMPARE(editor.selectedIndex(), 1);
+
+    editor.createTextBox(7, 8, 80, 40);
+    QCOMPARE(editor.selectedIndices(), QVariantList({2}));
+    editor.duplicateSelected();
+    QCOMPARE(editor.selectedIndices(), QVariantList({3}));
+
+    editor.selectBox(0);
+    editor.deleteSelected();
+    QCOMPARE(editor.selectedIndices(), QVariantList({0}));
+    QCOMPARE(editor.selectedIndex(), 0);
+    editor.newDocument();
+    QCOMPARE(editor.selectedIndices(), QVariantList());
+    QCOMPARE(editor.selectedIndex(), -1);
+
+    QTemporaryDir project;
+    QVERIFY(project.isValid());
+    touch(project.filePath(QStringLiteral("page1.png")));
+    touch(project.filePath(QStringLiteral("page2.png")));
+    editor.createTextBox(9, 10, 80, 40);
+    QCOMPARE(editor.selectedIndices(), QVariantList({0}));
+    editor.openProject(project.path());
+    QCOMPARE(editor.selectedIndices(), QVariantList());
+    QCOMPARE(editor.selectedIndex(), -1);
+    editor.createTextBox(1, 2, 80, 40);
+    editor.createTextBox(3, 4, 80, 40);
+    editor.toggleBoxSelection(0);
+    editor.nextPage();
+    QCOMPARE(editor.selectedIndices(), QVariantList());
+    QCOMPARE(editor.selectedIndex(), -1);
+  }
+
   void selectedBoxViewModelTracksSelectionDirectly() {
     EditorController editor;
     editor.newDocument();
@@ -1592,6 +1673,88 @@ private slots:
     QCOMPARE(selectionChanged.count(), 0);
     QCOMPARE(selectedBoxChanged.count(), 0);
     QCOMPARE(stateChanged.count(), 0);
+  }
+
+  void textPropertiesFanOutToSelectedBoxesAndPreservePrimarySelection() {
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(1, 2, 80, 40);
+    editor.updateSelectedText(QStringLiteral("Primary"));
+    editor.createTextBox(3, 4, 80, 40);
+    editor.updateSelectedText(QStringLiteral("Secondary"));
+    editor.createTextBox(5, 6, 80, 40);
+    editor.updateSelectedText(QStringLiteral("Unselected"));
+    editor.selectBox(0);
+    editor.toggleBoxSelection(1);
+    const auto membership = editor.selectedIndices();
+    const int primary = editor.selectedIndex();
+    const auto unselectedBefore = editor.boxes().at(2).toMap();
+
+    auto *model = qobject_cast<QAbstractItemModel *>(editor.boxesModel());
+    QVERIFY(model);
+    QSignalSpy dataChanged(model, &QAbstractItemModel::dataChanged);
+    editor.setSelectedFontFamily(QStringLiteral("TextFX Multi Family"));
+    QCOMPARE(dataChanged.count(), 2);
+    for (const auto &signal : dataChanged) {
+      const int row = signal.at(0).value<QModelIndex>().row();
+      QVERIFY(row == 0 || row == 1);
+      QVERIFY(signal.at(2).value<QList<int>>().contains(
+          roleForName(*model, "boxFontFamily")));
+    }
+    editor.setSelectedFontSize(42);
+    editor.setSelectedTextColor(QStringLiteral("#ff00aa"));
+    editor.setSelectedBold(true);
+    editor.setSelectedItalic(true);
+    editor.setSelectedUppercase(true);
+    editor.setSelectedLowercase(true);
+    editor.setSelectedAlignment(1);
+    editor.setSelectedLineSpacing(12);
+    editor.setSelectedLetterSpacing(3);
+
+    for (const int row : {0, 1}) {
+      const auto box = editor.boxes().at(row).toMap();
+      QCOMPARE(box.value(QStringLiteral("fontFamily")).toString(),
+               QStringLiteral("TextFX Multi Family"));
+      QCOMPARE(box.value(QStringLiteral("fontSize")).toInt(), 42);
+      QCOMPARE(box.value(QStringLiteral("color")).toString(),
+               QStringLiteral("ff00aaff"));
+      QVERIFY(box.value(QStringLiteral("bold")).toBool());
+      QVERIFY(box.value(QStringLiteral("italic")).toBool());
+      QVERIFY(!box.value(QStringLiteral("uppercase")).toBool());
+      QVERIFY(box.value(QStringLiteral("lowercase")).toBool());
+      QCOMPARE(box.value(QStringLiteral("alignment")).toInt(), 1);
+      QCOMPARE(box.value(QStringLiteral("lineSpacing")).toInt(), 12);
+      QCOMPARE(box.value(QStringLiteral("letterSpacing")).toInt(), 3);
+    }
+    const auto unselected = editor.boxes().at(2).toMap();
+    QCOMPARE(unselected.value(QStringLiteral("text")).toString(),
+             QStringLiteral("Unselected"));
+    for (const auto &property : {QStringLiteral("fontFamily"),
+                                 QStringLiteral("fontSize"),
+                                 QStringLiteral("color"),
+                                 QStringLiteral("bold"),
+                                 QStringLiteral("italic"),
+                                 QStringLiteral("uppercase"),
+                                 QStringLiteral("lowercase"),
+                                 QStringLiteral("alignment"),
+                                 QStringLiteral("lineSpacing"),
+                                 QStringLiteral("letterSpacing")})
+      QCOMPARE(unselected.value(property), unselectedBefore.value(property));
+    QCOMPARE(editor.selectedIndices(), membership);
+    QCOMPARE(editor.selectedIndex(), primary);
+
+    editor.updateSelectedText(QStringLiteral("Primary only"));
+    QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("text")).toString(),
+             QStringLiteral("Primary"));
+    QCOMPARE(editor.boxes().at(1).toMap().value(QStringLiteral("text")).toString(),
+             QStringLiteral("Primary only"));
+
+    editor.clearSelection();
+    editor.setSelectedFontSize(64);
+    QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("fontSize")).toInt(),
+             42);
+    QCOMPARE(editor.boxes().at(1).toMap().value(QStringLiteral("fontSize")).toInt(),
+             42);
   }
 
   void textPropertiesUpdateSelectedBox() {
@@ -1954,6 +2117,51 @@ private slots:
     QVERIFY(editor.deleteSelectedPreset());
     QVERIFY(editor.presets().empty());
     QCOMPARE(editor.selectedPresetIndex(), -1);
+  }
+
+  void textPresetApplyFansOutWhileCreateAndUpdateUsePrimary() {
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    touch(dir.filePath(QStringLiteral("page1.png")));
+
+    EditorController editor;
+    editor.openProject(dir.path());
+    editor.createTextBox(1, 2, 80, 40);
+    editor.setSelectedFontSize(31);
+    editor.createTextBox(3, 4, 80, 40);
+    editor.setSelectedFontSize(52);
+    editor.createTextBox(5, 6, 80, 40);
+    editor.setSelectedFontSize(73);
+    editor.selectBox(0);
+    editor.toggleBoxSelection(1);
+    editor.setSelectedFontSize(44);
+    QVERIFY(editor.addPreset(QStringLiteral("Primary style")));
+    QCOMPARE(editor.presets().first().toMap().value(QStringLiteral("fontSize")).toInt(),
+             44);
+
+    editor.setSelectedFontSize(46);
+    QVERIFY(editor.updateSelectedPreset());
+    QCOMPARE(editor.presets().first().toMap().value(QStringLiteral("fontSize")).toInt(),
+             46);
+    const auto membership = editor.selectedIndices();
+    const int primary = editor.selectedIndex();
+    auto *model = qobject_cast<QAbstractItemModel *>(editor.boxesModel());
+    QVERIFY(model);
+    QSignalSpy dataChanged(model, &QAbstractItemModel::dataChanged);
+    QVERIFY(editor.applySelectedPreset());
+    QCOMPARE(dataChanged.count(), 2);
+    for (const auto &signal : dataChanged) {
+      const int row = signal.at(0).value<QModelIndex>().row();
+      QVERIFY(row == 0 || row == 1);
+    }
+    QCOMPARE(editor.boxes().at(0).toMap().value(QStringLiteral("fontSize")).toInt(),
+             46);
+    QCOMPARE(editor.boxes().at(1).toMap().value(QStringLiteral("fontSize")).toInt(),
+             46);
+    QCOMPARE(editor.boxes().at(2).toMap().value(QStringLiteral("fontSize")).toInt(),
+             73);
+    QCOMPARE(editor.selectedIndices(), membership);
+    QCOMPARE(editor.selectedIndex(), primary);
   }
 
   void loadedUserPresetCanBeAppliedUpdatedRenamedAndDeleted() {

@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <vector>
 
 namespace textfx {
 
@@ -30,6 +31,8 @@ class EditorController final : public QObject {
       bool rawVisible READ rawVisible WRITE setRawVisible NOTIFY stateChanged)
   Q_PROPERTY(bool editingText READ editingText NOTIFY stateChanged)
   Q_PROPERTY(int selectedIndex READ selectedIndex NOTIFY selectionChanged)
+  Q_PROPERTY(QVariantList selectedIndices READ selectedIndices NOTIFY
+                 selectedIndicesChanged)
   Q_PROPERTY(QVariant selectedBox READ selectedBoxViewModel NOTIFY
                  selectedBoxChanged)
   Q_PROPERTY(QString notification READ notification NOTIFY notificationChanged)
@@ -64,6 +67,7 @@ public:
   bool rawVisible() const { return rawVisible_; }
   bool editingText() const { return editingText_; }
   int selectedIndex() const { return selectedIndex_; }
+  QVariantList selectedIndices() const;
   QString notification() const { return notification_; }
   QStringList pages() const { return pages_; }
   QStringList pageLabels() const;
@@ -99,6 +103,9 @@ public:
   Q_INVOKABLE void nextPage();
   Q_INVOKABLE void goToPage(int index);
   Q_INVOKABLE void selectBox(int index);
+  Q_INVOKABLE void toggleBoxSelection(int index);
+  Q_INVOKABLE bool isBoxSelected(int index) const;
+  Q_INVOKABLE void clearSelection();
   Q_INVOKABLE void createTextBox(double x, double y, double w, double h);
   Q_INVOKABLE void addPaintStroke(const QString &target, const QString &color,
                                   double size, double opacity,
@@ -181,6 +188,7 @@ signals:
   void stateChanged();
   void documentChanged();
   void selectionChanged();
+  void selectedIndicesChanged();
   void selectedBoxChanged();
   void notificationChanged();
   void pageTextsChanged();
@@ -188,12 +196,18 @@ signals:
 private:
   TextBox *selectedBox();
   const TextBox *selectedBox() const;
+  bool setSelection(std::vector<int> selectedIndices, int selectedIndex);
+  void emitSelectionChanged();
   bool editSelectedBoxIf(const std::function<bool(TextBox &)> &mutation);
   void editSelectedBox(const std::function<void(TextBox &)> &mutation);
   bool editSelectedBoxIf(const std::function<bool(TextBox &)> &mutation,
                          const QList<int> &roles);
   void editSelectedBox(const std::function<void(TextBox &)> &mutation,
                        const QList<int> &roles);
+  bool editSelectedBoxesIf(const std::function<bool(TextBox &)> &mutation,
+                           const QList<int> &roles);
+  bool editSelectedBoxes(const std::function<void(TextBox &)> &mutation,
+                         const QList<int> &roles);
   void markDocumentChanged();
   void markDocumentChanged(const QList<int> &roles);
   bool flushPendingDocumentChanged();
@@ -225,6 +239,7 @@ private:
   QStringList pages_;
   int currentPageIndex_ = -1;
   int selectedIndex_ = -1;
+  std::vector<int> selectedIndices_;
   int selectedPresetIndex_ = -1;
   bool rawVisible_ = false;
   bool editingText_ = false;

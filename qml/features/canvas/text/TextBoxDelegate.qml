@@ -52,6 +52,8 @@ Rectangle {
     property bool renderSelectionUi: true
     readonly property var rootWindow: ApplicationWindow.window
     readonly property var editorRef: rootWindow ? rootWindow.editor : null
+    readonly property var selectedIndices: editorRef ? editorRef.selectedIndices : []
+    readonly property bool selectionMember: selectedIndices.indexOf(boxIndex) >= 0
     property bool selected: editorRef && boxIndex === editorRef.selectedIndex
     property bool editingSelected: selected && editorRef.editingText
     readonly property var boxModel: ({
@@ -128,9 +130,24 @@ Rectangle {
     width: visualDocW * rootWindow.viewDocScale()
     height: visualDocH * rootWindow.viewDocScale()
     color: "transparent"
-    border.width: !renderSelectionUi || perspectiveActive ? 0 : selected ? rootWindow.selectionLineWidth() : Math.max(1, rootWindow.documentToViewLength(1))
-    border.color: textOverflow ? Qt.rgba(1, 0, 0, 1) : editingSelected ? Qt.rgba(1, 0.84, 0, 1) : selected ? rootWindow.palette.highlight : rootWindow.palette.mid
+    border.width: !renderSelectionUi || perspectiveActive ? 0 : selectionMember ? rootWindow.selectionLineWidth() : Math.max(1, rootWindow.documentToViewLength(1))
+    border.color: textOverflow ? Qt.rgba(1, 0, 0, 1) : editingSelected ? Qt.rgba(1, 0.84, 0, 1) : selectionMember ? rootWindow.palette.highlight : rootWindow.palette.mid
     rotation: boxRotation
+
+    TapHandler {
+        enabled: boxDelegate.editingSelected
+        acceptedButtons: Qt.LeftButton
+        acceptedModifiers: Qt.ControlModifier | Qt.ShiftModifier
+        onTapped: (eventPoint) => {
+            if (!boxDelegate.editingSelected)
+                return ;
+            boxDelegate.editorRef.endTextEdit();
+            if (eventPoint.modifiers & Qt.ControlModifier)
+                boxDelegate.editorRef.toggleBoxSelection(boxDelegate.boxModel.index);
+            else
+                boxDelegate.editorRef.selectBox(boxDelegate.boxModel.index);
+        }
+    }
 
     Canvas {
         id: perspectiveBorder

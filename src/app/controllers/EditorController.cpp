@@ -125,6 +125,13 @@ int EditorController::boxCount() const {
 
 QAbstractListModel *EditorController::boxesModel() { return &boxesModel_; }
 
+QVariantList EditorController::selectedIndices() const {
+  QVariantList indices;
+  for (const int index : selectedIndices_)
+    indices.append(index);
+  return indices;
+}
+
 QVariant EditorController::selectedBoxViewModel() const {
   const auto *box =
       SelectionQueryService::selectedBox(document_.textBoxes(), selectedIndex_);
@@ -165,17 +172,20 @@ bool EditorController::openProjectInternal(const QString &folder,
       setNotification(loadError);
       return false;
     }
-  } else if (!reloadPresets()) {
-    const QString loadError = notification_;
-    clearProjectState();
-    setNotification(loadError);
-    return false;
+  } else {
+    if (!reloadPresets()) {
+      const QString loadError = notification_;
+      clearProjectState();
+      setNotification(loadError);
+      return false;
+    }
+    emit selectionChanged();
+    emit selectedIndicesChanged();
+    emit selectedBoxChanged();
+    emit pageTextsChanged();
+    emit documentChanged();
+    emit stateChanged();
   }
-  emit selectionChanged();
-  emit selectedBoxChanged();
-  emit pageTextsChanged();
-  emit documentChanged();
-  emit stateChanged();
   setNotification(hasProject() ? successNotification
                                : QStringLiteral("No project open"));
   return hasProject();
@@ -225,8 +235,10 @@ void EditorController::newDocument() {
   resetToEmptyDocumentState();
   reloadPresets();
   selectedIndex_ = -1;
+  selectedIndices_.clear();
   selectedPresetIndex_ = document_.presets().empty() ? -1 : 0;
   emit selectionChanged();
+  emit selectedIndicesChanged();
   emit selectedBoxChanged();
   emit pageTextsChanged();
   emit documentChanged();
@@ -288,12 +300,39 @@ void EditorController::goToPage(int index) {
 void EditorController::selectBox(int index) {
   const int normalizedIndex =
       TextBoxSelectionService::normalizedIndex(document_.textBoxes(), index);
-  if (normalizedIndex == selectedIndex_)
+  if (setSelection(normalizedIndex < 0 ? std::vector<int>{}
+                                       : std::vector<int>{normalizedIndex},
+                   normalizedIndex))
+    emitSelectionChanged();
+}
+
+void EditorController::toggleBoxSelection(int index) {
+  index = TextBoxSelectionService::normalizedIndex(document_.textBoxes(), index);
+  if (index < 0)
     return;
-  selectedIndex_ = normalizedIndex;
-  emit selectionChanged();
-  emit selectedBoxChanged();
-  emit stateChanged();
+  auto indices = selectedIndices_;
+  const auto found = std::find(indices.begin(), indices.end(), index);
+  int primary = selectedIndex_;
+  if (found == indices.end()) {
+    indices.push_back(index);
+    primary = index;
+  } else {
+    indices.erase(found);
+    if (primary == index)
+      primary = indices.empty() ? -1 : indices.back();
+  }
+  if (setSelection(std::move(indices), primary))
+    emitSelectionChanged();
+}
+
+bool EditorController::isBoxSelected(int index) const {
+  return std::find(selectedIndices_.begin(), selectedIndices_.end(), index) !=
+         selectedIndices_.end();
+}
+
+void EditorController::clearSelection() {
+  if (setSelection({}, -1))
+    emitSelectionChanged();
 }
 
 void EditorController::createTextBox(double x, double y, double w, double h) {
@@ -309,9 +348,11 @@ void EditorController::createTextBox(double x, double y, double w, double h) {
   boxesModel_.beginInsertBox(row);
   document_.addTextBox(std::move(box));
   boxesModel_.endInsertBox();
-  selectedIndex_ = static_cast<int>(document_.textBoxes().size()) - 1;
+  const int selectedIndex = static_cast<int>(document_.textBoxes().size()) - 1;
+  setSelection({selectedIndex}, selectedIndex);
   markDocumentChanged();
   emit selectionChanged();
+  emit selectedIndicesChanged();
 }
 
 void EditorController::addPaintStroke(const QString &target, const QString &color,

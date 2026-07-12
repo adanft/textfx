@@ -48,27 +48,38 @@ private slots:
     QCOMPARE(TextBoxSelectionService::normalizedIndex(boxes, 3), -1);
 
     int selectedIndex = 1;
-    QVERIFY(TextBoxSelectionService::duplicateSelected(boxes, selectedIndex));
+    std::vector<int> selectedIndices = {selectedIndex};
+    QVERIFY(TextBoxSelectionService::duplicateSelected(boxes, selectedIndex,
+                                                       selectedIndices));
     QCOMPARE(boxes.size(), std::size_t{4});
     QCOMPARE(selectedIndex, 3);
+    QCOMPARE(selectedIndices, std::vector<int>{3});
     QVERIFY(boxes.at(3).text == "middle");
     QCOMPARE(boxes.at(3).bounds.x, 26.0);
     QCOMPARE(boxes.at(3).bounds.y, 36.0);
 
-    QVERIFY(TextBoxSelectionService::moveLayer(boxes, selectedIndex, -12));
+    QVERIFY(TextBoxSelectionService::moveLayer(boxes, selectedIndex,
+                                               selectedIndices, -12));
     QCOMPARE(selectedIndex, 0);
+    QCOMPARE(selectedIndices, std::vector<int>{0});
     QVERIFY(boxes.at(0).text == "middle");
 
-    QVERIFY(TextBoxSelectionService::deleteSelected(boxes, selectedIndex));
+    QVERIFY(TextBoxSelectionService::deleteSelected(boxes, selectedIndex,
+                                                    selectedIndices));
     QCOMPARE(boxes.size(), std::size_t{3});
     QCOMPARE(selectedIndex, 0);
+    QCOMPARE(selectedIndices, std::vector<int>{0});
     QVERIFY(boxes.at(0).text == "bottom");
 
     selectedIndex = 99;
-    QVERIFY(!TextBoxSelectionService::duplicateSelected(boxes, selectedIndex));
-    QVERIFY(!TextBoxSelectionService::deleteSelected(boxes, selectedIndex));
-    QVERIFY(!TextBoxSelectionService::moveLayer(boxes, selectedIndex, 0));
+    QVERIFY(!TextBoxSelectionService::duplicateSelected(boxes, selectedIndex,
+                                                        selectedIndices));
+    QVERIFY(!TextBoxSelectionService::deleteSelected(boxes, selectedIndex,
+                                                     selectedIndices));
+    QVERIFY(!TextBoxSelectionService::moveLayer(boxes, selectedIndex,
+                                                selectedIndices, 0));
     QCOMPARE(selectedIndex, 99);
+    QCOMPARE(selectedIndices, std::vector<int>{0});
   }
 
   void gradientAndPathUseLiveRendererWithoutPreviewArtifact() {
@@ -1647,7 +1658,7 @@ QtObject {
     QVERIFY(
         source.contains(QStringLiteral("window.editor.setPerspectiveHandle")));
     QVERIFY(source.contains(
-        QStringLiteral("border.width: !renderSelectionUi || perspectiveActive ? 0 : selected ? "
+        QStringLiteral("border.width: !renderSelectionUi || perspectiveActive ? 0 : selectionMember ? "
                        "rootWindow.selectionLineWidth() : Math.max(1, "
                        "rootWindow.documentToViewLength(1))")));
     QVERIFY(source.contains(QStringLiteral("id: perspectiveBorder")));
@@ -1899,7 +1910,7 @@ QtObject {
     QVERIFY(sourceContainsIgnoringWhitespace(
         source, QStringLiteral("x: corner.x * scale")));
     QVERIFY(source.contains(
-        QStringLiteral("border.width: !renderSelectionUi || perspectiveActive ? 0 : selected ? "
+        QStringLiteral("border.width: !renderSelectionUi || perspectiveActive ? 0 : selectionMember ? "
                        "rootWindow.selectionLineWidth() : Math.max(1, "
                        "rootWindow.documentToViewLength(1))")));
     QVERIFY(sourceContainsIgnoringWhitespace(

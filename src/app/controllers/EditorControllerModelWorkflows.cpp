@@ -72,61 +72,61 @@ void EditorController::updateSelectedText(const QString &text) {
 }
 
 void EditorController::setSelectedFontFamily(const QString &family) {
-  editSelectedBox(
+  editSelectedBoxes(
       [&](TextBox &box) { TextBoxEditingService::setFontFamily(box, family); },
       {Role::FontFamilyRole, Role::ResolvedFontFamilyRole});
 }
 
 void EditorController::setSelectedFontSize(int size) {
-  editSelectedBox(
+  editSelectedBoxes(
       [&](TextBox &box) { TextBoxEditingService::setFontSize(box, size); },
       {Role::FontSizeRole, Role::ResolvedFontFamilyRole});
 }
 
 void EditorController::setSelectedTextColor(const QString &color) {
-  editSelectedBox(
+  editSelectedBoxes(
       [&](TextBox &box) { TextBoxEditingService::setTextColor(box, color); },
       {Role::ColorRole});
 }
 
 void EditorController::setSelectedBold(bool enabled) {
-  editSelectedBox(
+  editSelectedBoxes(
       [&](TextBox &box) { TextBoxEditingService::setBold(box, enabled); },
       {Role::BoldRole, Role::ResolvedFontFamilyRole});
 }
 
 void EditorController::setSelectedItalic(bool enabled) {
-  editSelectedBox(
+  editSelectedBoxes(
       [&](TextBox &box) { TextBoxEditingService::setItalic(box, enabled); },
       {Role::ItalicRole, Role::ResolvedFontFamilyRole});
 }
 
 void EditorController::setSelectedUppercase(bool enabled) {
-  editSelectedBox(
+  editSelectedBoxes(
       [&](TextBox &box) { TextBoxEditingService::setUppercase(box, enabled); },
       {Role::UppercaseRole, Role::LowercaseRole});
 }
 
 void EditorController::setSelectedLowercase(bool enabled) {
-  editSelectedBox(
+  editSelectedBoxes(
       [&](TextBox &box) { TextBoxEditingService::setLowercase(box, enabled); },
       {Role::LowercaseRole, Role::UppercaseRole});
 }
 
 void EditorController::setSelectedAlignment(int alignment) {
-  editSelectedBox([&](TextBox &box) {
+  editSelectedBoxes([&](TextBox &box) {
     TextBoxEditingService::setAlignment(box, alignment);
   }, {Role::AlignmentRole});
 }
 
 void EditorController::setSelectedLineSpacing(int spacing) {
-  editSelectedBox([&](TextBox &box) {
+  editSelectedBoxes([&](TextBox &box) {
     TextBoxEditingService::setLineSpacing(box, spacing);
   }, {Role::LineSpacingRole});
 }
 
 void EditorController::setSelectedLetterSpacing(int spacing) {
-  editSelectedBox([&](TextBox &box) {
+  editSelectedBoxes([&](TextBox &box) {
     TextBoxEditingService::setLetterSpacing(box, spacing);
   }, {Role::LetterSpacingRole, Role::ResolvedFontFamilyRole});
 }
@@ -330,10 +330,12 @@ void EditorController::duplicateSelected() {
   const int row = static_cast<int>(document_.textBoxes().size());
   boxesModel_.beginInsertBox(row);
   if (TextBoxSelectionService::duplicateSelected(document_.textBoxes(),
-                                                  selectedIndex_)) {
+                                                  selectedIndex_,
+                                                  selectedIndices_)) {
     boxesModel_.endInsertBox();
     markDocumentChanged();
     emit selectionChanged();
+    emit selectedIndicesChanged();
   } else {
     boxesModel_.endInsertBox();
   }
@@ -345,10 +347,12 @@ void EditorController::deleteSelected() {
   const int row = selectedIndex_;
   boxesModel_.beginRemoveBox(row);
   if (TextBoxSelectionService::deleteSelected(document_.textBoxes(),
-                                               selectedIndex_)) {
+                                               selectedIndex_,
+                                               selectedIndices_)) {
     boxesModel_.endRemoveBox();
     markDocumentChanged();
     emit selectionChanged();
+    emit selectedIndicesChanged();
   } else {
     boxesModel_.endRemoveBox();
   }
@@ -357,10 +361,11 @@ void EditorController::deleteSelected() {
 void EditorController::moveLayer(int to) {
   boxesModel_.beginResetBoxes();
   if (TextBoxSelectionService::moveLayer(document_.textBoxes(), selectedIndex_,
-                                          to)) {
+                                          selectedIndices_, to)) {
     boxesModel_.endResetBoxes();
     markDocumentChanged();
     emit selectionChanged();
+    emit selectedIndicesChanged();
   } else {
     boxesModel_.endResetBoxes();
   }
@@ -385,9 +390,11 @@ void EditorController::pasteBox() {
   boxesModel_.beginInsertBox(row);
   document_.addTextBox(std::move(box));
   boxesModel_.endInsertBox();
-  selectedIndex_ = static_cast<int>(document_.textBoxes().size()) - 1;
+  const int selectedIndex = static_cast<int>(document_.textBoxes().size()) - 1;
+  setSelection({selectedIndex}, selectedIndex);
   markDocumentChanged();
   emit selectionChanged();
+  emit selectedIndicesChanged();
 }
 
 bool EditorController::applyPageText(int index) {
@@ -423,20 +430,20 @@ void EditorController::selectPreset(int index) {
 }
 
 bool EditorController::applySelectedPreset() {
-  auto ctx = presetWorkflowContext();
-  const auto result = TextWorkflowService::applySelectedPreset(ctx);
-  if (result.precondition == WorkflowPrecondition::MissingSelectedBox) {
+  if (!selectedBox()) {
     setNotification(QStringLiteral("Select a box before applying a preset"));
     return false;
   }
-  if (result.serviceStatus == TextPresetStatus::InvalidPresetIndex) {
+  if (selectedPresetIndex_ < 0 ||
+      selectedPresetIndex_ >= static_cast<int>(document_.presets().size())) {
     setNotification(QStringLiteral("Select a text preset first"));
     return false;
   }
-  if (!result.succeeded())
-    return false;
-  markDocumentChanged(allBoxRoles());
-  return true;
+  return editSelectedBoxes([&](TextBox &box) {
+    PresetWorkflowContext ctx{&box, projectPresets_, document_.presets(),
+                              selectedPresetIndex_};
+    TextWorkflowService::applySelectedPreset(ctx);
+  }, allBoxRoles());
 }
 
 bool EditorController::addPreset(const QString &name) {
