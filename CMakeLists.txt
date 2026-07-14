@@ -407,6 +407,22 @@ if(BUILD_TESTING)
     endif()
 
     if(Qt6Test_FOUND)
+        qt_add_executable(textfx_paint_layer_item_tests
+            tests/paint_layer_item_tests.cpp
+        )
+        target_link_libraries(textfx_paint_layer_item_tests
+            PRIVATE
+                textfx_app_core_test
+                Qt6::Test
+        )
+        add_test(NAME textfx_paint_layer_item_tests COMMAND textfx_paint_layer_item_tests)
+        set_tests_properties(textfx_paint_layer_item_tests PROPERTIES
+            LABELS "ui;render"
+            TIMEOUT 30
+            ENVIRONMENT "${TEXTFX_QT_TEST_ENVIRONMENT}"
+        )
+        list(APPEND TEXTFX_TEST_TARGETS textfx_paint_layer_item_tests)
+
         qt_add_executable(textfx_text_composition_tests
             tests/text_composition_tests.cpp
         )

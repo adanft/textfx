@@ -1,9 +1,16 @@
 #pragma once
 
 #include <QMetaObject>
+#include <QPainterPath>
+#include <QPen>
 #include <QQuickPaintedItem>
 #include <QVariant>
 #include <QVariantList>
+
+#include <atomic>
+#include <memory>
+#include <optional>
+#include <vector>
 
 namespace textfx {
 
@@ -56,6 +63,12 @@ public:
 
   void paint(QPainter *painter) override;
 
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+  bool renderStatsEnabledForTesting() const;
+  QVariantMap renderStatsForTesting() const;
+  void reportRenderStatsForTesting();
+#endif
+
 signals:
   void strokesChanged();
   void previewStrokeChanged();
@@ -66,17 +79,34 @@ signals:
   void paintRevisionChanged();
 
 private:
+  struct PaintStrokeSnapshot {
+    QPainterPath path;
+    QPen pen;
+  };
+  struct PaintSnapshot {
+    std::vector<PaintStrokeSnapshot> strokes;
+  };
+  struct RenderStats;
+
   void attachWindow(QQuickWindow *window);
   void selectRenderTarget(QQuickWindow *window);
-  bool drawStroke(QPainter &painter, const QVariant &stroke) const;
+  std::optional<PaintStrokeSnapshot>
+  strokeSnapshot(const QVariant &stroke) const;
+  void preparePaintSnapshot();
+  void reportRenderStats();
   void schedulePaintAndContentUpdate();
 
   QVariantList strokes_;
   QVariant previewStroke_;
   bool drawPersistedStrokes_ = true;
   bool drawPreviewStroke_ = true;
+  int persistedDrawableStrokeCount_ = 0;
+  bool previewStrokeDrawable_ = false;
   int lastPaintedStrokeCount_ = 0;
   int paintRevision_ = 0;
+  quint64 reportedPaintCount_ = 0;
+  std::atomic<std::shared_ptr<const PaintSnapshot>> paintSnapshot_;
+  std::shared_ptr<RenderStats> renderStats_;
   QMetaObject::Connection sceneGraphInitializedConnection_;
   QMetaObject::Connection sceneGraphInvalidatedConnection_;
 };

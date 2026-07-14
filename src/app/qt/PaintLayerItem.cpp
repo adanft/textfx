@@ -1,15 +1,18 @@
 #include "app/qt/PaintLayerItem.h"
 
 #include <QColor>
+#include <QDebug>
+#include <QElapsedTimer>
 #include <QJSValue>
 #include <QPainter>
-#include <QPainterPath>
 #include <QQuickWindow>
 #include <QSGRendererInterface>
+#include <QTimer>
 #include <QtGlobal>
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace textfx {
 namespace {
@@ -44,19 +47,39 @@ QPointF pointFromVariant(const QVariant &value) {
 
 } // namespace
 
+struct PaintLayerItem::RenderStats {
+  explicit RenderStats(bool enabled) : enabled(enabled) {}
+
+  const bool enabled;
+  std::atomic<quint64> paintCount{0};
+  std::atomic<quint64> totalNanoseconds{0};
+  std::atomic<quint64> maximumNanoseconds{0};
+  std::atomic<int> latestStrokeCount{0};
+};
+
 PaintLayerItem::PaintLayerItem(QQuickItem *parent) : QQuickPaintedItem(parent) {
+  paintSnapshot_.store(std::make_shared<const PaintSnapshot>());
+  renderStats_ = std::make_shared<RenderStats>(
+      qEnvironmentVariableIntValue("TEXTFX_RENDER_STATS") == 1);
   setAntialiasing(true);
   connect(this, &QQuickItem::windowChanged, this,
           &PaintLayerItem::attachWindow);
   connect(this, &QQuickItem::widthChanged, this, &PaintLayerItem::schedulePaint);
   connect(this, &QQuickItem::heightChanged, this,
           &PaintLayerItem::schedulePaint);
+  if (renderStats_->enabled) {
+    auto *timer = new QTimer(this);
+    timer->setInterval(5000);
+    connect(timer, &QTimer::timeout, this, &PaintLayerItem::reportRenderStats);
+    timer->start();
+  }
 }
 
 void PaintLayerItem::setStrokes(const QVariantList &strokes) {
   if (strokes_ == strokes)
     return;
   strokes_ = strokes;
+  persistedDrawableStrokeCount_ = drawableStrokeCount(strokes_);
   emit strokesChanged();
   if (drawPersistedStrokes_)
     schedulePaintAndContentUpdate();
@@ -68,6 +91,7 @@ void PaintLayerItem::setPreviewStroke(const QVariant &stroke) {
   if (previewStroke_ == stroke)
     return;
   previewStroke_ = stroke;
+  previewStrokeDrawable_ = hasDrawableStroke(previewStroke_);
   emit previewStrokeChanged();
   if (drawPreviewStroke_)
     schedulePaintAndContentUpdate();
@@ -123,8 +147,8 @@ int PaintLayerItem::drawableStrokeCount(const QVariantList &strokes) const {
 }
 
 int PaintLayerItem::liveStrokeCount() const {
-  return (drawPersistedStrokes_ ? drawableStrokeCount(strokes_) : 0) +
-         (drawPreviewStroke_ && hasDrawableStroke(previewStroke_) ? 1 : 0);
+  return (drawPersistedStrokes_ ? persistedDrawableStrokeCount_ : 0) +
+         (drawPreviewStroke_ && previewStrokeDrawable_ ? 1 : 0);
 }
 
 void PaintLayerItem::setLastPaintedStrokeCount(int count) {
@@ -142,6 +166,7 @@ void PaintLayerItem::setPaintRevision(int revision) {
 }
 
 void PaintLayerItem::schedulePaint() {
+  preparePaintSnapshot();
   setPaintRevision(paintRevision_ + 1);
   update();
 }
@@ -151,10 +176,10 @@ void PaintLayerItem::schedulePaintAndContentUpdate() {
   schedulePaint();
 }
 
-bool PaintLayerItem::drawStroke(QPainter &painter,
-                                const QVariant &stroke) const {
+std::optional<PaintLayerItem::PaintStrokeSnapshot>
+PaintLayerItem::strokeSnapshot(const QVariant &stroke) const {
   if (!hasDrawableStroke(stroke))
-    return false;
+    return std::nullopt;
 
   const QVariantMap map = strokeMap(stroke);
   const QVariantList points = map.value(QStringLiteral("points")).toList();
@@ -168,24 +193,97 @@ bool PaintLayerItem::drawStroke(QPainter &painter,
   QPen pen(strokeColor(map, normalizedStrokeOpacity(stroke).toDouble()),
            normalizedStrokeSize(stroke).toDouble(), Qt::SolidLine, Qt::RoundCap,
            Qt::RoundJoin);
-  painter.strokePath(path, pen);
-  return true;
+  return PaintStrokeSnapshot{std::move(path), std::move(pen)};
+}
+
+void PaintLayerItem::preparePaintSnapshot() {
+  auto snapshot = std::make_shared<PaintSnapshot>();
+  snapshot->strokes.reserve(static_cast<size_t>(liveStrokeCount()));
+  if (drawPersistedStrokes_) {
+    for (const QVariant &stroke : strokes_) {
+      if (auto prepared = strokeSnapshot(stroke))
+        snapshot->strokes.push_back(std::move(*prepared));
+    }
+  }
+  if (drawPreviewStroke_) {
+    if (auto prepared = strokeSnapshot(previewStroke_))
+      snapshot->strokes.push_back(std::move(*prepared));
+  }
+  const int strokeCount = static_cast<int>(snapshot->strokes.size());
+  paintSnapshot_.store(
+      std::shared_ptr<const PaintSnapshot>(std::move(snapshot)),
+      std::memory_order_release);
+  setLastPaintedStrokeCount(strokeCount);
 }
 
 void PaintLayerItem::paint(QPainter *painter) {
   if (!painter)
     return;
+  QElapsedTimer timer;
+  if (renderStats_->enabled)
+    timer.start();
+
   painter->setRenderHint(QPainter::Antialiasing, true);
-  int paintedCount = 0;
-  if (drawPersistedStrokes_) {
-    for (const QVariant &stroke : strokes_)
-      paintedCount += drawStroke(*painter, stroke) ? 1 : 0;
+  const auto snapshot = paintSnapshot_.load(std::memory_order_acquire);
+  for (const PaintStrokeSnapshot &stroke : snapshot->strokes)
+    painter->strokePath(stroke.path, stroke.pen);
+
+  if (renderStats_->enabled) {
+    const auto stats = renderStats_;
+    const quint64 elapsed = static_cast<quint64>(timer.nsecsElapsed());
+    stats->paintCount.fetch_add(1, std::memory_order_relaxed);
+    stats->totalNanoseconds.fetch_add(elapsed, std::memory_order_relaxed);
+    stats->latestStrokeCount.store(static_cast<int>(snapshot->strokes.size()),
+                                   std::memory_order_relaxed);
+    quint64 maximum = stats->maximumNanoseconds.load(std::memory_order_relaxed);
+    while (maximum < elapsed &&
+           !stats->maximumNanoseconds.compare_exchange_weak(
+               maximum, elapsed, std::memory_order_relaxed)) {
+    }
   }
-  if (drawPreviewStroke_)
-    paintedCount += drawStroke(*painter, previewStroke_) ? 1 : 0;
-  setLastPaintedStrokeCount(paintedCount);
-  setPaintRevision(paintRevision_ + 1);
 }
+
+void PaintLayerItem::reportRenderStats() {
+  if (!renderStats_->enabled)
+    return;
+  const quint64 count = renderStats_->paintCount.load();
+  if (count == reportedPaintCount_)
+    return;
+  reportedPaintCount_ = count;
+  const quint64 total = renderStats_->totalNanoseconds.load();
+  const quint64 maximum = renderStats_->maximumNanoseconds.load();
+  QString backend = QStringLiteral("unavailable");
+  if (window() && window()->isSceneGraphInitialized()) {
+    backend = QString::number(
+        static_cast<int>(window()->rendererInterface()->graphicsApi()));
+  }
+  qInfo().nospace() << "PaintLayerItem stats: count=" << count
+                    << " total_ms=" << total / 1000000.0
+                    << " avg_ms=" << total / (count * 1000000.0)
+                    << " max_ms=" << maximum / 1000000.0
+                    << " strokes=" << renderStats_->latestStrokeCount.load()
+                    << " target=" << static_cast<int>(renderTarget())
+                    << " backend=" << backend;
+}
+
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+bool PaintLayerItem::renderStatsEnabledForTesting() const {
+  return renderStats_->enabled;
+}
+
+QVariantMap PaintLayerItem::renderStatsForTesting() const {
+  return {{QStringLiteral("paintCount"),
+           QVariant::fromValue(renderStats_->paintCount.load())},
+          {QStringLiteral("totalNanoseconds"),
+           QVariant::fromValue(renderStats_->totalNanoseconds.load())},
+          {QStringLiteral("maximumNanoseconds"),
+           QVariant::fromValue(renderStats_->maximumNanoseconds.load())},
+          {QStringLiteral("latestStrokeCount"),
+           renderStats_->latestStrokeCount.load()}};
+}
+
+void PaintLayerItem::reportRenderStatsForTesting() { reportRenderStats(); }
+#endif
 
 void PaintLayerItem::attachWindow(QQuickWindow *window) {
   disconnect(sceneGraphInitializedConnection_);
