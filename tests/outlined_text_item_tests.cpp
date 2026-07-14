@@ -50,6 +50,27 @@ private slots:
     QCOMPARE(linesAtScale(1.5), expected);
   }
 
+  void rebuildsPlainAndPathPreviewLayoutsOnce() {
+    auto constructionCount = [](bool pathEnabled) {
+      OutlinedTextItem item;
+      item.setWidth(180);
+      item.setHeight(100);
+      item.setText(QStringLiteral("Alpha Beta\nGamma"));
+      item.setPixelSize(24);
+      item.setPathEnabled(pathEnabled);
+      if (pathEnabled)
+        item.setPathPoints(
+            QVariantList{QVariantList{0.0, 0.6}, QVariantList{1.0, 0.4}});
+
+      resetTextDocumentLayoutCountForTesting();
+      item.setLetterSpacing(1.0);
+      return textDocumentLayoutCountForTesting();
+    };
+
+    QCOMPARE(constructionCount(false), 1);
+    QCOMPARE(constructionCount(true), 1);
+  }
+
   void longWordsDoNotSplitArbitrarily() {
     OutlinedTextItem item;
     item.setWidth(80);

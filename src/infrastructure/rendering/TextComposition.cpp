@@ -41,10 +41,17 @@ bool usesPathText(bool pathEnabled,
 QPainterPath composeTextLayoutPath(
     const TextLayoutOptions &options, const QFont &font,
     const TextLayoutPathPolicy &pathPolicy) {
+  return composeTextLayoutPath(prepareTextLayout(options, font), options,
+                               pathPolicy);
+}
+
+QPainterPath composeTextLayoutPath(
+    const PreparedTextLayout &layout, const TextLayoutOptions &options,
+    const TextLayoutPathPolicy &pathPolicy) {
   if (usesPathText(pathPolicy.enabled, pathPolicy.normalizedPoints))
-    return pathTextLayoutPath(options, font, pathPolicy.normalizedPoints,
+    return pathTextLayoutPath(layout, options, pathPolicy.normalizedPoints,
                                pathPolicy.smooth);
-  return textLayoutPath(options, font);
+  return layout.plainPath;
 }
 
 QRectF paintedTextBounds(const QPainterPath &path, qreal outlineStrokeWidth) {

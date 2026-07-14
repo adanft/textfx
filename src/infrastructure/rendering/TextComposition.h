@@ -33,6 +33,9 @@ struct TextLayoutPathPolicy {
 QPainterPath composeTextLayoutPath(
     const TextLayoutOptions &options, const QFont &font,
     const TextLayoutPathPolicy &pathPolicy);
+QPainterPath composeTextLayoutPath(
+    const PreparedTextLayout &layout, const TextLayoutOptions &options,
+    const TextLayoutPathPolicy &pathPolicy);
 
 QRectF paintedTextBounds(const QPainterPath &path, qreal outlineStrokeWidth);
 QPointF translationToConstrainTextBounds(const QRectF &paintedBounds,

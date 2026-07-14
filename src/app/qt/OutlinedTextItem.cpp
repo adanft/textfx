@@ -581,19 +581,13 @@ const OutlinedTextItem::LayoutCache &OutlinedTextItem::layoutCache() const {
       .enabled = pathEnabled_,
       .normalizedPoints = normalizedPoints,
       .smooth = pathMode_ == 1};
-  if (cache.usingPathText) {
-    cache.path = composeTextLayoutPath(layoutOptions, cache.font, pathPolicy);
+  const PreparedTextLayout prepared = prepareTextLayout(layoutOptions, cache.font);
+  cache.path = composeTextLayoutPath(prepared, layoutOptions, pathPolicy);
+  cache.blockHeight = prepared.blockHeight;
+  cache.lineTops = prepared.lineTops;
 #ifdef TEXTFX_TESTING
-    textLayoutPath(layoutOptions, cache.font, &cache.wrappedLines);
+  cache.wrappedLines = prepared.lineTexts;
 #endif
-  } else {
-    cache.path = composeTextLayoutPath(layoutOptions, cache.font, pathPolicy);
-#ifdef TEXTFX_TESTING
-    textLayoutPath(layoutOptions, cache.font, &cache.wrappedLines, nullptr,
-                   nullptr, &cache.lineTops);
-#endif
-    cache.blockHeight = textLayoutBlockHeight(layoutOptions, cache.font);
-  }
 
   cache.paintedBounds = paintedTextBounds(cache.path, cache.maxOutline);
   cache.paintTranslation = translationToConstrainTextBounds(

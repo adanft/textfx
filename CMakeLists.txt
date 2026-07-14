@@ -428,7 +428,7 @@ if(BUILD_TESTING)
         )
         target_link_libraries(textfx_text_composition_tests
             PRIVATE
-                textfx_infrastructure_rendering
+                textfx_infrastructure_rendering_test
                 Qt6::Test
         )
         add_test(NAME textfx_text_composition_tests COMMAND textfx_text_composition_tests)
@@ -599,7 +599,7 @@ if(BUILD_TESTING)
 
         target_link_libraries(textfx_outlined_text_item_tests
             PRIVATE
-                textfx_app_core
+                textfx_app_core_test
                 Qt6::Qml
                 Qt6::Quick
                 Qt6::Test

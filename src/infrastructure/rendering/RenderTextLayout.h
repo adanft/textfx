@@ -19,6 +19,24 @@ struct TextLayoutOptions {
   int horizontalAlignment = Qt::AlignLeft;
 };
 
+struct PreparedTextGlyph {
+  QPainterPath outline;
+  QPointF origin;
+};
+
+struct PreparedTextLayout {
+  QPainterPath plainPath;
+  QVector<PreparedTextGlyph> glyphs;
+  QStringList lineTexts;
+  QVector<qreal> lineXs;
+  QVector<qreal> lineBaselines;
+  QVector<qreal> lineTops;
+  qreal blockHeight = 0.0;
+};
+
+PreparedTextLayout prepareTextLayout(const TextLayoutOptions &options,
+                                     const QFont &font);
+
 qreal textLayoutTabStopDistance(const QFont &font);
 qreal textLayoutBlockHeight(const TextLayoutOptions &options,
                             const QFont &font);
@@ -33,6 +51,10 @@ QPainterPath textLayoutPath(const TextLayoutOptions &options, const QFont &font,
                             QVector<qreal> *lineXs = nullptr,
                             QVector<qreal> *lineBaselines = nullptr,
                             QVector<qreal> *lineTops = nullptr);
+QPainterPath pathTextLayoutPath(const PreparedTextLayout &layout,
+                                const TextLayoutOptions &options,
+                                const QVector<QPointF> &normalizedPathPoints,
+                                bool smoothPath);
 QPainterPath pathTextLayoutPath(const TextLayoutOptions &options,
                                 const QFont &font,
                                 const QVector<QPointF> &normalizedPathPoints,
@@ -43,5 +65,10 @@ QVector<QPointF> layoutPathPoints(const QVector<QPointF> &normalizedPoints,
                                   bool smooth);
 qreal pathLength(const QVector<QPointF> &points);
 PathSample pathSampleAtDistance(const QVector<QPointF> &points, qreal distance);
+
+#ifdef TEXTFX_ENABLE_TEST_HOOKS
+void resetTextDocumentLayoutCountForTesting();
+int textDocumentLayoutCountForTesting();
+#endif
 
 } // namespace textfx
