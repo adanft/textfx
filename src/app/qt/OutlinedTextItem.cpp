@@ -8,7 +8,6 @@
 #include "infrastructure/rendering/RenderTextLayout.h"
 
 #include <QFont>
-#include <QJsonDocument>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPainterPathStroker>
@@ -162,7 +161,7 @@ void OutlinedTextItem::setColor(const QColor &value) {
   if (color_ == value)
     return;
   color_ = value;
-  update();
+  requestPaintRefresh();
   emit colorChanged();
 }
 
@@ -170,7 +169,7 @@ void OutlinedTextItem::setOutlineColor(const QColor &value) {
   if (outlineColor_ == value)
     return;
   outlineColor_ = value;
-  update();
+  requestPaintRefresh();
   emit outlineColorChanged();
 }
 
@@ -186,8 +185,15 @@ void OutlinedTextItem::setOutlineSize(qreal value) {
 void OutlinedTextItem::setOutlineLayers(const QVariantList &value) {
   if (outlineLayers_ == value)
     return;
+  const auto oldGeometry = stackedOutlineStrokeWidths(compositionOutlineLayers(
+      outlineLayersFromVariant(outlineLayers_, outlineColor_, outlineSize_)));
+  const auto newGeometry = stackedOutlineStrokeWidths(compositionOutlineLayers(
+      outlineLayersFromVariant(value, outlineColor_, outlineSize_)));
   outlineLayers_ = value;
-  notifyLayoutChanged();
+  if (oldGeometry == newGeometry)
+    requestPaintRefresh();
+  else
+    notifyLayoutChanged();
   emit outlineLayersChanged();
 }
 
@@ -196,7 +202,7 @@ void OutlinedTextItem::setBlurSize(int value) {
   if (blurSize_ == value)
     return;
   blurSize_ = value;
-  update();
+  requestPaintRefresh();
   emit blurSizeChanged();
 }
 
@@ -204,7 +210,7 @@ void OutlinedTextItem::setShadowEnabled(bool value) {
   if (shadowEnabled_ == value)
     return;
   shadowEnabled_ = value;
-  update();
+  requestPaintRefresh();
   emit shadowEnabledChanged();
 }
 
@@ -212,7 +218,7 @@ void OutlinedTextItem::setShadowColor(const QColor &value) {
   if (shadowColor_ == value)
     return;
   shadowColor_ = value;
-  update();
+  requestPaintRefresh();
   emit shadowColorChanged();
 }
 
@@ -220,7 +226,7 @@ void OutlinedTextItem::setShadowOffsetX(qreal value) {
   if (qFuzzyCompare(shadowOffsetX_, value))
     return;
   shadowOffsetX_ = value;
-  update();
+  requestPaintRefresh();
   emit shadowOffsetXChanged();
 }
 
@@ -228,7 +234,7 @@ void OutlinedTextItem::setShadowOffsetY(qreal value) {
   if (qFuzzyCompare(shadowOffsetY_, value))
     return;
   shadowOffsetY_ = value;
-  update();
+  requestPaintRefresh();
   emit shadowOffsetYChanged();
 }
 
@@ -237,7 +243,7 @@ void OutlinedTextItem::setShadowBlurSize(int value) {
   if (shadowBlurSize_ == value)
     return;
   shadowBlurSize_ = value;
-  update();
+  requestPaintRefresh();
   emit shadowBlurSizeChanged();
 }
 
@@ -245,7 +251,7 @@ void OutlinedTextItem::setGradientEnabled(bool value) {
   if (gradientEnabled_ == value)
     return;
   gradientEnabled_ = value;
-  update();
+  requestPaintRefresh();
   emit gradientEnabledChanged();
 }
 
@@ -254,7 +260,7 @@ void OutlinedTextItem::setGradientDirection(int value) {
   if (gradientDirection_ == value)
     return;
   gradientDirection_ = value;
-  update();
+  requestPaintRefresh();
   emit gradientDirectionChanged();
 }
 
@@ -262,7 +268,7 @@ void OutlinedTextItem::setGradientColorA(const QColor &value) {
   if (gradientColorA_ == value)
     return;
   gradientColorA_ = value;
-  update();
+  requestPaintRefresh();
   emit gradientColorAChanged();
 }
 
@@ -270,7 +276,7 @@ void OutlinedTextItem::setGradientColorB(const QColor &value) {
   if (gradientColorB_ == value)
     return;
   gradientColorB_ = value;
-  update();
+  requestPaintRefresh();
   emit gradientColorBChanged();
 }
 
@@ -392,14 +398,34 @@ void OutlinedTextItem::paint(QPainter *painter) {
   const qreal maxOutline = cache.maxOutline;
   painter->setRenderHint(QPainter::Antialiasing, true);
 
-  QPainterPath path = cache.path;
-  QRectF paintedBounds = cache.paintedBounds;
-  const QPointF paintTranslation = cache.paintTranslation;
-  const qreal dx = paintTranslation.x();
-  const qreal dy = paintTranslation.y();
-  if (!qFuzzyIsNull(dx) || !qFuzzyIsNull(dy)) {
-    path.translate(dx, dy);
-    paintedBounds.translate(dx, dy);
+  const QPainterPath &path = cache.translatedPath;
+  const QRectF &paintedBounds = cache.translatedPaintedBounds;
+
+  QVector<qreal> outlineWidths;
+  outlineWidths.reserve(outlines.size());
+  for (const auto &outline : outlines)
+    outlineWidths.append(outline.enabled ? outline.strokeWidth : 0.0);
+  if (outlineCache_.geometryRevision != geometryRevision_ ||
+      outlineCache_.widths != outlineWidths) {
+    outlineCache_.geometryRevision = geometryRevision_;
+    outlineCache_.widths = outlineWidths;
+    outlineCache_.strokes.clear();
+    outlineCache_.strokes.reserve(outlines.size());
+    for (const qreal width : outlineWidths) {
+      if (width <= 0) {
+        outlineCache_.strokes.append(QPainterPath{});
+        continue;
+      }
+      QPainterPathStroker stroker;
+      stroker.setWidth(width);
+      stroker.setJoinStyle(Qt::RoundJoin);
+      QPainterPath stroke = stroker.createStroke(path);
+      stroke.setFillRule(Qt::WindingFill);
+      outlineCache_.strokes.append(stroke);
+#ifdef TEXTFX_TESTING
+      ++outlineStrokeRebuildCount_;
+#endif
+    }
   }
 
   // Preview keeps its legacy device-pixel blur policy: scale first, then cap.
@@ -418,8 +444,15 @@ void OutlinedTextItem::paint(QPainter *painter) {
   auto paintShadow = [&](QPainter &target) {
     if (!shadowEnabled_)
       return;
-    const QPainterPath shadowPath =
-        path.translated(shadowOffsetX_, shadowOffsetY_);
+    const QPointF shadowOffset(shadowOffsetX_, shadowOffsetY_);
+    if (shadowCache_.geometryRevision != geometryRevision_ ||
+        shadowCache_.offset != shadowOffset) {
+      shadowCache_.geometryRevision = geometryRevision_;
+      shadowCache_.offset = shadowOffset;
+      shadowCache_.path = path.translated(shadowOffset);
+      shadowCache_.image = {};
+    }
+    const QPainterPath &shadowPath = shadowCache_.path;
     if (shadowRadius <= 0) {
       target.save();
       target.scale(scale, scale);
@@ -435,30 +468,36 @@ void OutlinedTextItem::paint(QPainter *painter) {
             .toAlignedRect();
     if (sourceRect.isEmpty())
       return;
-    QImage layer(sourceRect.size(), QImage::Format_ARGB32_Premultiplied);
-    layer.fill(Qt::transparent);
-    QPainter layerPainter(&layer);
-    layerPainter.setRenderHint(QPainter::Antialiasing, true);
-    layerPainter.translate(-sourceRect.topLeft());
-    layerPainter.scale(scale, scale);
-    layerPainter.fillPath(shadowPath, shadowColor_);
-    layerPainter.end();
-    target.drawImage(sourceRect.topLeft(),
-                     gaussianBlurred(layer, shadowRadius));
+    if (shadowCache_.geometryRevision != geometryRevision_ ||
+        shadowCache_.offset != shadowOffset ||
+        shadowCache_.color != shadowColor_ ||
+        shadowCache_.scale != scale || shadowCache_.radius != shadowRadius ||
+        shadowCache_.sourceRect != sourceRect || shadowCache_.image.isNull()) {
+      QImage layer(sourceRect.size(), QImage::Format_ARGB32_Premultiplied);
+      layer.fill(Qt::transparent);
+      QPainter layerPainter(&layer);
+      layerPainter.setRenderHint(QPainter::Antialiasing, true);
+      layerPainter.translate(-sourceRect.topLeft());
+      layerPainter.scale(scale, scale);
+      layerPainter.fillPath(shadowPath, shadowColor_);
+      layerPainter.end();
+      shadowCache_ = {geometryRevision_, shadowOffset, shadowColor_, scale,
+                      shadowRadius, sourceRect, shadowPath,
+                      gaussianBlurred(layer, shadowRadius)};
+#ifdef TEXTFX_TESTING
+      ++shadowBlurRebuildCount_;
+#endif
+    }
+    target.drawImage(sourceRect.topLeft(), shadowCache_.image);
   };
   auto paintText = [&](QPainter &target) {
     paintShadow(target);
     target.scale(scale, scale);
-    for (auto outline = outlines.crbegin(); outline != outlines.crend();
-         ++outline) {
-      if (!outline->enabled || outline->strokeWidth <= 0)
+    for (qsizetype index = outlines.size(); index-- > 0;) {
+      const auto &outline = outlines.at(index);
+      if (!outline.enabled || outline.strokeWidth <= 0)
         continue;
-      QPainterPathStroker stroker;
-      stroker.setWidth(outline->strokeWidth);
-      stroker.setJoinStyle(Qt::RoundJoin);
-      QPainterPath stroke = stroker.createStroke(path);
-      stroke.setFillRule(Qt::WindingFill);
-      target.fillPath(stroke, outline->color);
+      target.fillPath(outlineCache_.strokes.at(index), outline.color);
     }
     target.fillPath(path, textFillBrush({.gradientEnabled = gradientEnabled_,
                                          .baseColor = color_,
@@ -485,8 +524,10 @@ void OutlinedTextItem::paint(QPainter *painter) {
       painter->restore();
       return;
     }
-    const QString key = blurCacheKey(radius, sourceRect);
-    if (blurCacheKey_ != key || blurCacheImage_.isNull()) {
+    const BlurCacheKey key{renderRevision_, radius, sourceRect};
+    if (blurCacheKey_.renderRevision != key.renderRevision ||
+        blurCacheKey_.radius != key.radius ||
+        blurCacheKey_.sourceRect != key.sourceRect || blurCacheImage_.isNull()) {
       QImage layer(sourceRect.size(), QImage::Format_ARGB32_Premultiplied);
       layer.fill(Qt::transparent);
       QPainter layerPainter(&layer);
@@ -503,46 +544,6 @@ void OutlinedTextItem::paint(QPainter *painter) {
     paintText(*painter);
   }
   painter->restore();
-}
-
-QString OutlinedTextItem::blurCacheKey(int radius,
-                                       const QRect &sourceRect) const {
-  return QStringList{text_,
-                     fontFamily_,
-                     QString::number(pixelSize_, 'g', 17),
-                     bold_ ? QStringLiteral("1") : QStringLiteral("0"),
-                     italic_ ? QStringLiteral("1") : QStringLiteral("0"),
-                     QString::number(letterSpacing_, 'g', 17),
-                     QString::number(lineSpacing_, 'g', 17),
-                     QString::number(color_.rgba()),
-                     QString::number(outlineColor_.rgba()),
-                     QString::number(outlineSize_, 'g', 17),
-                     QString::fromUtf8(QJsonDocument::fromVariant(outlineLayers_)
-                                           .toJson(QJsonDocument::Compact)),
-                     QString::number(renderScale_, 'g', 17),
-                     QString::number(width(), 'g', 17),
-                     QString::number(height(), 'g', 17),
-                     QString::number(horizontalAlignment_),
-                     shadowEnabled_ ? QStringLiteral("1") : QStringLiteral("0"),
-                     QString::number(shadowColor_.rgba()),
-                     QString::number(shadowOffsetX_, 'g', 17),
-                     QString::number(shadowOffsetY_, 'g', 17),
-                     QString::number(shadowBlurSize_),
-                     gradientEnabled_ ? QStringLiteral("1")
-                                      : QStringLiteral("0"),
-                     QString::number(gradientDirection_),
-                     QString::number(gradientColorA_.rgba()),
-                     QString::number(gradientColorB_.rgba()),
-                     pathEnabled_ ? QStringLiteral("1") : QStringLiteral("0"),
-                     QString::number(pathMode_),
-                     QString::fromUtf8(QJsonDocument::fromVariant(pathPoints_)
-                                           .toJson(QJsonDocument::Compact)),
-                     QString::number(radius),
-                     QString::number(sourceRect.x()),
-                     QString::number(sourceRect.y()),
-                     QString::number(sourceRect.width()),
-                     QString::number(sourceRect.height())}
-      .join(u'\n');
 }
 
 QFont OutlinedTextItem::layoutFont() const {
@@ -593,6 +594,9 @@ const OutlinedTextItem::LayoutCache &OutlinedTextItem::layoutCache() const {
   cache.paintTranslation = translationToConstrainTextBounds(
       cache.paintedBounds, cache.layoutWidth, cache.layoutHeight,
       cache.usingPathText);
+  cache.translatedPath = cache.path.translated(cache.paintTranslation);
+  cache.translatedPaintedBounds =
+      cache.paintedBounds.translated(cache.paintTranslation);
 
   layoutCache_ = cache;
   layoutCacheDirty_ = false;
@@ -602,7 +606,11 @@ const OutlinedTextItem::LayoutCache &OutlinedTextItem::layoutCache() const {
   return layoutCache_;
 }
 
-void OutlinedTextItem::invalidateLayoutCache() { layoutCacheDirty_ = true; }
+void OutlinedTextItem::invalidateLayoutCache() {
+  layoutCacheDirty_ = true;
+  ++geometryRevision_;
+  ++renderRevision_;
+}
 
 void OutlinedTextItem::updateOverflow() {
   const LayoutCache &cache = layoutCache();
@@ -632,6 +640,7 @@ void OutlinedTextItem::notifyLayoutChanged() {
 }
 
 void OutlinedTextItem::requestPaintRefresh() {
+  ++renderRevision_;
   update();
   if (auto *quickWindow = window())
     quickWindow->update();

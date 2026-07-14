@@ -149,6 +149,12 @@ public:
 #ifdef TEXTFX_TESTING
   int paintRequestRevisionForTesting() const { return paintRequestRevision_; }
   int layoutCacheRebuildCountForTesting() const;
+  int outlineStrokeRebuildCountForTesting() const {
+    return outlineStrokeRebuildCount_;
+  }
+  int shadowBlurRebuildCountForTesting() const {
+    return shadowBlurRebuildCount_;
+  }
   qreal effectiveMaxOutlineSizeForTesting() const {
     return effectiveMaxOutlineSize();
   }
@@ -211,6 +217,8 @@ private:
     QPainterPath path;
     QRectF paintedBounds;
     QPointF paintTranslation;
+    QPainterPath translatedPath;
+    QRectF translatedPaintedBounds;
     QVector<qreal> lineTops;
 #ifdef TEXTFX_TESTING
     QStringList wrappedLines;
@@ -225,7 +233,26 @@ private:
   void requestPaintRefresh();
   qreal effectiveMaxOutlineSize() const;
   QPointF paintTranslationForCurrentLayout() const;
-  QString blurCacheKey(int radius, const QRect &sourceRect) const;
+  struct OutlineCache {
+    quint64 geometryRevision = 0;
+    QVector<qreal> widths;
+    QVector<QPainterPath> strokes;
+  };
+  struct ShadowCache {
+    quint64 geometryRevision = 0;
+    QPointF offset;
+    QColor color;
+    qreal scale = 0.0;
+    int radius = -1;
+    QRect sourceRect;
+    QPainterPath path;
+    QImage image;
+  };
+  struct BlurCacheKey {
+    quint64 renderRevision = 0;
+    int radius = -1;
+    QRect sourceRect;
+  };
   QString text_;
   QString fontFamily_;
   qreal pixelSize_ = 12.0;
@@ -255,10 +282,16 @@ private:
   bool overflow_ = false;
   mutable bool layoutCacheDirty_ = true;
   mutable LayoutCache layoutCache_;
+  quint64 geometryRevision_ = 1;
+  quint64 renderRevision_ = 1;
+  OutlineCache outlineCache_;
+  ShadowCache shadowCache_;
 #ifdef TEXTFX_TESTING
   mutable int layoutCacheRebuildCount_ = 0;
+  int outlineStrokeRebuildCount_ = 0;
+  int shadowBlurRebuildCount_ = 0;
 #endif
-  QString blurCacheKey_;
+  BlurCacheKey blurCacheKey_;
   QImage blurCacheImage_;
 #ifdef TEXTFX_TESTING
   int paintRequestRevision_ = 0;

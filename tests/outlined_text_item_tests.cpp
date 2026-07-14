@@ -7,11 +7,13 @@
 #include "app/qt/OutlinedTextItem.h"
 
 #include <QColor>
+#include <QBitmap>
 #include <QFont>
 #include <QImage>
 #include <QPainter>
 #include <QPointF>
 #include <QRect>
+#include <QRegion>
 #include <QSignalSpy>
 #include <QString>
 #include <QStringList>
@@ -69,6 +71,73 @@ private slots:
 
     QCOMPARE(constructionCount(false), 1);
     QCOMPARE(constructionCount(true), 1);
+  }
+
+  void reusesAndNarrowlyInvalidatesEffectCaches() {
+    OutlinedTextItem item;
+    item.setWidth(220);
+    item.setHeight(100);
+    item.setText(QStringLiteral("Cached effects"));
+    item.setPixelSize(30);
+    item.setOutlineLayers({QVariantMap{{QStringLiteral("enabled"), true},
+                                        {QStringLiteral("color"), "#ff0000"},
+                                        {QStringLiteral("size"), 2}},
+                           QVariantMap{{QStringLiteral("enabled"), true},
+                                        {QStringLiteral("color"), "#0000ff"},
+                                        {QStringLiteral("size"), 3}}});
+    item.setShadowEnabled(true);
+    item.setShadowOffsetX(5);
+    item.setShadowOffsetY(4);
+    item.setShadowBlurSize(4);
+
+    QImage image(220, 100, QImage::Format_ARGB32_Premultiplied);
+    auto paint = [&] {
+      image.fill(Qt::transparent);
+      QPainter painter(&image);
+      item.paint(&painter);
+    };
+
+    paint();
+    const int initialOutlines = item.outlineStrokeRebuildCountForTesting();
+    const int initialShadows = item.shadowBlurRebuildCountForTesting();
+    QCOMPARE(initialOutlines, 2);
+    QCOMPARE(initialShadows, 1);
+    paint();
+    QCOMPARE(item.outlineStrokeRebuildCountForTesting(), initialOutlines);
+    QCOMPARE(item.shadowBlurRebuildCountForTesting(), initialShadows);
+
+    item.setColor(Qt::green);
+    item.setGradientEnabled(true);
+    item.setGradientColorA(Qt::yellow);
+    item.setGradientColorB(Qt::cyan);
+    item.setOutlineLayers({QVariantMap{{QStringLiteral("enabled"), true},
+                                        {QStringLiteral("color"), "#00ff00"},
+                                        {QStringLiteral("size"), 2}},
+                           QVariantMap{{QStringLiteral("enabled"), true},
+                                        {QStringLiteral("color"), "#ffff00"},
+                                        {QStringLiteral("size"), 3}}});
+    paint();
+    QCOMPARE(item.outlineStrokeRebuildCountForTesting(), initialOutlines);
+    QCOMPARE(item.shadowBlurRebuildCountForTesting(), initialShadows);
+
+    item.setShadowOffsetX(7);
+    paint();
+    QCOMPARE(item.outlineStrokeRebuildCountForTesting(), initialOutlines);
+    QCOMPARE(item.shadowBlurRebuildCountForTesting(), initialShadows + 1);
+    item.setShadowBlurSize(6);
+    paint();
+    QCOMPARE(item.outlineStrokeRebuildCountForTesting(), initialOutlines);
+    QCOMPARE(item.shadowBlurRebuildCountForTesting(), initialShadows + 2);
+
+    item.setOutlineSize(8);
+    item.setOutlineLayers({});
+    paint();
+    QCOMPARE(item.outlineStrokeRebuildCountForTesting(), initialOutlines + 1);
+    QCOMPARE(item.shadowBlurRebuildCountForTesting(), initialShadows + 3);
+    item.setText(QStringLiteral("New layout"));
+    paint();
+    QCOMPARE(item.outlineStrokeRebuildCountForTesting(), initialOutlines + 2);
+    QCOMPARE(item.shadowBlurRebuildCountForTesting(), initialShadows + 4);
   }
 
   void longWordsDoNotSplitArbitrarily() {
@@ -863,6 +932,32 @@ private slots:
     QVERIFY(imagesDiffer(sharp, blurred));
     QVERIFY(hardBlurredPixels < hardSharpPixels);
     QVERIFY(softBlurredPixels > 200);
+  }
+
+  void outerBlurAtFractionalScalePreservesCachedGeometry() {
+    OutlinedTextItem item;
+    item.setWidth(225);
+    item.setHeight(100);
+    item.setText(QStringLiteral("Fractional blur"));
+    item.setPixelSize(36);
+    item.setColor(Qt::black);
+    item.setBlurSize(7);
+    item.setRenderScale(1.25);
+
+    auto render = [&] {
+      QImage image(225, 100, QImage::Format_ARGB32_Premultiplied);
+      image.fill(Qt::transparent);
+      QPainter painter(&image);
+      item.paint(&painter);
+      return image;
+    };
+    const QImage initial = render();
+    const QImage cached = render();
+    const QRect alphaBounds =
+        QRegion(QBitmap::fromImage(initial.createAlphaMask())).boundingRect();
+
+    QCOMPARE(alphaBounds, QRect(1, 1, 224, 97));
+    QVERIFY(!imagesDiffer(initial, cached));
   }
 
   void shadowBlurSoftensRenderedShadow() {
