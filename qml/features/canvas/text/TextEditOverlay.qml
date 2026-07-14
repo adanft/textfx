@@ -17,6 +17,7 @@ TextArea {
     property real editLayoutTabStopDistance: 0
     property real editLayoutPaintOffsetX: 0
     property real editLayoutPaintOffsetY: 0
+    property int editLayoutRefreshGeneration: 0
     readonly property int zEditOverlay: 1
 
     function editHorizontalAlignment(alignment) {
@@ -24,6 +25,7 @@ TextArea {
     }
 
     function refreshEditLayoutMetrics() {
+        ++editLayoutRefreshGeneration;
         const renderer = outlinedTextItem;
         const aligned = renderer ? renderer.editLayoutMetricsValid : false;
         editLayoutAligned = aligned;
@@ -33,6 +35,15 @@ TextArea {
         editLayoutTabStopDistance = renderer ? renderer.editLayoutTabStopDistance : 0;
         editLayoutPaintOffsetX = aligned ? renderer.editLayoutPaintOffsetX : 0;
         editLayoutPaintOffsetY = aligned ? renderer.editLayoutPaintOffsetY : 0;
+    }
+
+    function scheduleEditLayoutMetricsRefresh() {
+        const renderer = outlinedTextItem;
+        const generation = ++editLayoutRefreshGeneration;
+        Qt.callLater(function() {
+            if (generation === editLayoutRefreshGeneration && renderer === outlinedTextItem)
+                refreshEditLayoutMetrics();
+        });
     }
 
     function focusForEdit() {
@@ -124,14 +135,14 @@ TextArea {
     Component.onCompleted: {
         syncTextFromModel();
         applyLineSpacing();
-        Qt.callLater(refreshEditLayoutMetrics);
+        scheduleEditLayoutMetricsRefresh();
         Qt.callLater(focusForEdit);
     }
     onVisibleChanged: {
         if (visible) {
             syncTextFromModel();
             applyLineSpacing();
-            Qt.callLater(refreshEditLayoutMetrics);
+            scheduleEditLayoutMetricsRefresh();
             Qt.callLater(focusForEdit);
         }
     }
@@ -139,7 +150,7 @@ TextArea {
         editLayoutAligned = false;
         editLayoutTopPadding = editLayoutLeftPadding = editLayoutRightPadding = 0;
         editLayoutTabStopDistance = editLayoutPaintOffsetX = editLayoutPaintOffsetY = 0;
-        Qt.callLater(refreshEditLayoutMetrics);
+        scheduleEditLayoutMetricsRefresh();
         if (outlinedTextItem && visible)
             Qt.callLater(focusForEdit);
     }
@@ -157,10 +168,10 @@ TextArea {
     }
     onTextChanged: {
         setLivePreviewText(text);
-        applyLineSpacing();
         if (activeFocus && editorRef && !syncingTextFromModel) {
             userInputSyncPending = true;
             editorRef.updateSelectedText(text);
+            refreshEditLayoutMetrics();
         }
 
     }
@@ -168,7 +179,7 @@ TextArea {
     Connections {
         target: boxTextArea.outlinedTextItem
         function onEditLayoutMetricsChanged() {
-            Qt.callLater(boxTextArea.refreshEditLayoutMetrics);
+            boxTextArea.scheduleEditLayoutMetricsRefresh();
         }
     }
 

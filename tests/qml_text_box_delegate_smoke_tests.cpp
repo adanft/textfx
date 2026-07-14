@@ -389,6 +389,79 @@ private slots:
     QTRY_COMPARE(lineSpacing(), 9.0);
   }
 
+  void qmlEnterImmediatelyUsesCurrentCursorAndPreviewMetrics() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 260, 180);
+    editor.setSelectedFontSize(20);
+    editor.setSelectedLineSpacing(8);
+    editor.beginTextEdit();
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QObject *textArea = nullptr;
+    QObject *outlinedText = nullptr;
+    QTRY_VERIFY(textArea = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxTextArea")));
+    QTRY_VERIFY(outlinedText = findVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxOutlinedText")));
+    QTRY_VERIFY(textArea->property("activeFocus").toBool());
+
+    auto *documentWrapper = qobject_cast<QQuickTextDocument *>(
+        textArea->property("textDocument").value<QObject *>());
+    QVERIFY(documentWrapper);
+    QTextDocument *document = documentWrapper->textDocument();
+    QVERIFY(document);
+
+    for (int iteration = 0; iteration < 3; ++iteration) {
+      typeText(window, QStringLiteral("line%1").arg(iteration));
+      QTest::keyClick(window, Qt::Key_Return);
+
+      const int cursorPosition = textArea->property("cursorPosition").toInt();
+      const QTextBlock cursorBlock = document->findBlock(cursorPosition);
+      QVERIFY(cursorBlock.isValid());
+      QCOMPARE(cursorBlock.blockFormat().lineHeightType(),
+               int(QTextBlockFormat::LineDistanceHeight));
+      QCOMPARE(cursorBlock.blockFormat().lineHeight(), 8.0);
+      QTextLayout *cursorLayout = cursorBlock.layout();
+      QVERIFY(cursorLayout);
+      QVERIFY(cursorLayout->lineCount() > 0);
+      const QTextLine cursorLine = cursorLayout->lineForTextPosition(
+          cursorPosition - cursorBlock.position());
+      QVERIFY(cursorLine.isValid());
+
+      const qreal expectedCursorY =
+          textArea->property("topPadding").toReal() +
+          cursorLayout->position().y() + cursorLine.y();
+      const QRectF cursorBeforeArrow =
+          textArea->property("cursorRectangle").toRectF();
+      QVERIFY2(std::abs(cursorBeforeArrow.y() - expectedCursorY) <= 1.0,
+               qPrintable(QStringLiteral("iteration %1 cursor y=%2 expected=%3")
+                              .arg(iteration)
+                              .arg(cursorBeforeArrow.y())
+                              .arg(expectedCursorY)));
+
+      const QVariantList previewLineTops =
+          outlinedText->property("editLayoutLineTops").toList();
+      QCOMPARE(previewLineTops.size(), iteration + 2);
+      QVERIFY(std::abs(previewLineTops.constLast().toReal() - expectedCursorY) <=
+              1.0);
+
+      QTest::keyClick(window, Qt::Key_Right);
+      const QRectF cursorAfterArrow =
+          textArea->property("cursorRectangle").toRectF();
+      QVERIFY(std::abs(cursorAfterArrow.y() - cursorBeforeArrow.y()) <= 1.0);
+    }
+  }
+
   void qmlTextAreaCtrlCopyPasteEditsTextWithoutPastingBox() {
     registerQmlTypes();
 

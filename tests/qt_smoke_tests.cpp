@@ -1573,9 +1573,10 @@ QtObject {
     QVERIFY(sourceContainsIgnoringWhitespace(
         editorBlock,
         QStringLiteral("onTextChanged: { setLivePreviewText(text); "
-                       "applyLineSpacing(); if (activeFocus && editorRef && "
-                       "!syncingTextFromModel) { userInputSyncPending = true; "
-                       "editorRef.updateSelectedText(text); } }")));
+                       "if (activeFocus && editorRef && !syncingTextFromModel) { "
+                       "userInputSyncPending = true; "
+                       "editorRef.updateSelectedText(text); "
+                       "refreshEditLayoutMetrics(); } }")));
   }
 
   void qmlPerspectiveWarpsLiveOutlinedRenderer() {
