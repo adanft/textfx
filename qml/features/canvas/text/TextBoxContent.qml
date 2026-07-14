@@ -13,7 +13,6 @@ Item {
     z: boxRef.zTextContent
     anchors.fill: parent
     clip: true
-    opacity: boxRef.renderTextContent ? 1 : 0
 
     OutlinedTextItem {
         id: boxOutlinedText
@@ -22,7 +21,7 @@ Item {
         property var rootWindow: boxTextPerspective.rootWindow
         property var editorRef: boxTextPerspective.editorRef
 
-        objectName: boxRef.renderTextContent ? "boxOutlinedText" : "boxOutlinedTextMetrics"
+        objectName: "boxOutlinedText"
         width: boxRef.visualDocW * rootWindow.livePreviewScale()
         height: boxRef.visualDocH * rootWindow.livePreviewScale()
         transformOrigin: Item.TopLeft

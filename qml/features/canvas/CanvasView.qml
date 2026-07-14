@@ -151,6 +151,8 @@ CentralCanvasShell {
     }
 
     Repeater {
+        id: contentTextBoxes
+
         model: canvasView.editor.boxesModel
 
         delegate: TextBoxDelegate {
@@ -192,12 +194,19 @@ CentralCanvasShell {
     }
 
     Repeater {
+        id: selectionUiTextBoxes
+
         model: canvasView.editor.boxesModel
 
         delegate: TextBoxDelegate {
             canvasItem: canvasView.canvas
             interaction: canvasView.editorInteraction
             renderTextContent: false
+            externalOutlinedTextItem: {
+                contentTextBoxes.count;
+                const contentDelegate = contentTextBoxes.itemAt(boxIndex);
+                return contentDelegate ? contentDelegate.outlinedTextItem : null;
+            }
         }
 
     }

@@ -1,4 +1,5 @@
 #include "app/controllers/EditorController.h"
+#include "app/qt/OutlinedTextItem.h"
 #include "qt_test_helpers.h"
 
 #include <QClipboard>
@@ -171,6 +172,77 @@ class QmlTextBoxDelegateSmokeTests final : public QObject {
   Q_OBJECT
 
 private slots:
+  void qmlUsesOneOutlinedRendererPerBoxAcrossTwoDelegatePasses() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+    editor.createTextBox(10, 20, 180, 70);
+    editor.createTextBox(30, 50, 190, 80);
+    editor.createTextBox(60, 90, 200, 90);
+    editor.beginTextEdit();
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+
+    QList<QQuickItem *> contentDelegates;
+    QList<QQuickItem *> uiDelegates;
+    QTRY_COMPARE(countVisualChildrenByName(window->contentItem(),
+                                           QStringLiteral("boxOutlinedText")),
+                 3);
+    QCOMPARE(countVisualChildrenByName(window->contentItem(),
+                                       QStringLiteral("boxOutlinedTextMetrics")),
+             0);
+    QList<QQuickItem *> renderers;
+    collectVisualChildrenByName(window->contentItem(),
+                                QStringLiteral("boxOutlinedText"), renderers);
+    for (QQuickItem *renderer : renderers)
+      QVERIFY(qobject_cast<OutlinedTextItem *>(renderer));
+    collectVisualChildrenByName(window->contentItem(),
+                                QStringLiteral("textBoxContentDelegate"),
+                                contentDelegates);
+    collectVisualChildrenByName(window->contentItem(),
+                                QStringLiteral("textBoxDelegate"), uiDelegates);
+    QCOMPARE(contentDelegates.size(), 3);
+    QCOMPARE(uiDelegates.size(), 3);
+
+    for (QQuickItem *uiDelegate : uiDelegates) {
+      const int boxIndex = uiDelegate->property("boxIndex").toInt();
+      QQuickItem *contentDelegate = nullptr;
+      for (QQuickItem *candidate : contentDelegates) {
+        if (candidate->property("boxIndex").toInt() == boxIndex) {
+          contentDelegate = candidate;
+          break;
+        }
+      }
+      QVERIFY(contentDelegate);
+      QObject *renderer = contentDelegate->property("outlinedTextItem").value<QObject *>();
+      QVERIFY(renderer);
+      QCOMPARE(uiDelegate->property("outlinedTextItem").value<QObject *>(), renderer);
+      QCOMPARE(countVisualChildrenByName(contentDelegate,
+                                         QStringLiteral("textBoxEditControls")),
+               0);
+    }
+
+    QQuickItem *textArea = nullptr;
+    QTRY_VERIFY(textArea = findVisibleVisualChildByName(
+                    window->contentItem(), QStringLiteral("boxTextArea")));
+    QObject *selectedDelegate = nullptr;
+    for (QQuickItem *candidate : uiDelegates) {
+      if (candidate->property("selected").toBool())
+        selectedDelegate = candidate;
+    }
+    QVERIFY(selectedDelegate);
+    QCOMPARE(textArea->property("outlinedTextItem").value<QObject *>(),
+             selectedDelegate->property("outlinedTextItem").value<QObject *>());
+  }
+
   void qmlTextEditOverlayKeepsFocusAndTextAcrossTyping() {
     registerQmlTypes();
 
@@ -1005,11 +1077,11 @@ private slots:
       }
     }
     QVERIFY(selectedDelegate);
-    QCOMPARE(perspectiveBorder->parentItem(), selectedDelegate);
+    QVERIFY(selectedDelegate->isAncestorOf(perspectiveBorder));
     QQuickItem *selectionControls = nullptr;
     QTRY_VERIFY(selectionControls = findVisibleVisualChildByName(
                     selectedDelegate, QStringLiteral("textBoxSelectionControls")));
-    QCOMPARE(selectionControls->parentItem(), selectedDelegate);
+    QVERIFY(selectedDelegate->isAncestorOf(selectionControls));
 
     QQuickItem *pathGuide = nullptr;
     QTRY_VERIFY(pathGuide = findVisibleVisualChildByName(
@@ -1017,9 +1089,11 @@ private slots:
     QQuickItem *pathHandle = nullptr;
     QTRY_VERIFY(pathHandle = findVisibleVisualChildByName(
                     content, QStringLiteral("pathHandle")));
-    const auto stackingChildUnderDelegate = [selectedDelegate](QQuickItem *item) {
+    QQuickItem *uiRoot = perspectiveBorder->parentItem();
+    QVERIFY(uiRoot);
+    const auto stackingChildUnderUiRoot = [uiRoot](QQuickItem *item) {
       QQuickItem *child = item;
-      while (child && child->parentItem() && child->parentItem() != selectedDelegate)
+      while (child && child->parentItem() && child->parentItem() != uiRoot)
         child = child->parentItem();
       return child;
     };
@@ -1029,18 +1103,18 @@ private slots:
     QQuickItem *rotateHandle = nullptr;
     QTRY_VERIFY(rotateHandle = findVisibleVisualChildByName(
                     content, QStringLiteral("rotateHandle")));
-    QQuickItem *pathGuideStackingItem = stackingChildUnderDelegate(pathGuide);
-    QQuickItem *pathHandleStackingItem = stackingChildUnderDelegate(pathHandle);
-    QQuickItem *resizeStackingItem = stackingChildUnderDelegate(resizeHandle);
-    QQuickItem *rotateStackingItem = stackingChildUnderDelegate(rotateHandle);
+    QQuickItem *pathGuideStackingItem = stackingChildUnderUiRoot(pathGuide);
+    QQuickItem *pathHandleStackingItem = stackingChildUnderUiRoot(pathHandle);
+    QQuickItem *resizeStackingItem = stackingChildUnderUiRoot(resizeHandle);
+    QQuickItem *rotateStackingItem = stackingChildUnderUiRoot(rotateHandle);
     QVERIFY(pathGuideStackingItem);
     QVERIFY(pathHandleStackingItem);
     QVERIFY(resizeStackingItem);
     QVERIFY(rotateStackingItem);
-    QCOMPARE(pathGuideStackingItem->parentItem(), selectedDelegate);
-    QCOMPARE(pathHandleStackingItem->parentItem(), selectedDelegate);
-    QCOMPARE(resizeStackingItem->parentItem(), selectedDelegate);
-    QCOMPARE(rotateStackingItem->parentItem(), selectedDelegate);
+    QCOMPARE(pathGuideStackingItem->parentItem(), uiRoot);
+    QCOMPARE(pathHandleStackingItem->parentItem(), uiRoot);
+    QCOMPARE(resizeStackingItem->parentItem(), uiRoot);
+    QCOMPARE(rotateStackingItem->parentItem(), uiRoot);
     QVERIFY(pathGuideStackingItem->z() < perspectiveBorder->z());
     QVERIFY(resizeStackingItem->z() > perspectiveBorder->z());
     QVERIFY(rotateStackingItem->z() > perspectiveBorder->z());
@@ -1350,6 +1424,8 @@ private slots:
 
     const QString delegateSource =
         readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+    const QString delegateUiSource =
+        readQmlFile(QStringLiteral("TextBoxDelegateUi.qml"));
     const QString contentSource =
         readQmlFile(QStringLiteral("TextBoxContent.qml"));
     const QString editControlsSource =
@@ -1365,21 +1441,19 @@ private slots:
         QStringLiteral("id: boxTextArea"));
     const qsizetype mouseAreaStart =
         editOverlaySource.indexOf(QStringLiteral("Connections {"), textAreaStart);
-    const qsizetype textOverlayStart = delegateSource.indexOf(
-        QStringLiteral("TextBoxEditControls {"), delegateStart);
+    const qsizetype textOverlayStart = delegateUiSource.indexOf(
+        QStringLiteral("TextBoxEditControls {"));
     QVERIFY(delegateStart >= 0);
     QVERIFY(textPerspectiveStart >= 0);
     QVERIFY(textAreaStart >= 0);
     QVERIFY(mouseAreaStart > textAreaStart);
-    QVERIFY(textOverlayStart > delegateStart);
+    QVERIFY(textOverlayStart >= 0);
     QVERIFY(editControlsSource.contains(QStringLiteral("TextEditOverlay {")));
-    const QString delegateHeader =
-        delegateSource.mid(delegateStart, textOverlayStart - delegateStart);
     const QString textPerspectiveSource = contentSource.mid(textPerspectiveStart);
     const QString textAreaSource =
         editOverlaySource.mid(textAreaStart, mouseAreaStart - textAreaStart);
 
-    QVERIFY(delegateHeader.contains(
+    QVERIFY(delegateSource.contains(
         QStringLiteral("property bool perspectiveActive: boxModel.perspective "
                        "&& !editingSelected")));
     QVERIFY(textPerspectiveSource.contains(QStringLiteral("clip: true")));
@@ -1562,15 +1636,14 @@ private slots:
                                 QStringLiteral("textBoxEditControls"),
                                 editControlItems);
     QQuickItem *selectedEditControls = nullptr;
-    QQuickItem *contentEditControls = nullptr;
     for (QQuickItem *item : editControlItems) {
-      if (item->parentItem() == delegate)
+      if (delegate->isAncestorOf(item))
         selectedEditControls = item;
-      if (item->parentItem() == contentDelegate)
-        contentEditControls = item;
     }
     QVERIFY(selectedEditControls);
-    QVERIFY(contentEditControls);
+    QCOMPARE(countVisualChildrenByName(contentDelegate,
+                                       QStringLiteral("textBoxEditControls")),
+             0);
     QCOMPARE(selectedEditControls->property("boxRef").value<QObject *>(),
              delegateObject);
     QCOMPARE(selectedEditControls->property("canvasItem").value<QObject *>(),
@@ -1579,16 +1652,18 @@ private slots:
              delegateObject->property("zTextContent").toReal());
 
     QObject *textAreaObject = nullptr;
-    QObject *metricsOutlinedObject = nullptr;
+    QObject *outlinedObject = nullptr;
     QObject *moveAreaObject = nullptr;
     QTRY_VERIFY(textAreaObject = findVisualChildByName(
                     selectedEditControls, QStringLiteral("boxTextArea")));
-    QTRY_VERIFY(metricsOutlinedObject = findVisualChildByName(
-                    delegate, QStringLiteral("boxOutlinedTextMetrics")));
+    QTRY_VERIFY(outlinedObject = findVisualChildByName(
+                    contentDelegate, QStringLiteral("boxOutlinedText")));
     QTRY_VERIFY(moveAreaObject = findVisualChildByName(
                     selectedEditControls, QStringLiteral("textBoxMoveArea")));
     QCOMPARE(textAreaObject->property("outlinedTextItem").value<QObject *>(),
-             metricsOutlinedObject);
+              outlinedObject);
+    QCOMPARE(delegateObject->property("outlinedTextItem").value<QObject *>(),
+             outlinedObject);
     QCOMPARE(moveAreaObject->property("boxRef").value<QObject *>(), delegateObject);
     QCOMPARE(moveAreaObject->property("canvasItem").value<QObject *>(),
              canvasObject);
@@ -1601,15 +1676,6 @@ private slots:
     QTRY_VERIFY(textAreaObject->property("visible").toBool());
     QTRY_VERIFY(moveAreaObject->property("visible").toBool());
     QTRY_VERIFY(!moveAreaObject->property("enabled").toBool());
-
-    QObject *inactiveTextAreaObject = nullptr;
-    QObject *inactiveMoveAreaObject = nullptr;
-    QTRY_VERIFY(inactiveTextAreaObject = findVisualChildByName(
-                    contentEditControls, QStringLiteral("boxTextAreaInactive")));
-    QTRY_VERIFY(inactiveMoveAreaObject = findVisualChildByName(
-                    contentEditControls, QStringLiteral("textBoxMoveArea")));
-    QVERIFY(!inactiveTextAreaObject->property("visible").toBool());
-    QVERIFY(!inactiveMoveAreaObject->property("visible").toBool());
 
     QObject *resizeHandleObject = nullptr;
     QObject *rotateHandleObject = nullptr;
@@ -1638,6 +1704,8 @@ private slots:
     const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
     const QString delegateSource =
         readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+    const QString delegateUiSource =
+        readQmlFile(QStringLiteral("TextBoxDelegateUi.qml"));
     const QString editControlsSource =
         readQmlFile(QStringLiteral("TextBoxEditControls.qml"));
     const QString moveAreaSource =
@@ -1665,8 +1733,7 @@ private slots:
         QStringLiteral(
             "rotateHandle.rootWindow.beginRotateDrag(rotateHandle.boxRef"));
     const qsizetype pathComponentStart =
-        delegateSource.indexOf(QStringLiteral("TextBoxPathControls {"),
-                               0);
+        delegateUiSource.indexOf(QStringLiteral("TextBoxPathControls {"), 0);
     QVERIFY(resizeStart >= 0);
     QVERIFY(!moveAreaSource.isEmpty());
     QVERIFY(rotateRectStart >= 0);
@@ -1694,7 +1761,8 @@ private slots:
         QStringLiteral("readonly property var rootWindow: window")));
     QVERIFY(!delegateSource.contains(QStringLiteral("Editor.")));
     QVERIFY(!delegateSource.contains(QStringLiteral("window.")));
-    QVERIFY(delegateSource.contains(QStringLiteral("TextBoxSelectionControls {")));
+    QVERIFY(delegateUiSource.contains(
+        QStringLiteral("TextBoxSelectionControls {")));
     QVERIFY(!delegateSource.contains(QStringLiteral("TextResizeHandles {")));
     QVERIFY(!delegateSource.contains(QStringLiteral("TextRotateHandle {")));
     QVERIFY(selectionControlsSource.contains(QStringLiteral("TextResizeHandles {")));
@@ -1702,15 +1770,15 @@ private slots:
     QVERIFY(selectionControlsSource.contains(QStringLiteral("z: boxRef ? boxRef.zSelectionControls : 20")));
     QVERIFY(!selectionControlsSource.contains(QStringLiteral("parent: selectionControls.boxRef")));
     QVERIFY(selectionControlsSource.contains(QStringLiteral("boxRef.rotateDecorationsLoaded")));
-    QVERIFY(delegateSource.contains(QStringLiteral("TextBoxPathControls {")));
+    QVERIFY(delegateUiSource.contains(QStringLiteral("TextBoxPathControls {")));
     QVERIFY(pathControlsSource.contains(QStringLiteral("TextPathGuide {")));
     QVERIFY(pathControlsSource.contains(QStringLiteral("TextPathHandles {")));
-    QVERIFY(delegateSource.contains(QStringLiteral("TextBoxEditControls {")));
-    QVERIFY(delegateSource.contains(QStringLiteral("boxRef: boxDelegate")));
-    QVERIFY(delegateSource.contains(
-        QStringLiteral("canvasItem: boxDelegate.canvasItem")));
-    QVERIFY(delegateSource.contains(
-        QStringLiteral("outlinedTextItem: textContent.outlinedTextItem")));
+    QVERIFY(delegateUiSource.contains(QStringLiteral("TextBoxEditControls {")));
+    QVERIFY(delegateUiSource.contains(QStringLiteral("boxRef: delegateUi.boxRef")));
+    QVERIFY(delegateUiSource.contains(
+        QStringLiteral("canvasItem: delegateUi.canvasItem")));
+    QVERIFY(delegateUiSource.contains(
+        QStringLiteral("outlinedTextItem: delegateUi.outlinedTextItem")));
     QVERIFY(!delegateSource.contains(QStringLiteral("TextBoxMoveArea {")));
     QVERIFY(editControlsSource.contains(QStringLiteral("TextBoxMoveArea {")));
     QVERIFY(editControlsSource.contains(QStringLiteral("TextEditOverlay {")));
@@ -2335,6 +2403,8 @@ Item {
       void qmlMultiSelectionRoutesModifiersAndKeepsPrimaryControls() {
         const QString delegateSource =
             readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+        const QString delegateUiSource =
+            readQmlFile(QStringLiteral("TextBoxDelegateUi.qml"));
         const QString moveSource =
             readQmlFile(QStringLiteral("TextBoxMoveArea.qml"));
         const QString mainSource = readQmlFile(QStringLiteral("Main.qml"));
@@ -2353,10 +2423,10 @@ Item {
             QStringLiteral("controlClickDragged = controlClickDragged || deltaX * deltaX + deltaY * deltaY >=")));
         QVERIFY(!moveSource.contains(QStringLiteral("Qt.ShiftModifier")));
         QVERIFY(moveSource.contains(QStringLiteral("editorRef.toggleBoxSelection(boxRef.boxModel.index)")));
-        QVERIFY(delegateSource.contains(
+        QVERIFY(delegateUiSource.contains(
             QStringLiteral("if (eventPoint.modifiers & Qt.ControlModifier)")));
-        QVERIFY(delegateSource.contains(
-            QStringLiteral("boxDelegate.editorRef.selectBox(boxDelegate.boxModel.index)")));
+        QVERIFY(delegateUiSource.contains(QStringLiteral(
+            "delegateUi.boxRef.editorRef.selectBox(delegateUi.boxRef.boxModel.index)")));
         QVERIFY(moveSource.contains(QStringLiteral("editorRef.selectBox(boxRef.boxModel.index)")));
         QVERIFY(moveSource.contains(QStringLiteral("onDoubleClicked: (mouse) => {")));
         QVERIFY(moveSource.contains(QStringLiteral("editorRef.beginTextEdit()")));

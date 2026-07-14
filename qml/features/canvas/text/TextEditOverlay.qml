@@ -10,11 +10,11 @@ TextArea {
     property var rootWindow: boxRef.rootWindow
     property var editorRef: boxRef.editorRef
     property real editLineSpacing: boxRef.boxModel.lineSpacing
-    readonly property bool editLayoutAligned: outlinedTextItem.editLayoutMetricsValid
+    readonly property bool editLayoutAligned: outlinedTextItem ? outlinedTextItem.editLayoutMetricsValid : false
     readonly property real editLayoutTopPadding: editLayoutAligned ? outlinedTextItem.editLayoutTopPadding : 0
     readonly property real editLayoutLeftPadding: editLayoutAligned ? outlinedTextItem.editLayoutLeftPadding : 0
     readonly property real editLayoutRightPadding: editLayoutAligned ? outlinedTextItem.editLayoutRightPadding : 0
-    readonly property real editLayoutTabStopDistance: outlinedTextItem.editLayoutTabStopDistance
+    readonly property real editLayoutTabStopDistance: outlinedTextItem ? outlinedTextItem.editLayoutTabStopDistance : 0
     readonly property real editLayoutPaintOffsetX: editLayoutAligned ? outlinedTextItem.editLayoutPaintOffsetX : 0
     readonly property real editLayoutPaintOffsetY: editLayoutAligned ? outlinedTextItem.editLayoutPaintOffsetY : 0
     readonly property int zEditOverlay: 1
@@ -24,7 +24,7 @@ TextArea {
     }
 
     function focusForEdit() {
-        if (boxRef.selected && editorRef.editingText && !activeFocus)
+        if (outlinedTextItem && boxRef.selected && editorRef.editingText && !activeFocus)
             forceActiveFocus();
 
     }
@@ -120,6 +120,10 @@ TextArea {
             applyLineSpacing();
             Qt.callLater(focusForEdit);
         }
+    }
+    onOutlinedTextItemChanged: {
+        if (outlinedTextItem && visible)
+            Qt.callLater(focusForEdit);
     }
     onEditLineSpacingChanged: applyLineSpacing()
     Keys.onPressed: (event) => {

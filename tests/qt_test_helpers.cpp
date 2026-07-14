@@ -229,6 +229,7 @@ QStringList qmlSourceFiles() {
       QStringLiteral("features/rightPanel/textEffects/PathEffectEditor.qml"),
       QStringLiteral("features/canvas/text/TextBoxContent.qml"),
       QStringLiteral("features/canvas/text/TextBoxDelegate.qml"),
+      QStringLiteral("features/canvas/text/TextBoxDelegateUi.qml"),
       QStringLiteral("features/canvas/text/TextBoxEditControls.qml"),
       QStringLiteral("features/canvas/text/TextBoxPathControls.qml"),
       QStringLiteral("features/canvas/text/TextBoxSelectionControls.qml"),

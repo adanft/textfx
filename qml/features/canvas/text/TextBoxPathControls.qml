@@ -44,7 +44,6 @@ Item {
                 canvasItem: pathHandlesLoader.canvasItem
             }
         }
-        z: pathControls.boxRef ? pathControls.boxRef.zSelectionControls : 20
+        z: pathControls.boxRef ? pathControls.boxRef.zSelectionControls + 1 : 21
     }
 }
-

@@ -544,7 +544,8 @@ QtObject {
     const QString moveStateSource =
         readQmlFile(QStringLiteral("BoxMoveInteractionState.qml"));
     const QString delegateSource =
-        readQmlFile(QStringLiteral("TextBoxDelegate.qml"));
+        readQmlFile(QStringLiteral("TextBoxDelegate.qml")) +
+        readQmlFile(QStringLiteral("TextBoxDelegateUi.qml"));
     const QString editControlsSource =
         readQmlFile(QStringLiteral("TextBoxEditControls.qml"));
     const QString moveAreaSource =
@@ -634,7 +635,8 @@ QtObject {
     QVERIFY(delegateSource.contains(
         QStringLiteral("x: rootWindow.documentToViewX(visualDocX)")));
     QVERIFY(delegateSource.contains(QStringLiteral("TextBoxEditControls {")));
-    QVERIFY(delegateSource.contains(QStringLiteral("outlinedTextItem: textContent.outlinedTextItem")));
+    QVERIFY(delegateSource.contains(
+        QStringLiteral("outlinedTextItem: delegateUi.outlinedTextItem")));
     QVERIFY(!delegateSource.contains(QStringLiteral("TextBoxMoveArea {")));
     QVERIFY(editControlsSource.contains(QStringLiteral("TextEditOverlay {")));
     QVERIFY(editControlsSource.contains(QStringLiteral("TextBoxMoveArea {")));
@@ -1539,7 +1541,7 @@ QtObject {
         QStringLiteral("applyTextLineSpacing(textDocument, editLineSpacing)")));
     QVERIFY(editorBlock.contains(
         QStringLiteral("readonly property bool editLayoutAligned: "
-                       "outlinedTextItem.editLayoutMetricsValid")));
+                       "outlinedTextItem ? outlinedTextItem.editLayoutMetricsValid : false")));
     QVERIFY(editorBlock.contains(
         QStringLiteral("topPadding: editLayoutTopPadding")));
     QVERIFY(editorBlock.contains(
@@ -1663,7 +1665,7 @@ QtObject {
                        "rootWindow.documentToViewLength(1))")));
     QVERIFY(source.contains(QStringLiteral("id: perspectiveBorder")));
     QVERIFY(source.contains(QStringLiteral(
-        "visible: boxRef.renderSelectionUi && boxRef.selected && boxRef.perspectiveActive")));
+        "visible: boxRef.selected && boxRef.perspectiveActive")));
     QVERIFY(source.contains(QStringLiteral("return Qt.matrix4x4(1, 0, 0, 0,")));
 
     const qsizetype wrapper =
@@ -1812,7 +1814,7 @@ QtObject {
     const qsizetype borderStart =
         source.indexOf(QStringLiteral("id: perspectiveBorder"));
     const qsizetype borderEnd =
-        source.indexOf(QStringLiteral("TextBoxContent {"), borderStart);
+        source.indexOf(QStringLiteral("TextBoxEditControls {"), borderStart);
     QVERIFY(borderStart >= 0);
     QVERIFY(borderEnd > borderStart);
     const QString borderSource =

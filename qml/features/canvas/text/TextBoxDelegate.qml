@@ -50,6 +50,8 @@ Rectangle {
     required property var interaction
     property bool renderTextContent: true
     property bool renderSelectionUi: true
+    property var externalOutlinedTextItem: null
+    readonly property var outlinedTextItem: textContentLoader.item ? textContentLoader.item.outlinedTextItem : externalOutlinedTextItem
     readonly property var rootWindow: ApplicationWindow.window
     readonly property var editorRef: rootWindow ? rootWindow.editor : null
     readonly property var selectedIndices: editorRef ? editorRef.selectedIndices : []
@@ -105,7 +107,7 @@ Rectangle {
     property real visualDocY: boxModel.y
     property real visualDocW: boxModel.w
     property real visualDocH: boxModel.h
-    readonly property bool textOverflow: textContent.overflow
+    readonly property bool textOverflow: outlinedTextItem ? outlinedTextItem.overflow : false
     readonly property int zTextContent: 1
     readonly property int zPerspectiveBorder: 19
     readonly property int zSelectionControls: 20
@@ -134,96 +136,26 @@ Rectangle {
     border.color: textOverflow ? Qt.rgba(1, 0, 0, 1) : editingSelected ? Qt.rgba(1, 0.84, 0, 1) : selectionMember ? rootWindow.palette.highlight : rootWindow.palette.mid
     rotation: boxRotation
 
-    TapHandler {
-        enabled: boxDelegate.editingSelected
-        acceptedButtons: Qt.LeftButton
-        acceptedModifiers: Qt.ControlModifier | Qt.ShiftModifier
-        onTapped: (eventPoint) => {
-            if (!boxDelegate.editingSelected)
-                return ;
-            boxDelegate.editorRef.endTextEdit();
-            if (eventPoint.modifiers & Qt.ControlModifier)
-                boxDelegate.editorRef.toggleBoxSelection(boxDelegate.boxModel.index);
-            else
-                boxDelegate.editorRef.selectBox(boxDelegate.boxModel.index);
+    Loader {
+        id: textContentLoader
+
+        anchors.fill: parent
+        active: boxDelegate.renderTextContent
+        asynchronous: false
+        sourceComponent: TextBoxContent {
+            boxRef: boxDelegate
         }
     }
 
-    Canvas {
-        id: perspectiveBorder
-
-        property var boxRef: parent
-        property var rootWindow: boxRef.rootWindow
-        property var editorRef: boxRef.editorRef
-        property real margin: rootWindow.perspectiveMargin(boxRef.boxModel)
-
-        objectName: "perspectiveBorder"
-        x: -margin
-        y: -margin
-        width: parent.width + margin * 2
-        height: parent.height + margin * 2
-        visible: boxRef.renderSelectionUi && boxRef.selected && boxRef.perspectiveActive
-        z: boxRef.zPerspectiveBorder
-        onPaint: {
-            const ctx = getContext("2d");
-            ctx.clearRect(0, 0, width, height);
-            const nw = rootWindow.perspectiveCorner(boxRef.boxModel, "nw", boxRef.width, boxRef.height);
-            const ne = rootWindow.perspectiveCorner(boxRef.boxModel, "ne", boxRef.width, boxRef.height);
-            const se = rootWindow.perspectiveCorner(boxRef.boxModel, "se", boxRef.width, boxRef.height);
-            const sw = rootWindow.perspectiveCorner(boxRef.boxModel, "sw", boxRef.width, boxRef.height);
-            ctx.beginPath();
-            ctx.moveTo(nw.x + margin, nw.y + margin);
-            ctx.lineTo(ne.x + margin, ne.y + margin);
-            ctx.lineTo(se.x + margin, se.y + margin);
-            ctx.lineTo(sw.x + margin, sw.y + margin);
-            ctx.closePath();
-            ctx.lineWidth = rootWindow.selectionLineWidth();
-            ctx.strokeStyle = rootWindow.palette.highlight;
-            ctx.stroke();
+    Loader {
+        anchors.fill: parent
+        active: boxDelegate.renderSelectionUi
+        asynchronous: false
+        sourceComponent: TextBoxDelegateUi {
+            boxRef: boxDelegate
+            canvasItem: boxDelegate.canvasItem
+            outlinedTextItem: boxDelegate.outlinedTextItem
         }
-
-        Connections {
-            function onZoomChanged() {
-                perspectiveBorder.requestPaint();
-            }
-
-            function onPerspectiveRevisionChanged() {
-                perspectiveBorder.requestPaint();
-            }
-
-            target: perspectiveBorder.rootWindow
-        }
-
-        Connections {
-            function onDocumentChanged() {
-                perspectiveBorder.requestPaint();
-            }
-
-            target: perspectiveBorder.editorRef
-        }
-
-    }
-
-    TextBoxContent {
-        id: textContent
-
-        boxRef: boxDelegate
-    }
-
-    TextBoxEditControls {
-        boxRef: boxDelegate
-        canvasItem: boxDelegate.canvasItem
-        outlinedTextItem: textContent.outlinedTextItem
-    }
-
-    TextBoxSelectionControls {
-        boxRef: boxDelegate
-        canvasItem: boxDelegate.canvasItem
-    }
-
-    TextBoxPathControls {
-        boxRef: boxDelegate
-        canvasItem: boxDelegate.canvasItem
     }
 
 
