@@ -51,7 +51,8 @@ Rectangle {
     property bool renderTextContent: true
     property bool renderSelectionUi: true
     property var externalOutlinedTextItem: null
-    readonly property var outlinedTextItem: textContentLoader.item ? textContentLoader.item.outlinedTextItem : externalOutlinedTextItem
+    property var ownedOutlinedTextItem: null
+    readonly property var outlinedTextItem: renderTextContent ? ownedOutlinedTextItem : externalOutlinedTextItem
     readonly property var rootWindow: ApplicationWindow.window
     readonly property var editorRef: rootWindow ? rootWindow.editor : null
     readonly property var selectedIndices: editorRef ? editorRef.selectedIndices : []
@@ -107,11 +108,13 @@ Rectangle {
     property real visualDocY: boxModel.y
     property real visualDocW: boxModel.w
     property real visualDocH: boxModel.h
-    readonly property bool textOverflow: outlinedTextItem ? outlinedTextItem.overflow : false
+    property bool textOverflow: false
     readonly property int zTextContent: 1
     readonly property int zPerspectiveBorder: 19
     readonly property int zSelectionControls: 20
     readonly property bool rotateDecorationsLoaded: selected || (rootWindow && rootWindow.activeRotateDelegate === boxDelegate)
+
+    onOutlinedTextItemChanged: Qt.callLater(overflowConnection.updateOverflow)
 
     function modelPreviewText() {
         return boxModel.uppercase ? String(boxModel.text).toUpperCase() : boxModel.lowercase ? String(boxModel.text).toLowerCase() : boxModel.text;
@@ -127,14 +130,26 @@ Rectangle {
 
     objectName: renderSelectionUi ? "textBoxDelegate" : "textBoxContentDelegate"
     z: renderSelectionUi ? 40 : 0
-    x: rootWindow.documentToViewX(visualDocX)
-    y: rootWindow.documentToViewY(visualDocY)
-    width: visualDocW * rootWindow.viewDocScale()
-    height: visualDocH * rootWindow.viewDocScale()
+    x: rootWindow.documentViewOriginX + visualDocX * rootWindow.viewDocumentScale
+    y: rootWindow.documentViewOriginY + visualDocY * rootWindow.viewDocumentScale
+    width: visualDocW * rootWindow.viewDocumentScale
+    height: visualDocH * rootWindow.viewDocumentScale
     color: "transparent"
     border.width: !renderSelectionUi || perspectiveActive ? 0 : selectionMember ? rootWindow.selectionLineWidth() : Math.max(1, rootWindow.documentToViewLength(1))
     border.color: textOverflow ? Qt.rgba(1, 0, 0, 1) : editingSelected ? Qt.rgba(1, 0.84, 0, 1) : selectionMember ? rootWindow.palette.highlight : rootWindow.palette.mid
     rotation: boxRotation
+
+    Connections {
+        id: overflowConnection
+
+        target: boxDelegate.renderSelectionUi ? boxDelegate.outlinedTextItem : null
+        function updateOverflow() {
+            boxDelegate.textOverflow = target ? target.overflow : false;
+        }
+        function onOverflowChanged() {
+            updateOverflow();
+        }
+    }
 
     Loader {
         id: textContentLoader
@@ -148,13 +163,18 @@ Rectangle {
     }
 
     Loader {
+        readonly property real uiMargin: Math.max(boxDelegate.rootWindow.resizeHandleSize * 4,
+                                                   boxDelegate.rootWindow.perspectiveMargin(boxDelegate.boxModel))
+
         anchors.fill: parent
+        anchors.margins: -uiMargin
         active: boxDelegate.renderSelectionUi
         asynchronous: false
         sourceComponent: TextBoxDelegateUi {
             boxRef: boxDelegate
             canvasItem: boxDelegate.canvasItem
             outlinedTextItem: boxDelegate.outlinedTextItem
+            uiMargin: parent.uiMargin
         }
     }
 

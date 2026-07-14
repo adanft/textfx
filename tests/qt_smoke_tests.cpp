@@ -123,7 +123,7 @@ private slots:
         QStringLiteral("transform: Matrix4x4 { matrix: "
                        "pathGuide.rootWindow.perspectiveMatrix(pathGuide."
                        "boxRef.boxModel, pathGuide.width, pathGuide.height, "
-                       "pathGuide.rootWindow.viewDocScale(), "
+                        "pathGuide.rootWindow.viewDocumentScale, "
                        "pathGuide.boxRef.perspectiveActive) }")));
     QVERIFY(
         source.contains(QStringLiteral("function smoothGuidePoints(points)")));
@@ -633,7 +633,7 @@ QtObject {
     QVERIFY(!delegateSource.contains(QStringLiteral("property bool moveActive")));
     QVERIFY(!delegateSource.contains(QStringLiteral("property bool resizeActive")));
     QVERIFY(delegateSource.contains(
-        QStringLiteral("x: rootWindow.documentToViewX(visualDocX)")));
+        QStringLiteral("x: rootWindow.documentViewOriginX + visualDocX * rootWindow.viewDocumentScale")));
     QVERIFY(delegateSource.contains(QStringLiteral("TextBoxEditControls {")));
     QVERIFY(delegateSource.contains(
         QStringLiteral("outlinedTextItem: delegateUi.outlinedTextItem")));
@@ -1440,7 +1440,7 @@ QtObject {
     QVERIFY(source.contains(QStringLiteral(
         "height: boxRef.visualDocH * rootWindow.livePreviewScale()")));
     QVERIFY(source.contains(QStringLiteral(
-        "scale: rootWindow.viewDocScale() / rootWindow.livePreviewScale()")));
+        "scale: rootWindow.viewDocumentScale / rootWindow.livePreviewScale()")));
     QVERIFY(source.contains(
         QStringLiteral("renderScale: rootWindow.livePreviewScale()")));
     QVERIFY(!source.contains(QStringLiteral("liveGpuBlurActive")));
@@ -1540,8 +1540,9 @@ QtObject {
     QVERIFY(editorBlock.contains(
         QStringLiteral("applyTextLineSpacing(textDocument, editLineSpacing)")));
     QVERIFY(editorBlock.contains(
-        QStringLiteral("readonly property bool editLayoutAligned: "
-                       "outlinedTextItem ? outlinedTextItem.editLayoutMetricsValid : false")));
+        QStringLiteral("property bool editLayoutAligned: false")));
+    QVERIFY(editorBlock.contains(
+        QStringLiteral("function refreshEditLayoutMetrics()")));
     QVERIFY(editorBlock.contains(
         QStringLiteral("topPadding: editLayoutTopPadding")));
     QVERIFY(editorBlock.contains(
@@ -1609,7 +1610,7 @@ QtObject {
                        "boxTextPerspective."
                        "boxRef.boxModel, boxTextPerspective.width, "
                        "boxTextPerspective.height, "
-                       "boxTextPerspective.rootWindow.viewDocScale(), "
+                        "boxTextPerspective.rootWindow.viewDocumentScale, "
                        "boxTextPerspective.boxRef.perspectiveActive) }")));
     QVERIFY(!source.contains(QStringLiteral(
         "transform: Matrix4x4 { matrix: "
@@ -1704,7 +1705,7 @@ QtObject {
         source.mid(resizeStart, rotateUse - resizeStart);
 
     QVERIFY(resizeSource.contains(QStringLiteral(
-        "x: visualPosition.x - width / 2")));
+        "x: boxOriginX + visualPosition.x - width / 2")));
     QVERIFY(resizeSource.contains(QStringLiteral(
         "const point = mapToItem(canvasItem, mouse.x, mouse.y)")));
     const qsizetype perspectiveBranch = resizeSource.indexOf(
@@ -1808,7 +1809,7 @@ QtObject {
                     "modelData.name, boxRef.width, boxRef.height) : Qt.point(0, 0)")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         source.mid(resizeStart, rotateUse - resizeStart),
-        QStringLiteral("width: handleReady ? rootWindow.handleSize() : 0; "
+        QStringLiteral("width: handleReady ? rootWindow.resizeHandleSize : 0; "
                        "height: width; radius: width / 2")));
 
     const qsizetype borderStart =
@@ -1851,9 +1852,9 @@ QtObject {
         QStringLiteral("function documentToViewLength(value) { "
                        "return value * viewDocScale() }")));
     QVERIFY(source.contains(
-        QStringLiteral("width: visualDocW * rootWindow.viewDocScale()")));
+        QStringLiteral("width: visualDocW * rootWindow.viewDocumentScale")));
     QVERIFY(source.contains(
-        QStringLiteral("height: visualDocH * rootWindow.viewDocScale()")));
+        QStringLiteral("height: visualDocH * rootWindow.viewDocumentScale")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         source, QStringLiteral("function livePreviewScale() { return "
                                "viewportMetrics.livePreviewScale() }")));
@@ -1866,7 +1867,7 @@ QtObject {
     QVERIFY(rendererBlock.contains(QStringLiteral(
         "height: boxRef.visualDocH * rootWindow.livePreviewScale()")));
     QVERIFY(rendererBlock.contains(QStringLiteral(
-        "scale: rootWindow.viewDocScale() / rootWindow.livePreviewScale()")));
+        "scale: rootWindow.viewDocumentScale / rootWindow.livePreviewScale()")));
     QVERIFY(rendererBlock.contains(
         QStringLiteral("renderScale: rootWindow.livePreviewScale()")));
     QVERIFY(rendererBlock.contains(
@@ -1892,7 +1893,7 @@ QtObject {
                        "boxTextPerspective."
                        "boxRef.boxModel, boxTextPerspective.width, "
                        "boxTextPerspective.height, "
-                       "boxTextPerspective.rootWindow.viewDocScale(), "
+                        "boxTextPerspective.rootWindow.viewDocumentScale, "
                        "boxTextPerspective.boxRef.perspectiveActive) }")));
     QVERIFY(!source.contains(QStringLiteral(
         "transform: Matrix4x4 { matrix: "

@@ -12,6 +12,7 @@
 #include <QPainterPath>
 #include <QPainterPathStroker>
 #include <QQuickWindow>
+#include <QThread>
 #include <QRectF>
 
 #include <algorithm>
@@ -325,18 +326,22 @@ void OutlinedTextItem::setHorizontalAlignment(int value) {
 void OutlinedTextItem::geometryChange(const QRectF &newGeometry,
                                       const QRectF &oldGeometry) {
   QQuickPaintedItem::geometryChange(newGeometry, oldGeometry);
-  if (newGeometry.size() != oldGeometry.size()) {
-    invalidateLayoutCache();
-    updateOverflow();
-    emit editLayoutMetricsChanged();
-  }
+  if (newGeometry.size() != oldGeometry.size())
+    notifyLayoutChanged();
+}
+
+bool OutlinedTextItem::overflow() const {
+  ensureLayoutCurrent();
+  return overflow_;
 }
 
 bool OutlinedTextItem::editLayoutMetricsValid() const {
+  ensureLayoutCurrent();
   return layoutCache().editMetricsValid;
 }
 
 qreal OutlinedTextItem::editLayoutTopPadding() const {
+  ensureLayoutCurrent();
   const LayoutCache &cache = layoutCache();
   if (!cache.editMetricsValid)
     return 0.0;
@@ -347,6 +352,7 @@ qreal OutlinedTextItem::editLayoutTopPadding() const {
 }
 
 qreal OutlinedTextItem::editLayoutLeftPadding() const {
+  ensureLayoutCurrent();
   const LayoutCache &cache = layoutCache();
   return cache.editMetricsValid ? cache.inset : 0.0;
 }
@@ -356,10 +362,12 @@ qreal OutlinedTextItem::editLayoutRightPadding() const {
 }
 
 qreal OutlinedTextItem::editLayoutTabStopDistance() const {
+  ensureLayoutCurrent();
   return layoutCache().tabStopDistance;
 }
 
 QVariantList OutlinedTextItem::editLayoutLineTops() const {
+  ensureLayoutCurrent();
   QVariantList result;
   const LayoutCache &cache = layoutCache();
   if (!cache.editMetricsValid)
@@ -370,6 +378,7 @@ QVariantList OutlinedTextItem::editLayoutLineTops() const {
 }
 
 qreal OutlinedTextItem::editLayoutPaintOffsetX() const {
+  ensureLayoutCurrent();
   const LayoutCache &cache = layoutCache();
   if (!cache.editMetricsValid)
     return 0.0;
@@ -377,6 +386,7 @@ qreal OutlinedTextItem::editLayoutPaintOffsetX() const {
 }
 
 qreal OutlinedTextItem::editLayoutPaintOffsetY() const {
+  ensureLayoutCurrent();
   const LayoutCache &cache = layoutCache();
   if (!cache.editMetricsValid)
     return 0.0;
@@ -384,6 +394,10 @@ qreal OutlinedTextItem::editLayoutPaintOffsetY() const {
 }
 
 void OutlinedTextItem::paint(QPainter *painter) {
+  // Direct unit-test paints run on the item's GUI thread. Scene-graph paints
+  // arrive after updatePolish(), so QObject notifications never cross threads.
+  if (QThread::currentThread() == thread())
+    processPendingUpdates();
   if (!painter || text_.isEmpty())
     return;
 
@@ -634,12 +648,29 @@ void OutlinedTextItem::updateOverflow() {
 
 void OutlinedTextItem::notifyLayoutChanged() {
   invalidateLayoutCache();
-  updateOverflow();
+  layoutNotificationPending_ = true;
   requestPaintRefresh();
-  emit editLayoutMetricsChanged();
 }
 
 void OutlinedTextItem::requestPaintRefresh() {
+  paintRefreshPending_ = true;
+  if (polishPending_)
+    return;
+  polishPending_ = true;
+  polish();
+}
+
+void OutlinedTextItem::updatePolish() {
+  polishPending_ = false;
+  processPendingUpdates();
+}
+
+void OutlinedTextItem::processPendingUpdates() {
+  const bool refreshPaint = paintRefreshPending_;
+  paintRefreshPending_ = false;
+  ensureLayoutCurrent();
+  if (!refreshPaint)
+    return;
   ++renderRevision_;
   update();
   if (auto *quickWindow = window())
@@ -650,6 +681,21 @@ void OutlinedTextItem::requestPaintRefresh() {
 #endif
 }
 
+void OutlinedTextItem::ensureLayoutCurrent() const {
+  if ((!layoutCacheDirty_ && !layoutNotificationPending_) ||
+      ensuringLayoutCurrent_)
+    return;
+  ensuringLayoutCurrent_ = true;
+  auto *self = const_cast<OutlinedTextItem *>(this);
+  const bool notifyMetrics = self->layoutNotificationPending_;
+  self->layoutNotificationPending_ = false;
+  (void)layoutCache();
+  self->updateOverflow();
+  ensuringLayoutCurrent_ = false;
+  if (notifyMetrics)
+    emit self->editLayoutMetricsChanged();
+}
+
 qreal OutlinedTextItem::effectiveMaxOutlineSize() const {
   const auto outlineLayers =
       outlineLayersFromVariant(outlineLayers_, outlineColor_, outlineSize_);
@@ -657,16 +703,18 @@ qreal OutlinedTextItem::effectiveMaxOutlineSize() const {
 }
 
 QPointF OutlinedTextItem::paintTranslationForCurrentLayout() const {
+  ensureLayoutCurrent();
   return layoutCache().paintTranslation;
 }
 
 #ifdef TEXTFX_TESTING
 int OutlinedTextItem::layoutCacheRebuildCountForTesting() const {
-  layoutCache();
+  ensureLayoutCurrent();
   return layoutCacheRebuildCount_;
 }
 
 QStringList OutlinedTextItem::wrappedLinesForTesting() const {
+  ensureLayoutCurrent();
   return layoutCache().wrappedLines;
 }
 

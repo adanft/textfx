@@ -5,6 +5,8 @@ Rectangle {
 
     property var boxRef
     property var canvasItem
+    required property real boxOriginX
+    required property real boxOriginY
     property var rootWindow: boxRef.rootWindow
     property var editorRef: boxRef.editorRef
     readonly property int zRotateHandle: 20
@@ -16,8 +18,8 @@ Rectangle {
     height: width
     radius: width / 2
     color: rootWindow.palette.highlight
-    x: visualPosition.x - width / 2
-    y: visualPosition.y - height / 2
+    x: boxOriginX + visualPosition.x - width / 2
+    y: boxOriginY + visualPosition.y - height / 2
     visible: boxRef.selected
 
     MouseArea {

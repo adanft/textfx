@@ -15,6 +15,12 @@ ApplicationWindow {
     property alias canvas: canvasView.canvasItem
     property real zoom: 1
     property real pageBaseScale: 1
+    readonly property real viewDocumentScale: viewportMetrics.documentScale
+    readonly property real pageViewLeft: viewportMetrics.pageLeftOffset
+    readonly property real pageViewTop: viewportMetrics.pageTopOffset
+    readonly property real documentViewOriginX: viewportMetrics.documentViewOriginX
+    readonly property real documentViewOriginY: viewportMetrics.documentViewOriginY
+    readonly property real resizeHandleSize: Math.max(1, editorLimits.minimumBoxSize * viewDocumentScale)
     property real panX: 0
     property real panY: 0
     property alias pressX: canvasInteraction.pressX
@@ -107,15 +113,15 @@ ApplicationWindow {
     }
 
     function pageLeft() {
-        return viewportMetrics.pageLeft();
+        return pageViewLeft;
     }
 
     function pageTop() {
-        return viewportMetrics.pageTop();
+        return pageViewTop;
     }
 
     function viewDocScale() {
-        return viewportMetrics.viewDocScale();
+        return viewDocumentScale;
     }
 
     function livePreviewScale() {
@@ -131,7 +137,7 @@ ApplicationWindow {
     }
 
     function handleSize() {
-        return Math.max(1, documentToViewLength(editorLimits.minimumBoxSize));
+        return resizeHandleSize;
     }
 
     function rotateHandleDistance() {
@@ -139,11 +145,11 @@ ApplicationWindow {
     }
 
     function documentToViewX(x) {
-        return viewportMetrics.documentToViewX(x);
+        return documentViewOriginX + x * viewDocumentScale;
     }
 
     function documentToViewY(y) {
-        return viewportMetrics.documentToViewY(y);
+        return documentViewOriginY + y * viewDocumentScale;
     }
 
     function viewToDocumentX(x) {
@@ -545,7 +551,7 @@ ApplicationWindow {
         id: boxResizeInteraction
 
         objectName: "boxResizeInteractionState"
-        documentScale: window.viewDocScale()
+        documentScale: window.viewDocumentScale
         minimumBoxSize: editorLimits.minimumBoxSize
     }
 
@@ -553,7 +559,7 @@ ApplicationWindow {
         id: boxMoveInteraction
 
         objectName: "boxMoveInteractionState"
-        documentScale: window.viewDocScale()
+        documentScale: window.viewDocumentScale
     }
 
     BoxRotateInteractionState {
@@ -566,7 +572,7 @@ ApplicationWindow {
         id: perspectiveInteraction
 
         objectName: "perspectiveInteractionState"
-        documentScale: window.viewDocScale()
+        documentScale: window.viewDocumentScale
     }
 
     PathHandleInteractionState {
@@ -579,8 +585,8 @@ ApplicationWindow {
         id: perspectiveGeometry
 
         objectName: "perspectiveGeometry"
-        documentScale: window.viewDocScale()
-        handleSize: window.handleSize()
+        documentScale: window.viewDocumentScale
+        handleSize: window.resizeHandleSize
         rotateHandleDistance: window.rotateHandleDistance()
         livePerspectiveActive: window.dragMode === editorInteraction.dragModePerspective && !!window.activePerspectiveDelegate && window.activePerspectiveDelegate.boxModel && window.activePerspectiveDelegate.boxModel.index === Editor.selectedIndex
         activePerspectiveBoxIndex: perspectiveInteraction.activePerspectiveBoxIndex

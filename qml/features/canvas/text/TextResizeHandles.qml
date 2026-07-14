@@ -5,6 +5,8 @@ Item {
 
     property var boxRef
     property var canvasItem
+    required property real boxOriginX
+    required property real boxOriginY
     readonly property int zResizeHandles: 20
 
     anchors.fill: parent
@@ -64,12 +66,12 @@ Item {
 
             objectName: "resizeHandle_" + modelData.name
             z: resizeHandles.zResizeHandles
-            width: handleReady ? rootWindow.handleSize() : 0
+            width: handleReady ? rootWindow.resizeHandleSize : 0
             height: width
             radius: width / 2
             color: handleReady ? rootWindow.palette.highlight : "transparent"
-            x: visualPosition.x - width / 2
-            y: visualPosition.y - height / 2
+            x: boxOriginX + visualPosition.x - width / 2
+            y: boxOriginY + visualPosition.y - height / 2
             visible: handleReady && boxRef.selected
 
             MouseArea {

@@ -13,12 +13,17 @@ QtObject {
     property real pageSourceHeight: 0
     readonly property real minimumZoom: 0.5
     readonly property real maximumZoom: 6
+    readonly property real fitScale: pageSourceWidth <= 0 || pageSourceHeight <= 0 || canvasWidth <= 0 || canvasHeight <= 0 ? 1 : Math.min(canvasWidth / pageSourceWidth, canvasHeight / pageSourceHeight)
+    readonly property real documentScale: pageBaseScale * zoom
+    readonly property real pageWidth: pageSourceWidth * pageBaseScale
+    readonly property real pageHeight: pageSourceHeight * pageBaseScale
+    readonly property real pageLeftOffset: (canvasWidth - pageWidth) / 2
+    readonly property real pageTopOffset: (canvasHeight - pageHeight) / 2
+    readonly property real documentViewOriginX: panX + pageLeftOffset * zoom
+    readonly property real documentViewOriginY: panY + pageTopOffset * zoom
 
     function fitPageScale() {
-        if (pageSourceWidth <= 0 || pageSourceHeight <= 0 || canvasWidth <= 0 || canvasHeight <= 0)
-            return 1;
-
-        return Math.min(canvasWidth / pageSourceWidth, canvasHeight / pageSourceHeight);
+        return fitScale;
     }
 
     function pageScale() {
@@ -26,23 +31,23 @@ QtObject {
     }
 
     function pageDisplayWidth() {
-        return pageSourceWidth * pageScale();
+        return pageWidth;
     }
 
     function pageDisplayHeight() {
-        return pageSourceHeight * pageScale();
+        return pageHeight;
     }
 
     function pageLeft() {
-        return (canvasWidth - pageDisplayWidth()) / 2;
+        return pageLeftOffset;
     }
 
     function pageTop() {
-        return (canvasHeight - pageDisplayHeight()) / 2;
+        return pageTopOffset;
     }
 
     function viewDocScale() {
-        return pageScale() * zoom;
+        return documentScale;
     }
 
     function livePreviewScale() {
@@ -54,11 +59,11 @@ QtObject {
     }
 
     function documentToViewX(x) {
-        return panX + (pageLeft() + x * pageScale()) * zoom;
+        return documentViewOriginX + x * documentScale;
     }
 
     function documentToViewY(y) {
-        return panY + (pageTop() + y * pageScale()) * zoom;
+        return documentViewOriginY + y * documentScale;
     }
 
     function viewToDocumentX(x) {

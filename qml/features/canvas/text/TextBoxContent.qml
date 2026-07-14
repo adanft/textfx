@@ -8,7 +8,19 @@ Item {
     property var rootWindow: boxRef.rootWindow
     property var editorRef: boxRef.editorRef
     property alias outlinedTextItem: boxOutlinedText
-    readonly property bool overflow: boxOutlinedText.overflow
+    property bool overflow: false
+
+    Component.onCompleted: {
+        boxRef.ownedOutlinedTextItem = boxOutlinedText;
+        Qt.callLater(() => overflow = boxOutlinedText.overflow);
+    }
+
+    Connections {
+        target: boxOutlinedText
+        function onOverflowChanged() {
+            boxTextPerspective.overflow = boxOutlinedText.overflow;
+        }
+    }
 
     z: boxRef.zTextContent
     anchors.fill: parent
@@ -25,7 +37,7 @@ Item {
         width: boxRef.visualDocW * rootWindow.livePreviewScale()
         height: boxRef.visualDocH * rootWindow.livePreviewScale()
         transformOrigin: Item.TopLeft
-        scale: rootWindow.viewDocScale() / rootWindow.livePreviewScale()
+        scale: rootWindow.viewDocumentScale / rootWindow.livePreviewScale()
         text: boxRef.modelPreviewText()
         color: rootWindow.qmlColor(boxRef.boxModel.color)
         fontFamily: boxRef.boxModel.fontFamily
@@ -55,7 +67,7 @@ Item {
     }
 
     transform: Matrix4x4 {
-        matrix: boxTextPerspective.rootWindow.perspectiveMatrix(boxTextPerspective.boxRef.boxModel, boxTextPerspective.width, boxTextPerspective.height, boxTextPerspective.rootWindow.viewDocScale(), boxTextPerspective.boxRef.perspectiveActive)
+        matrix: boxTextPerspective.rootWindow.perspectiveMatrix(boxTextPerspective.boxRef.boxModel, boxTextPerspective.width, boxTextPerspective.height, boxTextPerspective.rootWindow.viewDocumentScale, boxTextPerspective.boxRef.perspectiveActive)
     }
 
 }

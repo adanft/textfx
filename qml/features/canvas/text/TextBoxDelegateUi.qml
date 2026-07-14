@@ -4,8 +4,15 @@ Item {
     required property var boxRef
     required property var canvasItem
     required property var outlinedTextItem
-    parent: boxRef
+    required property real uiMargin
     anchors.fill: parent
+    Item {
+        id: boxPlane
+        x: delegateUi.uiMargin
+        y: delegateUi.uiMargin
+        width: delegateUi.boxRef.width
+        height: delegateUi.boxRef.height
+    }
     TapHandler {
         enabled: delegateUi.boxRef.editingSelected
         acceptedButtons: Qt.LeftButton
@@ -26,12 +33,12 @@ Item {
         property var rootWindow: boxRef.rootWindow
         property var editorRef: boxRef.editorRef
         property real margin: rootWindow.perspectiveMargin(boxRef.boxModel)
-        parent: boxRef
+        parent: boxPlane
         objectName: "perspectiveBorder"
         x: -margin
         y: -margin
-        width: parent.width + margin * 2
-        height: parent.height + margin * 2
+        width: boxRef.width + margin * 2
+        height: boxRef.height + margin * 2
         visible: boxRef.selected && boxRef.perspectiveActive
         z: boxRef.zPerspectiveBorder
         onPaint: {
@@ -68,19 +75,24 @@ Item {
         }
     }
     TextBoxEditControls {
-        parent: delegateUi.boxRef
+        parent: boxPlane
         boxRef: delegateUi.boxRef
         canvasItem: delegateUi.canvasItem
         outlinedTextItem: delegateUi.outlinedTextItem
     }
     TextBoxSelectionControls {
-        parent: delegateUi.boxRef
+        parent: delegateUi
         boxRef: delegateUi.boxRef
         canvasItem: delegateUi.canvasItem
+        boxOriginX: delegateUi.uiMargin
+        boxOriginY: delegateUi.uiMargin
     }
     TextBoxPathControls {
-        parent: delegateUi.boxRef
+        parent: boxPlane
         boxRef: delegateUi.boxRef
         canvasItem: delegateUi.canvasItem
+        handlesParent: delegateUi
+        boxOriginX: delegateUi.uiMargin
+        boxOriginY: delegateUi.uiMargin
     }
 }

@@ -570,10 +570,14 @@ private slots:
     QVERIFY(!pageScaleSource.contains(QStringLiteral("canvas.height")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         viewportSource, QStringLiteral("function pageDisplayWidth() { return "
-                                       "pageSourceWidth * pageScale() }")));
+                                       "pageWidth }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         viewportSource, QStringLiteral("function pageDisplayHeight() { return "
-                                       "pageSourceHeight * pageScale() }")));
+                                       "pageHeight }")));
+    QVERIFY(viewportSource.contains(QStringLiteral(
+        "readonly property real pageWidth: pageSourceWidth * pageBaseScale")));
+    QVERIFY(viewportSource.contains(QStringLiteral(
+        "readonly property real pageHeight: pageSourceHeight * pageBaseScale")));
   }
 
   void qmlRightPanelUsesSectionTabsAndNoHorizontalOverflow() {

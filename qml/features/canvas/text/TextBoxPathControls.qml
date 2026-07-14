@@ -5,6 +5,9 @@ Item {
 
     property var boxRef
     property var canvasItem
+    required property Item handlesParent
+    required property real boxOriginX
+    required property real boxOriginY
     readonly property var rootWindow: boxRef ? boxRef.rootWindow : null
     readonly property bool activePathDragForThisBox: rootWindow && rootWindow.activePathHandlePlane && rootWindow.activePathHandlePlane.boxRef === boxRef
     readonly property bool pathDecorationsLoaded: boxRef && ((boxRef.selected && boxRef.boxModel.path) || activePathDragForThisBox)
@@ -18,7 +21,7 @@ Item {
 
         property var boxRef: pathControls.boxRef
 
-        parent: pathControls.boxRef
+        parent: pathControls.parent
         anchors.fill: parent
         active: pathControls.visible && pathControls.pathGuideLoaded
         sourceComponent: Component {
@@ -35,8 +38,11 @@ Item {
         property var boxRef: pathControls.boxRef
         property var canvasItem: pathControls.canvasItem
 
-        parent: pathControls.boxRef
-        anchors.fill: parent
+        parent: pathControls.handlesParent
+        x: pathControls.boxOriginX
+        y: pathControls.boxOriginY
+        width: pathControls.width
+        height: pathControls.height
         active: pathControls.visible && pathControls.pathDecorationsLoaded
         sourceComponent: Component {
             TextPathHandles {

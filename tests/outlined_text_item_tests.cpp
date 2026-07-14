@@ -52,6 +52,99 @@ private slots:
     QCOMPARE(linesAtScale(1.5), expected);
   }
 
+  void coalescesLayoutAndPaintWorkUntilPolish() {
+    OutlinedTextItem item;
+    QSignalSpy paintRequested(
+        &item, &OutlinedTextItem::paintRequestRevisionChangedForTesting);
+    QSignalSpy layoutChanged(&item, &OutlinedTextItem::editLayoutMetricsChanged);
+
+    item.setWidth(180);
+    item.setHeight(100);
+    item.setText(QStringLiteral("Alpha Beta"));
+    item.setFontFamily(QStringLiteral("Serif"));
+    item.setPixelSize(24);
+    item.setLetterSpacing(1);
+    item.setLineSpacing(2);
+    item.setOutlineSize(4);
+
+    QCOMPARE(item.paintRequestRevisionForTesting(), 0);
+    QCOMPARE(paintRequested.count(), 0);
+    QCOMPARE(layoutChanged.count(), 0);
+    item.processPendingPolishForTesting();
+    QCOMPARE(item.layoutCacheRebuildCountForTesting(), 1);
+    QCOMPARE(item.paintRequestRevisionForTesting(), 1);
+    QCOMPARE(paintRequested.count(), 1);
+    QCOMPARE(layoutChanged.count(), 1);
+  }
+
+  void preservesLayoutWorkReenteredFromOverflowNotification() {
+    OutlinedTextItem item;
+    item.setWidth(40);
+    item.setHeight(40);
+    item.setText(QStringLiteral("Overflowing text"));
+    item.setPixelSize(24);
+    QSignalSpy overflowChanged(&item, &OutlinedTextItem::overflowChanged);
+    QSignalSpy layoutChanged(&item, &OutlinedTextItem::editLayoutMetricsChanged);
+    QSignalSpy paintRequested(
+        &item, &OutlinedTextItem::paintRequestRevisionChangedForTesting);
+    bool mutated = false;
+    connect(&item, &OutlinedTextItem::overflowChanged, &item, [&] {
+      if (!mutated) {
+        mutated = true;
+        item.setWidth(400);
+      }
+    });
+
+    item.processPendingPolishForTesting();
+    QVERIFY(mutated);
+    QVERIFY(item.polishPendingForTesting());
+    QCOMPARE(overflowChanged.count(), 1);
+    QCOMPARE(layoutChanged.count(), 1);
+    QCOMPARE(paintRequested.count(), 1);
+
+    item.processPendingPolishForTesting();
+    QVERIFY(!item.polishPendingForTesting());
+    QCOMPARE(item.layoutCacheRebuildCountForTesting(), 2);
+    QCOMPARE(item.overflow(), false);
+    QCOMPARE(item.editLayoutMetricsValid(), true);
+    QCOMPARE(overflowChanged.count(), 2);
+    QCOMPARE(layoutChanged.count(), 2);
+    QCOMPARE(paintRequested.count(), 2);
+  }
+
+  void synchronousMetricReadConsumesPendingLayoutBeforePolish() {
+    OutlinedTextItem item;
+    item.setWidth(180);
+    item.setHeight(100);
+    item.setText(QStringLiteral("Alpha Beta"));
+    item.setPixelSize(24);
+
+    QCOMPARE(item.layoutCacheRebuildCountForTesting(), 1);
+    QCOMPARE(item.paintRequestRevisionForTesting(), 0);
+    item.processPendingPolishForTesting();
+    QCOMPARE(item.layoutCacheRebuildCountForTesting(), 1);
+    QCOMPARE(item.paintRequestRevisionForTesting(), 1);
+  }
+
+  void effectOnlyChangesCoalescePaintWithoutLayout() {
+    OutlinedTextItem item;
+    item.setWidth(180);
+    item.setHeight(100);
+    item.setText(QStringLiteral("Alpha Beta"));
+    item.processPendingPolishForTesting();
+    const int rebuilds = item.layoutCacheRebuildCountForTesting();
+    const int paints = item.paintRequestRevisionForTesting();
+
+    item.setColor(Qt::red);
+    item.setShadowColor(Qt::blue);
+    item.setGradientColorA(Qt::green);
+    QCOMPARE(item.layoutCacheRebuildCountForTesting(), rebuilds);
+    QCOMPARE(item.paintRequestRevisionForTesting(), paints);
+    item.processPendingPolishForTesting();
+    QCOMPARE(item.layoutCacheRebuildCountForTesting(), rebuilds);
+    QCOMPARE(item.paintRequestRevisionForTesting(), paints + 1);
+  }
+
   void rebuildsPlainAndPathPreviewLayoutsOnce() {
     auto constructionCount = [](bool pathEnabled) {
       OutlinedTextItem item;
@@ -66,6 +159,7 @@ private slots:
 
       resetTextDocumentLayoutCountForTesting();
       item.setLetterSpacing(1.0);
+      item.processPendingPolishForTesting();
       return textDocumentLayoutCountForTesting();
     };
 
@@ -192,6 +286,9 @@ private slots:
     item.setText(QStringLiteral("Live"));
 
     QCOMPARE(textChanged.count(), 1);
+    QCOMPARE(paintRequested.count(), 0);
+    QCOMPARE(layoutChanged.count(), 0);
+    item.processPendingPolishForTesting();
     QCOMPARE(paintRequested.count(), 1);
     QCOMPARE(layoutChanged.count(), 1);
     QCOMPARE(item.paintRequestRevisionForTesting(), 1);
@@ -204,6 +301,7 @@ private slots:
 
     item.setText(QStringLiteral("Live!"));
     QCOMPARE(textChanged.count(), 2);
+    item.processPendingPolishForTesting();
     QCOMPARE(paintRequested.count(), 2);
     QCOMPARE(layoutChanged.count(), 2);
     QCOMPARE(item.paintRequestRevisionForTesting(), 2);

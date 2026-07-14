@@ -84,7 +84,7 @@ Canvas {
     }
 
     transform: Matrix4x4 {
-        matrix: pathGuide.rootWindow.perspectiveMatrix(pathGuide.boxRef.boxModel, pathGuide.width, pathGuide.height, pathGuide.rootWindow.viewDocScale(), pathGuide.boxRef.perspectiveActive)
+        matrix: pathGuide.rootWindow.perspectiveMatrix(pathGuide.boxRef.boxModel, pathGuide.width, pathGuide.height, pathGuide.rootWindow.viewDocumentScale, pathGuide.boxRef.perspectiveActive)
     }
 
 }

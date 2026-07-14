@@ -7,6 +7,8 @@ Item {
 
     required property var boxRef
     required property var canvasItem
+    required property real boxOriginX
+    required property real boxOriginY
 
     objectName: "textBoxSelectionControls"
     anchors.fill: parent
@@ -16,6 +18,8 @@ Item {
     TextResizeHandles {
         boxRef: selectionControls.boxRef
         canvasItem: selectionControls.canvasItem
+        boxOriginX: selectionControls.boxOriginX
+        boxOriginY: selectionControls.boxOriginY
         visible: selectionControls.boxRef && selectionControls.boxRef.renderSelectionUi
     }
 
@@ -30,6 +34,8 @@ Item {
             TextRotateHandle {
                 boxRef: rotateHandleLoader.boxRef
                 canvasItem: rotateHandleLoader.canvasItem
+                boxOriginX: selectionControls.boxOriginX
+                boxOriginY: selectionControls.boxOriginY
             }
         }
         z: selectionControls.boxRef ? selectionControls.boxRef.zSelectionControls : 20

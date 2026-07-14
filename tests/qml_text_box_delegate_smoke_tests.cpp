@@ -15,6 +15,7 @@
 #include <QQuickTextDocument>
 #include <QQuickView>
 #include <QQuickWindow>
+#include <QRegularExpression>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -35,6 +36,7 @@ namespace {
 class ResizeHandleFakeRootWindow final : public QObject {
   Q_OBJECT
   Q_PROPERTY(QVariant palette READ palette CONSTANT)
+  Q_PROPERTY(qreal resizeHandleSize READ resizeHandleSize CONSTANT)
 
 public:
   QVariant palette() const {
@@ -48,6 +50,7 @@ public:
     return {10, 12};
   }
   Q_INVOKABLE qreal handleSize() const { return 8; }
+  qreal resizeHandleSize() const { return 8; }
   Q_INVOKABLE void beginResizeDrag(QObject *, const QString &, qreal, qreal) {
     ++resizeBeginCount;
   }
@@ -724,7 +727,7 @@ private slots:
     const qreal expectedInset =
         window->property("zoom").toReal() *
         overlayOutlinedObject->property("editLayoutLeftPadding").toReal();
-    QCOMPARE(textAreaObject->property("leftPadding").toReal(), expectedInset);
+    QTRY_COMPARE(textAreaObject->property("leftPadding").toReal(), expectedInset);
     QCOMPARE(textAreaObject->property("rightPadding").toReal(), expectedInset);
     QVERIFY(textAreaObject->property("topPadding").toReal() > expectedInset);
 
@@ -733,7 +736,7 @@ private slots:
     QVERIFY(
         delegateSource.contains(QStringLiteral("wrapMode: TextEdit.WordWrap")));
     QVERIFY(delegateSource.contains(
-        QStringLiteral("outlinedTextItem.editLayoutTopPadding")));
+        QStringLiteral("renderer.editLayoutTopPadding")));
   }
 
   void qmlTextEditOverlayCursorGeometryMatchesPreviewMetrics() {
@@ -835,8 +838,8 @@ private slots:
                qPrintable(testCase.name + QStringLiteral(" left padding")));
       QVERIFY2(expectedTopPadding >= expectedLeftPadding,
                qPrintable(testCase.name + QStringLiteral(" top padding")));
-      QVERIFY2(nearlyEqual(textAreaObject->property("leftPadding").toReal(),
-                           expectedLeftPadding),
+      QTRY_VERIFY2(nearlyEqual(textAreaObject->property("leftPadding").toReal(),
+                              expectedLeftPadding),
                qPrintable(testCase.name));
       QVERIFY2(nearlyEqual(textAreaObject->property("rightPadding").toReal(),
                            expectedRightPadding),
@@ -1091,6 +1094,9 @@ private slots:
                     content, QStringLiteral("pathHandle")));
     QQuickItem *uiRoot = perspectiveBorder->parentItem();
     QVERIFY(uiRoot);
+    QQuickItem *delegateUi = uiRoot->parentItem();
+    QVERIFY(delegateUi);
+    QCOMPARE(selectionControls->parentItem(), delegateUi);
     const auto stackingChildUnderUiRoot = [uiRoot](QQuickItem *item) {
       QQuickItem *child = item;
       while (child && child->parentItem() && child->parentItem() != uiRoot)
@@ -1104,17 +1110,30 @@ private slots:
     QTRY_VERIFY(rotateHandle = findVisibleVisualChildByName(
                     content, QStringLiteral("rotateHandle")));
     QQuickItem *pathGuideStackingItem = stackingChildUnderUiRoot(pathGuide);
-    QQuickItem *pathHandleStackingItem = stackingChildUnderUiRoot(pathHandle);
-    QQuickItem *resizeStackingItem = stackingChildUnderUiRoot(resizeHandle);
-    QQuickItem *rotateStackingItem = stackingChildUnderUiRoot(rotateHandle);
+    const auto stackingChildUnderDelegateUi = [delegateUi](QQuickItem *item) {
+      QQuickItem *child = item;
+      while (child && child->parentItem() && child->parentItem() != delegateUi)
+        child = child->parentItem();
+      return child;
+    };
+    QQuickItem *pathHandleStackingItem = stackingChildUnderDelegateUi(pathHandle);
+    const auto stackingChildUnderSelection = [selectionControls](QQuickItem *item) {
+      QQuickItem *child = item;
+      while (child && child->parentItem() &&
+             child->parentItem() != selectionControls)
+        child = child->parentItem();
+      return child;
+    };
+    QQuickItem *resizeStackingItem = stackingChildUnderSelection(resizeHandle);
+    QQuickItem *rotateStackingItem = stackingChildUnderSelection(rotateHandle);
     QVERIFY(pathGuideStackingItem);
     QVERIFY(pathHandleStackingItem);
     QVERIFY(resizeStackingItem);
     QVERIFY(rotateStackingItem);
     QCOMPARE(pathGuideStackingItem->parentItem(), uiRoot);
-    QCOMPARE(pathHandleStackingItem->parentItem(), uiRoot);
-    QCOMPARE(resizeStackingItem->parentItem(), uiRoot);
-    QCOMPARE(rotateStackingItem->parentItem(), uiRoot);
+    QCOMPARE(pathHandleStackingItem->parentItem(), delegateUi);
+    QCOMPARE(resizeStackingItem->parentItem(), selectionControls);
+    QCOMPARE(rotateStackingItem->parentItem(), selectionControls);
     QVERIFY(pathGuideStackingItem->z() < perspectiveBorder->z());
     QVERIFY(resizeStackingItem->z() > perspectiveBorder->z());
     QVERIFY(rotateStackingItem->z() > perspectiveBorder->z());
@@ -1191,6 +1210,121 @@ private slots:
              2);
   }
 
+  void qmlInitialResizeHandlesReceivePointerDrags() {
+    registerQmlTypes();
+
+    EditorController editor;
+    editor.newDocument();
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
+    engine.load(QUrl::fromLocalFile(
+        QStringLiteral(TEXTFX_FIXTURE_DIR "/../../qml/app/Main.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+
+    QVERIFY(window->setProperty("pageBaseScale", 0.75));
+    QVERIFY(window->setProperty("panX", -400.0));
+
+    auto dragOutward = [&](const QString &handleName, const QPointF &outward) {
+      editor.newDocument();
+      editor.createTextBox(100, 100, 160, 100);
+      QQuickItem *handle = nullptr;
+      QTRY_VERIFY(handle = findVisibleVisualChildByName(
+                      window->contentItem(),
+                      QStringLiteral("resizeHandle_") + handleName));
+      const QVariantMap box = editor.boxes().at(0).toMap();
+      const qreal pageScale = window->property("pageBaseScale").toReal();
+      const qreal zoom = window->property("zoom").toReal();
+      auto *canvas = qvariant_cast<QQuickItem *>(window->property("canvas"));
+      QVERIFY(canvas);
+      auto *metrics = window->findChild<QObject *>(QStringLiteral("viewportMetrics"));
+      QVERIFY(metrics);
+      const qreal pageLeft =
+          (canvas->width() - metrics->property("pageSourceWidth").toReal() * pageScale) / 2;
+      const qreal pageTop =
+          (canvas->height() - metrics->property("pageSourceHeight").toReal() * pageScale) / 2;
+      const qreal x = box.value(QStringLiteral("x")).toReal();
+      const qreal y = box.value(QStringLiteral("y")).toReal();
+      const qreal w = box.value(QStringLiteral("w")).toReal();
+      const qreal h = box.value(QStringLiteral("h")).toReal();
+      const bool west = handleName.contains(u'w');
+      const bool east = handleName.contains(u'e');
+      const bool north = handleName.contains(u'n');
+      const bool south = handleName.contains(u's');
+      const qreal documentX = x + (west ? 0.0 : east ? w : w / 2);
+      const qreal documentY = y + (north ? 0.0 : south ? h : h / 2);
+      const auto documentPointToScene = [&](qreal documentX, qreal documentY) {
+        return canvas->mapToScene(
+            QPointF(window->property("panX").toReal() +
+                        (pageLeft + documentX * pageScale) * zoom,
+                    window->property("panY").toReal() +
+                        (pageTop + documentY * pageScale) * zoom));
+      };
+      const QPointF expectedScene = documentPointToScene(documentX, documentY);
+      const QPointF actualScene = handle->mapToScene(
+          QPointF(handle->width() / 2, handle->height() / 2));
+      QVERIFY2(std::hypot(actualScene.x() - expectedScene.x(),
+                          actualScene.y() - expectedScene.y()) <= 1.0,
+               qPrintable(QStringLiteral("%1 handle center=(%2,%3) expected=(%4,%5)")
+                               .arg(handleName).arg(actualScene.x()).arg(actualScene.y())
+                               .arg(expectedScene.x()).arg(expectedScene.y())));
+      const QRectF originalBoxScene(
+          documentPointToScene(x, y), documentPointToScene(x + w, y + h));
+      const QPointF outwardPoint =
+          actualScene + outward * (handle->width() * 0.75 / 2.0);
+      const QPoint start = outwardPoint.toPoint();
+      QVERIFY2(!originalBoxScene.contains(QPointF(start)),
+               qPrintable(QStringLiteral("%1 outward point (%2,%3) must be outside "
+                                         "box (%4,%5 %6x%7)")
+                              .arg(handleName).arg(start.x()).arg(start.y())
+                              .arg(originalBoxScene.x()).arg(originalBoxScene.y())
+                              .arg(originalBoxScene.width()).arg(originalBoxScene.height())));
+      const QPoint end = start + (outward * 18.0).toPoint();
+      QSignalSpy documentChanged(&editor, &EditorController::documentChanged);
+
+      QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, start);
+      QTRY_VERIFY(window->property("dragMode").toInt() != 0);
+      QTest::mouseMove(window, end);
+      QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, end);
+
+      QTRY_COMPARE(window->property("dragMode").toInt(), 0);
+      QTRY_COMPARE(documentChanged.count(), 1);
+      const QVariantMap resized = editor.boxes().at(0).toMap();
+      const qreal resizedX = resized.value(QStringLiteral("x")).toReal();
+      const qreal resizedY = resized.value(QStringLiteral("y")).toReal();
+      const qreal resizedW = resized.value(QStringLiteral("w")).toReal();
+      const qreal resizedH = resized.value(QStringLiteral("h")).toReal();
+      QCOMPARE(std::abs(resizedX - x) > 0.001, west);
+      QCOMPARE(std::abs(resizedY - y) > 0.001, north);
+      QCOMPARE(std::abs(resizedW - w) > 0.001, west || east);
+      QCOMPARE(std::abs(resizedH - h) > 0.001, north || south);
+      if (west)
+        QVERIFY(resizedX < x && resizedW > w);
+      if (north)
+        QVERIFY(resizedY < y && resizedH > h);
+      if (east)
+        QVERIFY(resizedW > w);
+      if (south)
+        QVERIFY(resizedH > h);
+    };
+
+    const qreal diagonal = std::sqrt(0.5);
+    dragOutward(QStringLiteral("nw"), QPointF(-diagonal, -diagonal));
+    dragOutward(QStringLiteral("n"), QPointF(0, -1));
+    dragOutward(QStringLiteral("ne"), QPointF(diagonal, -diagonal));
+    dragOutward(QStringLiteral("e"), QPointF(1, 0));
+    dragOutward(QStringLiteral("se"), QPointF(diagonal, diagonal));
+    dragOutward(QStringLiteral("s"), QPointF(0, 1));
+    dragOutward(QStringLiteral("sw"), QPointF(-diagonal, diagonal));
+    dragOutward(QStringLiteral("w"), QPointF(-1, 0));
+
+    QVERIFY(window->setProperty("zoom", 1.5));
+    dragOutward(QStringLiteral("e"), QPointF(1, 0));
+  }
+
   void qmlTextEditTabStopMatchesOutlinedLayoutMetrics() {
     registerQmlTypes();
 
@@ -1221,8 +1355,8 @@ private slots:
 
     const qreal expectedTabStop =
         outlinedObject->property("editLayoutTabStopDistance").toReal();
-    QVERIFY2(std::abs(textAreaObject->property("tabStopDistance").toReal() -
-                      expectedTabStop) <= 0.5,
+    QTRY_VERIFY2(std::abs(textAreaObject->property("tabStopDistance").toReal() -
+                          expectedTabStop) <= 0.5,
              qPrintable(QStringLiteral("tab=%1 expected=%2")
                             .arg(textAreaObject->property("tabStopDistance")
                                      .toReal())
@@ -1308,8 +1442,8 @@ private slots:
           outlinedObject->property("editLayoutLeftPadding").toReal();
       const qreal expectedRightPadding =
           outlinedObject->property("editLayoutRightPadding").toReal();
-      QVERIFY(nearlyEqual(textAreaObject->property("leftPadding").toReal(),
-                          expectedLeftPadding));
+      QTRY_VERIFY(nearlyEqual(textAreaObject->property("leftPadding").toReal(),
+                              expectedLeftPadding));
       QVERIFY(nearlyEqual(textAreaObject->property("rightPadding").toReal(),
                           expectedRightPadding));
       QVERIFY(nearlyEqual(document->textWidth(),
@@ -1548,12 +1682,18 @@ private slots:
 
   void qmlTextOverflowMarksDelegate() {
     registerQmlTypes();
+    QTest::failOnWarning(QRegularExpression(
+        QStringLiteral("Binding loop detected.*(textOverflow|overflow|"
+                       "editLayout|Padding|tabStopDistance|PaintOffset)")));
 
     EditorController editor;
     editor.newDocument();
     editor.createTextBox(4, 4, 300, 100);
+    editor.createTextBox(8, 120, 300, 100);
+    editor.createTextBox(12, 240, 300, 100);
     editor.updateSelectedText(QStringLiteral("Fits"));
     editor.setSelectedFontSize(20);
+    editor.beginTextEdit();
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("Editor"), &editor);
@@ -1564,21 +1704,48 @@ private slots:
     auto *window =
         qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
     QVERIFY(window);
-    QObject *delegate = nullptr;
+    QList<QQuickItem *> delegates;
+    QQuickItem *delegate = nullptr;
     QObject *textAreaObject = nullptr;
-    QTRY_VERIFY(delegate = findVisualChildByName(
-                    window->contentItem(), QStringLiteral("textBoxDelegate")));
-    QTRY_VERIFY(textAreaObject = findVisualChildByName(
-                    window->contentItem(), QStringLiteral("boxTextArea")));
+    QTRY_COMPARE(countVisualChildrenByName(window->contentItem(),
+                                           QStringLiteral("textBoxDelegate")),
+                 3);
+    collectVisualChildrenByName(window->contentItem(),
+                                QStringLiteral("textBoxDelegate"), delegates);
+    for (QQuickItem *candidate : delegates) {
+      if (candidate->property("boxIndex").toInt() == editor.selectedIndex()) {
+        delegate = candidate;
+        break;
+      }
+    }
+    QVERIFY(delegate);
+    QTRY_VERIFY(textAreaObject =
+                    findVisualChildByName(delegate, QStringLiteral("boxTextArea")));
     auto *outlinedObject =
         textAreaObject->property("outlinedTextItem").value<QObject *>();
     QVERIFY(outlinedObject);
+    QTRY_VERIFY(textAreaObject->property("editLayoutAligned").toBool());
+    QTRY_COMPARE(textAreaObject->property("editLayoutTopPadding").toReal(),
+                 outlinedObject->property("editLayoutTopPadding").toReal());
+    QTRY_COMPARE(textAreaObject->property("editLayoutLeftPadding").toReal(),
+                 outlinedObject->property("editLayoutLeftPadding").toReal());
+    QTRY_COMPARE(textAreaObject->property("editLayoutRightPadding").toReal(),
+                 outlinedObject->property("editLayoutRightPadding").toReal());
+    QTRY_COMPARE(textAreaObject->property("editLayoutTabStopDistance").toReal(),
+                 outlinedObject->property("editLayoutTabStopDistance").toReal());
+    QTRY_COMPARE(textAreaObject->property("editLayoutPaintOffsetX").toReal(),
+                 outlinedObject->property("editLayoutPaintOffsetX").toReal());
+    QTRY_COMPARE(textAreaObject->property("editLayoutPaintOffsetY").toReal(),
+                 outlinedObject->property("editLayoutPaintOffsetY").toReal());
     auto *outlinedItem = qobject_cast<QQuickItem *>(outlinedObject);
     QVERIFY(outlinedItem);
     auto *contentItem = outlinedItem->parentItem();
     QVERIFY(contentItem);
     QCOMPARE(contentItem->property("outlinedTextItem").value<QObject *>(),
-             outlinedObject);
+              outlinedObject);
+    QCOMPARE(countVisualChildrenByName(window->contentItem(),
+                                       QStringLiteral("boxOutlinedText")),
+             3);
 
     QQmlProperty borderColorProperty(delegate, QStringLiteral("border.color"));
     QVERIFY(borderColorProperty.isValid());
@@ -1589,8 +1756,8 @@ private slots:
     QVERIFY(borderColorProperty.read().value<QColor>() != overflowColor);
 
     editor.updateSelectedText(
-        QStringLiteral("Supercalifragilisticexpialidocious"));
-    editor.setSelectedBounds(4, 4, 42, 24);
+        QStringLiteral("Supercalifragilisticexpialidocious\nOverflow"));
+    editor.setSelectedBounds(4, 4, 20, 10);
 
     QTRY_VERIFY(outlinedObject->property("overflow").toBool());
     QCOMPARE(contentItem->property("overflow").toBool(), true);
@@ -1850,6 +2017,8 @@ Item {
         anchors.fill: parent
         boxRef: root.currentBox
         canvasItem: root
+        boxOriginX: 0
+        boxOriginY: 0
     }
 }
 )QML")
@@ -2014,7 +2183,7 @@ Item {
     QVERIFY(!delegateSource.contains(QStringLiteral("property bool moveActive")));
     QVERIFY(!delegateSource.contains(QStringLiteral("property bool resizeActive")));
     QVERIFY(delegateSource.contains(
-        QStringLiteral("width: visualDocW * rootWindow.viewDocScale()")));
+        QStringLiteral("width: visualDocW * rootWindow.viewDocumentScale")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         mainSource,
         QStringLiteral("function documentToViewLength(value) { return "
@@ -2025,9 +2194,15 @@ Item {
                        "value * viewDocScale() }")));
     QVERIFY(sourceContainsIgnoringWhitespace(
         mainSource,
-        QStringLiteral(
-            "function handleSize() { return Math.max(1, "
-            "documentToViewLength(editorLimits.minimumBoxSize)) }")));
+        QStringLiteral("readonly property real viewDocumentScale: "
+                       "viewportMetrics.documentScale")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        mainSource,
+        QStringLiteral("readonly property real resizeHandleSize: Math.max(1, "
+                       "editorLimits.minimumBoxSize * viewDocumentScale)")));
+    QVERIFY(sourceContainsIgnoringWhitespace(
+        mainSource,
+        QStringLiteral("function handleSize() { return resizeHandleSize }")));
     QVERIFY(delegateSource.contains(
         QStringLiteral("border.width: !renderSelectionUi || perspectiveActive ? 0 : selectionMember ? "
                        "rootWindow.selectionLineWidth() : Math.max(1, "

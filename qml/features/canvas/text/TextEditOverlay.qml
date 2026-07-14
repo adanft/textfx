@@ -10,17 +10,29 @@ TextArea {
     property var rootWindow: boxRef.rootWindow
     property var editorRef: boxRef.editorRef
     property real editLineSpacing: boxRef.boxModel.lineSpacing
-    readonly property bool editLayoutAligned: outlinedTextItem ? outlinedTextItem.editLayoutMetricsValid : false
-    readonly property real editLayoutTopPadding: editLayoutAligned ? outlinedTextItem.editLayoutTopPadding : 0
-    readonly property real editLayoutLeftPadding: editLayoutAligned ? outlinedTextItem.editLayoutLeftPadding : 0
-    readonly property real editLayoutRightPadding: editLayoutAligned ? outlinedTextItem.editLayoutRightPadding : 0
-    readonly property real editLayoutTabStopDistance: outlinedTextItem ? outlinedTextItem.editLayoutTabStopDistance : 0
-    readonly property real editLayoutPaintOffsetX: editLayoutAligned ? outlinedTextItem.editLayoutPaintOffsetX : 0
-    readonly property real editLayoutPaintOffsetY: editLayoutAligned ? outlinedTextItem.editLayoutPaintOffsetY : 0
+    property bool editLayoutAligned: false
+    property real editLayoutTopPadding: 0
+    property real editLayoutLeftPadding: 0
+    property real editLayoutRightPadding: 0
+    property real editLayoutTabStopDistance: 0
+    property real editLayoutPaintOffsetX: 0
+    property real editLayoutPaintOffsetY: 0
     readonly property int zEditOverlay: 1
 
     function editHorizontalAlignment(alignment) {
         return alignment === boxRef.textAlignCenter ? TextEdit.AlignHCenter : alignment === boxRef.textAlignRight ? TextEdit.AlignRight : TextEdit.AlignLeft;
+    }
+
+    function refreshEditLayoutMetrics() {
+        const renderer = outlinedTextItem;
+        const aligned = renderer ? renderer.editLayoutMetricsValid : false;
+        editLayoutAligned = aligned;
+        editLayoutTopPadding = aligned ? renderer.editLayoutTopPadding : 0;
+        editLayoutLeftPadding = aligned ? renderer.editLayoutLeftPadding : 0;
+        editLayoutRightPadding = aligned ? renderer.editLayoutRightPadding : 0;
+        editLayoutTabStopDistance = renderer ? renderer.editLayoutTabStopDistance : 0;
+        editLayoutPaintOffsetX = aligned ? renderer.editLayoutPaintOffsetX : 0;
+        editLayoutPaintOffsetY = aligned ? renderer.editLayoutPaintOffsetY : 0;
     }
 
     function focusForEdit() {
@@ -112,16 +124,22 @@ TextArea {
     Component.onCompleted: {
         syncTextFromModel();
         applyLineSpacing();
+        Qt.callLater(refreshEditLayoutMetrics);
         Qt.callLater(focusForEdit);
     }
     onVisibleChanged: {
         if (visible) {
             syncTextFromModel();
             applyLineSpacing();
+            Qt.callLater(refreshEditLayoutMetrics);
             Qt.callLater(focusForEdit);
         }
     }
     onOutlinedTextItemChanged: {
+        editLayoutAligned = false;
+        editLayoutTopPadding = editLayoutLeftPadding = editLayoutRightPadding = 0;
+        editLayoutTabStopDistance = editLayoutPaintOffsetX = editLayoutPaintOffsetY = 0;
+        Qt.callLater(refreshEditLayoutMetrics);
         if (outlinedTextItem && visible)
             Qt.callLater(focusForEdit);
     }
@@ -145,6 +163,13 @@ TextArea {
             editorRef.updateSelectedText(text);
         }
 
+    }
+
+    Connections {
+        target: boxTextArea.outlinedTextItem
+        function onEditLayoutMetricsChanged() {
+            Qt.callLater(boxTextArea.refreshEditLayoutMetrics);
+        }
     }
 
     Connections {

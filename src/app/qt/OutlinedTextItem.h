@@ -136,7 +136,7 @@ public:
   void setRenderScale(qreal value);
   int horizontalAlignment() const { return horizontalAlignment_; }
   void setHorizontalAlignment(int value);
-  bool overflow() const { return overflow_; }
+  bool overflow() const;
   bool editLayoutMetricsValid() const;
   qreal editLayoutTopPadding() const;
   qreal editLayoutLeftPadding() const;
@@ -148,7 +148,9 @@ public:
 
 #ifdef TEXTFX_TESTING
   int paintRequestRevisionForTesting() const { return paintRequestRevision_; }
+  bool polishPendingForTesting() const { return polishPending_; }
   int layoutCacheRebuildCountForTesting() const;
+  void processPendingPolishForTesting() { updatePolish(); }
   int outlineStrokeRebuildCountForTesting() const {
     return outlineStrokeRebuildCount_;
   }
@@ -168,6 +170,7 @@ public:
 protected:
   void geometryChange(const QRectF &newGeometry,
                       const QRectF &oldGeometry) override;
+  void updatePolish() override;
 
 signals:
   void textChanged();
@@ -227,6 +230,8 @@ private:
 
   QFont layoutFont() const;
   const LayoutCache &layoutCache() const;
+  void ensureLayoutCurrent() const;
+  void processPendingUpdates();
   void invalidateLayoutCache();
   void updateOverflow();
   void notifyLayoutChanged();
@@ -281,6 +286,10 @@ private:
   int horizontalAlignment_ = Qt::AlignLeft;
   bool overflow_ = false;
   mutable bool layoutCacheDirty_ = true;
+  mutable bool ensuringLayoutCurrent_ = false;
+  bool layoutNotificationPending_ = false;
+  bool paintRefreshPending_ = false;
+  bool polishPending_ = false;
   mutable LayoutCache layoutCache_;
   quint64 geometryRevision_ = 1;
   quint64 renderRevision_ = 1;
