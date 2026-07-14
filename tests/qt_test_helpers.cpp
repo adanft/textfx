@@ -2,6 +2,7 @@
 
 #include "app/qt/EditorLimits.h"
 #include "app/qt/OutlinedTextItem.h"
+#include "app/qt/PaintLayerItem.h"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -111,12 +112,15 @@ QString normalizedSource(QStringView source, QVector<qsizetype> *sourceMap) {
 void registerQmlTypes() {
   static const int registered = qmlRegisterType<textfx::OutlinedTextItem>(
       "TextFX.Ui", 1, 0, "OutlinedTextItem");
+  static const int paintLayerRegistered = qmlRegisterType<textfx::PaintLayerItem>(
+      "TextFX.Ui", 1, 0, "PaintLayerItem");
   static const int limitsRegistered = qmlRegisterSingletonType<textfx::EditorLimits>(
       "TextFX.Ui", 1, 0, "EditorLimits",
       [](QQmlEngine *, QJSEngine *) -> QObject * {
         return new textfx::EditorLimits;
       });
   Q_UNUSED(registered);
+  Q_UNUSED(paintLayerRegistered);
   Q_UNUSED(limitsRegistered);
 }
 

@@ -94,6 +94,8 @@ set(TEXTFX_RENDER_SOURCES
 )
 
 set(TEXTFX_APP_SOURCES
+    src/app/qt/PaintLayerItem.cpp
+    src/app/qt/PaintLayerItem.h
     src/app/viewmodels/BoxRenderState.cpp
     src/app/viewmodels/BoxRenderState.h
     src/app/models/BoxesModel.cpp

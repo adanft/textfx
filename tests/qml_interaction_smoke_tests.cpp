@@ -12,7 +12,9 @@
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQuickItem>
+#include <QQuickPaintedItem>
 #include <QQuickWindow>
+#include <QSGRendererInterface>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QUrl>
@@ -2085,6 +2087,15 @@ Window {
     QVERIFY(QTest::qWaitForWindowExposed(window));
     auto *layer = window->findChild<QObject *>(QStringLiteral("paintLayer"));
     QVERIFY(layer);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+    const int expectedRenderTarget =
+        window->rendererInterface()->graphicsApi() == QSGRendererInterface::OpenGL
+            ? QQuickPaintedItem::FramebufferObject
+            : QQuickPaintedItem::Image;
+#else
+    const int expectedRenderTarget = QQuickPaintedItem::Image;
+#endif
+    QTRY_COMPARE(layer->property("renderTarget").toInt(), expectedRenderTarget);
     QTRY_COMPARE(layer->property("lastPaintedStrokeCount").toInt(), 2);
     QCoreApplication::processEvents();
 
