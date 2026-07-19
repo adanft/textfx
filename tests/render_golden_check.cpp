@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <QColor>
+#include <QColorSpace>
 #include <QGuiApplication>
 #include <QImage>
 #include <QPoint>
@@ -508,9 +509,47 @@ int main(int argc, char **argv) {
                                                   rgbOutPath);
   const QImage rgbExport(QString::fromStdString(rgbOutPath.string()));
   if (!rgbResult || rgbExport.isNull() || rgbExport.hasAlphaChannel() ||
+      rgbExport.colorSpace().isValid() ||
       pngColorType(rgbOutPath) != 2 || rgbExport.size() != rgbPage.size() ||
       rgbExport.pixelColor(0, 0) != rgbPage.pixelColor(0, 0)) {
     std::cerr << "Expected RGB source export to remain RGB/no-alpha\n";
+    return 1;
+  }
+
+  QImage grayscalePage(64, 48, QImage::Format_Grayscale8);
+  grayscalePage.fill(128);
+  const QColorSpace grayscaleColorSpace(
+      QPointF(0.3127, 0.3290), QColorSpace::TransferFunction::SRgb);
+  if (!grayscaleColorSpace.isValid() ||
+      grayscaleColorSpace.colorModel() != QColorSpace::ColorModel::Gray) {
+    std::cerr << "Expected a valid grayscale source color space\n";
+    return 1;
+  }
+  grayscalePage.setColorSpace(grayscaleColorSpace);
+  const auto grayscalePagePath = tempPath / "grayscale-source.png";
+  const auto grayscaleOutPath = tempPath / "grayscale-export.png";
+  if (!grayscalePage.save(
+          QString::fromStdString(grayscalePagePath.string()), "PNG"))
+    return 1;
+  const QImage savedGrayscalePage(
+      QString::fromStdString(grayscalePagePath.string()));
+  if (savedGrayscalePage.isNull() ||
+      savedGrayscalePage.colorSpace().colorModel() !=
+          QColorSpace::ColorModel::Gray) {
+    std::cerr << "Expected the PNG fixture to retain its grayscale profile\n";
+    return 1;
+  }
+  const auto grayscaleResult = graph.exportPagePngTimed(
+      DocumentModel{}, grayscalePagePath, grayscaleOutPath);
+  const QImage grayscaleExport(
+      QString::fromStdString(grayscaleOutPath.string()));
+  if (!grayscaleResult || grayscaleExport.isNull() ||
+      grayscaleExport.hasAlphaChannel() || pngColorType(grayscaleOutPath) != 2 ||
+      !grayscaleExport.colorSpace().isValid() ||
+      grayscaleExport.colorSpace() != QColorSpace(QColorSpace::SRgb) ||
+      grayscaleExport.colorSpace().colorModel() !=
+          QColorSpace::ColorModel::Rgb) {
+    std::cerr << "Expected grayscale profile export to be transformed to sRGB\n";
     return 1;
   }
 
@@ -525,6 +564,7 @@ int main(int argc, char **argv) {
                                                     alphaPagePath, alphaOutPath);
   const QImage alphaExport(QString::fromStdString(alphaOutPath.string()));
   if (!alphaResult || alphaExport.isNull() || !alphaExport.hasAlphaChannel() ||
+      alphaExport.colorSpace().isValid() ||
       pngColorType(alphaOutPath) != 6 ||
       alphaExport.pixelColor(0, 0).alpha() != 96 ||
       alphaExport.size() != alphaPage.size()) {

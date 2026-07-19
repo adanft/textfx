@@ -9,6 +9,7 @@
 #include "infrastructure/rendering/RenderTextLayout.h"
 
 #include <QColor>
+#include <QColorSpace>
 #include <QFont>
 #include <QImage>
 #include <QPainter>
@@ -344,7 +345,16 @@ RenderGraph::exportPagePngTimed(const DocumentModel &document,
                            pageImagePath.string());
   }
   const bool sourceHasAlpha = source.hasAlphaChannel();
-  source = source.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+  if (source.colorSpace().isValid()) {
+    source = source.convertedToColorSpace(
+        QColorSpace::SRgb, QImage::Format_ARGB32_Premultiplied);
+    if (source.isNull()) {
+      return std::unexpected("Could not convert page image to sRGB: " +
+                             pageImagePath.string());
+    }
+  } else {
+    source = source.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+  }
 
   QPainter painter(&source);
   drawPaintStrokes(painter, document.paint().behindText);
